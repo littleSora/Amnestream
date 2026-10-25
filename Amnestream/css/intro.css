@@ -1,0 +1,102 @@
+/* Intro hero: wordmark entrance, drifting poster columns, parallax, scroll reveals; transform/opacity only to stay smooth */
+
+html.smooth{scroll-behavior:auto}
+
+.intro{
+  --ease:cubic-bezier(.16,1,.3,1);
+  position:relative;isolation:isolate;overflow:hidden;
+  min-height:calc(100vh / var(--zoom));min-height:calc(100svh / var(--zoom));
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;
+  gap:clamp(12px,3vw,56px);padding:0 clamp(20px,4vw,64px);
+  background:
+    radial-gradient(60% 50% at 78% 45%,color-mix(in srgb,var(--accent2) 11%,transparent),transparent 70%),
+    radial-gradient(45% 40% at 12% 80%,color-mix(in srgb,var(--accent) 8%,transparent),transparent 70%),
+    var(--bg);
+}
+/* Fade the hero into the page below */
+.intro::after{content:"";position:absolute;left:0;right:0;bottom:0;height:22vh;z-index:3;pointer-events:none;
+  background:linear-gradient(0deg,var(--bg),transparent)}
+
+/* Giant outlined glyph backdrop (parallax and slow drift) */
+.intro-bg{position:absolute;inset:-12% -6%;z-index:-1;pointer-events:none;will-change:transform;
+  display:flex;flex-direction:column;justify-content:space-around;
+  font-family:var(--display);font-weight:700;line-height:.9;letter-spacing:-.04em;white-space:nowrap;
+  font-size:clamp(150px,26vw,420px);color:transparent;
+  -webkit-text-stroke:1.5px color-mix(in srgb,var(--text) 9%,transparent);user-select:none}
+.intro-bg span{display:block;will-change:transform}
+.intro-bg span:nth-child(2){margin-left:-18vw}
+
+/* Left: wordmark and tagline */
+.intro-copy{position:relative;z-index:2;justify-self:center;max-width:520px;text-align:center;will-change:transform,opacity}
+.intro-word{display:inline-block;position:relative;margin:0;font-family:var(--display);
+  font-size:clamp(34px,4.86vw,83px);font-weight:700;letter-spacing:-.055em;line-height:1;white-space:nowrap}
+/* Letters are typed in by intro.js: hidden but still taking space until typed */
+.intro-word .ch{visibility:hidden}
+.intro-word .ch.on{visibility:visible}
+.intro-word .st{color:var(--accent)}                       /* "stream" follows the colour theme */
+.jp{font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","Meiryo",var(--display),sans-serif}
+.intro-kanji{display:block;position:relative;margin:.55em 0 0;
+  font-family:var(--display);font-weight:700;font-size:clamp(18px,2.7vw,46px);letter-spacing:.04em;line-height:1.2;
+  color:var(--accent2);text-align:center;mix-blend-mode:screen}
+/* Typing caret: solid while typing, blinking when idle */
+.caret{position:absolute;left:0;top:0;pointer-events:none;color:#fff;font-weight:300;line-height:inherit;
+  transform:translateX(-42%);animation:blink 1s steps(1) infinite}
+.caret.typing{animation:none}
+@keyframes blink{50%{opacity:0}}
+.intro-cta{display:flex;justify-content:center;gap:12px;margin-top:clamp(22px,4vh,38px);opacity:0;transform:translate3d(0,18px,0);
+  animation:fadeUp 1s var(--ease) 1700ms forwards}
+@keyframes fadeUp{to{opacity:1;transform:none}}
+
+/* Right: two poster columns drifting in opposite directions */
+.intro-cols{position:relative;z-index:1;height:calc(100vh / var(--zoom));height:calc(100svh / var(--zoom));display:grid;place-items:center;
+  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 16%,#000 84%,transparent 100%);
+          mask-image:linear-gradient(180deg,transparent 0,#000 16%,#000 84%,transparent 100%);
+  opacity:0;animation:fadeIn 1.4s ease 500ms forwards;will-change:transform}
+@keyframes fadeIn{to{opacity:1}}
+.intro-tilt{display:flex;justify-content:center;gap:clamp(30px,4.4vw,72px);height:100%;width:100%;}
+.icol{width:clamp(130px,15vw,230px);flex:none;will-change:transform}
+.icol:nth-child(2){margin-top:-22vh}
+.icol-track{display:flex;flex-direction:column;will-change:transform;opacity:0;transition:opacity 1.1s ease}
+.icol-track.ready{opacity:1}   /* Posters stay invisible until data and images have loaded */   /* Moved by scroll in intro.js, never on its own */
+
+.icard{--r:-3deg;display:block;margin-bottom:clamp(44px,8vh,84px);transform:rotate(var(--r));transform-origin:50% 50%;transition:transform .55s var(--ease)}
+.icard:nth-child(even){--r:3deg}                       /* Lean left, right, left, right down each column */
+.icard:hover{transform:rotate(var(--r)) scale(1.04);position:relative;z-index:2}
+.icard-frame{display:block}
+.icard-img{position:relative;display:block;width:100%;overflow:hidden;background:var(--card2)}
+.icard-img img{width:100%;height:100%;object-fit:cover;transition:transform .8s var(--ease)}
+.icard:hover .icard-img img{transform:scale(1.05)}
+.icard-name{display:block;padding:8px 0 0;font-family:var(--mono);font-size:11.5px;line-height:1.3;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:clip}
+.icard-user{display:flex;align-items:center;gap:9px;margin-top:9px;font-family:var(--mono);font-size:11.5px;color:color-mix(in srgb,var(--text) 88%,transparent)}
+.icard-user span{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.iu-av{width:22px;height:22px;flex:none;border-radius:2px;object-fit:cover;background:var(--c,var(--card2))}
+
+/* Scroll cue */
+.intro-cue{position:absolute;left:25%;bottom:26px;z-index:4;display:flex;flex-direction:column;align-items:center;gap:8px;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);
+  opacity:0;animation:fadeIn 1s ease 1.8s forwards;transform:translateX(-50%)}
+.intro-cue i{display:block;width:1px;height:42px;background:linear-gradient(var(--accent),transparent);transform-origin:top;
+  animation:cue 2s var(--ease) infinite}
+@keyframes cue{0%{transform:scaleY(0)}45%{transform:scaleY(1)}100%{transform:scaleY(1);opacity:0}}
+
+/* Scroll reveals for the rest of the page */
+.rv{opacity:0;transform:translate3d(0,46px,0) scale(.985);
+  transition:opacity .9s var(--ease),transform 1.1s var(--ease);will-change:opacity,transform}
+.rv.in{opacity:1;transform:none}
+.rv.in.done{will-change:auto}
+
+@media (max-width:900px){
+  .intro{grid-template-columns:1fr;grid-template-rows:auto 1fr;align-content:start;padding-top:96px}
+  .intro-cols{height:60vh;margin-top:10px}
+  .icol:nth-child(2){margin-top:-12vh}
+  .intro-cue{display:none}
+  .intro-word{font-size:clamp(34px,10.8vw,76px)}
+}
+@media (prefers-reduced-motion:reduce){
+  .intro *,.rv{animation:none!important;transition:none!important}
+  .intro-cta,.intro-cols,.intro-cue,.icol-track{opacity:1;transform:none;filter:none}
+  .intro-word .ch{visibility:visible}
+  .caret{animation:none}
+  .rv{opacity:1;transform:none}
+}

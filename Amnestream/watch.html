@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Watch - Amnestream</title>
+<link rel="icon" href="favicon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#12151c">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://graphql.anilist.co" crossorigin>
+<link rel="preconnect" href="https://s4.anilist.co">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/atlas.css">
+<script defer src="js/api.js"></script>
+<script defer src="js/common.js"></script>
+<script src="js/player.js"></script>
+<script defer src="js/watch.js"></script>
+</head>
+<body>
+<header id="site-header"></header>
+
+<main class="container">
+  <div class="watch-layout">
+    <div>
+      <div class="player-wrap" id="player"></div>
+
+      <div class="watch-head">
+        <h1 id="w-title">Loading...</h1>
+        <p class="watch-sub" id="w-sub"></p>
+      </div>
+
+      <div class="player-bar">
+        <div class="seg" id="lang-seg">
+          <button data-lang="sub" class="on">Sub</button>
+          <button data-lang="dub">Dub</button>
+        </div>
+        <select id="server">
+          <option value="ani">Server: MegaPlay (AniList)</option>
+          <option value="mal">Server: MegaPlay (MAL)</option>
+        </select>
+        <div class="nav-eps">
+          <button class="btn" id="prev-ep">&lsaquo; Prev</button>
+          <button class="btn" id="next-ep">Next &rsaquo;</button>
+        </div>
+        <label class="btn btn-ghost"><input type="checkbox" id="autonext" checked> Auto-next</label>
+        <a class="btn btn-ghost" id="info-link" href="#">Details</a>
+      </div>
+
+      <div class="player-help" id="player-help">
+        <span id="help-text"></span>
+        <button class="btn btn-ghost" id="help-lang"></button>
+        <button class="btn btn-ghost" id="help-server">Try other server</button>
+        <button class="btn btn-ghost" id="help-reload">Reload player</button>
+      </div>
+    </div>
+
+    <aside class="side-panel">
+      <h3>Episodes</h3>
+      <div class="side-eps" id="side-eps"></div>
+    </aside>
+  </div>
+</main>
+
+<footer id="site-footer"></footer>
+
+</body>
+</html>
