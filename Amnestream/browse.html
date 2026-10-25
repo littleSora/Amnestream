@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Browse anime - Amnestream</title>
+<link rel="icon" href="favicon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#12151c">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://graphql.anilist.co" crossorigin>
+<link rel="preconnect" href="https://s4.anilist.co">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/atlas.css">
+<script defer src="js/api.js"></script>
+<script defer src="js/common.js"></script>
+<script defer src="js/browse.js"></script>
+</head>
+<body>
+<header id="site-header"></header>
+
+<main class="container">
+  <div class="page-head row">
+    <div><h1>Browse anime</h1><p class="muted" id="result-count">Loading...</p><p class="muted" id="filter-hint" hidden></p></div>
+    <button class="btn btn-primary" id="rand-btn">&#127922; Random anime</button>
+  </div>
+
+  <div class="filters">
+    <input id="f-q" type="search" placeholder="Title..." style="min-width:170px">
+    <div class="dd dd-genre" id="f-genre">
+      <button type="button" class="dd-btn" id="f-genre-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="f-genre-pop">
+        <span class="dd-label" id="f-genre-label">Genres</span>
+        <svg class="dd-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="dd-pop dd-pop-genre" id="f-genre-pop">
+        <div class="dd-search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input id="f-genre-q" type="text" placeholder="Search genre..." autocomplete="off" aria-label="Search genre">
+        </div>
+        <div class="dd-list" id="f-genre-list" role="listbox" aria-multiselectable="true" aria-label="Genres"></div>
+        <div class="dd-foot"><span id="f-genre-count">Pick one or more</span><button type="button" class="dd-clear" id="f-genre-clear">Clear</button></div>
+      </div>
+    </div>
+    <select id="f-format">
+      <option value="">Any type</option>
+      <option value="TV">TV</option><option value="TV_SHORT">TV Short</option>
+      <option value="MOVIE">Movie</option><option value="OVA">OVA</option>
+      <option value="ONA">ONA</option><option value="SPECIAL">Special</option><option value="MUSIC">Music</option>
+    </select>
+    <select id="f-status">
+      <option value="">Any status</option>
+      <option value="RELEASING">Airing</option>
+      <option value="FINISHED">Finished</option>
+      <option value="NOT_YET_RELEASED">Upcoming</option>
+    </select>
+    <select id="f-season">
+      <option value="">Any season</option>
+      <option value="WINTER">Winter</option><option value="SPRING">Spring</option>
+      <option value="SUMMER">Summer</option><option value="FALL">Fall</option>
+    </select>
+    <select id="f-year"><option value="">Any year</option></select>
+    <select id="f-sort">
+      <option value="SEARCH_MATCH">Best match</option>
+      <option value="POPULARITY_DESC">Most popular</option>
+      <option value="TRENDING_DESC">Trending</option>
+      <option value="SCORE_DESC">Highest rated</option>
+      <option value="LATEST_EPISODES">Latest episodes</option>
+      <option value="START_DATE_DESC">Newest</option>
+      <option value="TITLE_ROMAJI">A-Z</option>
+      <option value="FAVOURITES_DESC">Most favourited</option>
+    </select>
+    <button class="btn" id="f-clear">Clear</button>
+  </div>
+
+  <div class="dd-back" id="dd-back"></div>
+  <div id="results"></div>
+  <div class="pager" id="pager"></div>
+</main>
+
+<footer id="site-footer"></footer>
+
+</body>
+</html>

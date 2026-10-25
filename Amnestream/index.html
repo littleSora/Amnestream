@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Amnestream - Watch Anime Online Free in HD</title>
+<meta name="description" content="Watch anime online for free in HD. Stream the latest episodes, movies and classics with English subs and dubs.">
+<link rel="icon" href="favicon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#12151c">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://graphql.anilist.co" crossorigin>
+<link rel="preconnect" href="https://s4.anilist.co">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700&text=%E3%82%A2%E3%83%A0%E3%83%8D%E3%82%B9%E3%83%88%E3%83%AA%E3%83%BC%E3%83%A0%E9%85%8D%E4%BF%A1&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/atlas.css">
+<link rel="stylesheet" href="css/intro.css">
+<script defer src="js/api.js"></script>
+<script defer src="js/common.js"></script>
+<script defer src="js/home.js"></script>
+<script defer src="js/intro.js"></script>
+</head>
+<body class="home">
+<header id="site-header"></header>
+
+<main>
+  <section class="intro" id="intro" aria-label="Welcome">
+    <div class="intro-bg" aria-hidden="true"><span class="jp" lang="ja">アムネ AMNE</span><span class="jp" lang="ja">STREAM 配信</span><span class="jp" lang="ja">ストリーム AMNE</span></div>
+    <div class="intro-copy">
+      <h1 class="intro-word" aria-label="amnestream">amnestream</h1>
+      <span class="intro-kanji jp" lang="ja" aria-hidden="true">アムネストリーム</span>
+      <div class="intro-cta">
+        <a class="btn btn-primary" href="browse.html">Start watching</a>
+      </div>
+    </div>
+    <div class="intro-cols" aria-hidden="true">
+      <div class="intro-tilt">
+        <div class="icol"><div class="icol-track"></div></div>
+        <div class="icol"><div class="icol-track"></div></div>
+      </div>
+    </div>
+    <button class="intro-cue" type="button" aria-label="Scroll to content" style="background:none;border:0;cursor:pointer">scroll<i></i></button>
+  </section>
+
+  <div class="container bento">
+    <section id="hero" class="hero" aria-label="Spotlight"></section>
+    <aside class="bento-side">
+      <div class="side-card">
+        <h3>Top 10</h3>
+        <div class="tabs" id="top-tabs">
+          <button class="tab on" data-tab="topAiring">Airing</button>
+          <button class="tab" data-tab="trending">This week</button>
+          <button class="tab" data-tab="topRated">All time</button>
+        </div>
+        <div id="top-list" class="top-list"></div>
+      </div>
+    </aside>
+  </div>
+
+  <section id="rail-continue" class="rail"></section>
+  <section id="rail-trending" class="rail"></section>
+  <section id="rail-latest" class="rail"></section>
+
+  <div class="container home-cols">
+    <div class="home-main">
+      <section class="block" id="discover">
+        <div class="block-head">
+          <h2 class="sec-title">Discover</h2>
+          <div class="picker" id="discover-picker">
+            <button class="picker-btn" id="discover-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="discover-pop">
+              <span class="picker-ic" id="discover-ic"></span><span id="discover-label">Top airing</span>
+              <svg class="picker-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="picker-back" id="discover-back"></div>
+            <div class="picker-pop" id="discover-pop" role="listbox" aria-label="Discover"></div>
+          </div>
+        </div>
+        <div id="discover-grid"></div>
+      </section>
+
+      <section class="block" id="sched">
+        <div class="block-head"><h2 class="sec-title">Estimated schedule</h2><span class="muted" id="sched-tz"></span></div>
+        <div class="sched-days" id="sched-days"></div>
+        <div class="sched-list" id="sched-list"></div>
+      </section>
+
+      <section class="block" id="rail-upcoming"></section>
+    </div>
+
+    <aside class="home-side"><div class="side-sticky">
+      <div class="side-card">
+        <h3>Genres</h3>
+        <div class="genre-cloud" id="genre-cloud"></div>
+      </div>
+    </div></aside>
+  </div>
+</main>
+
+<footer id="site-footer"></footer>
+
+</body>
+</html>
