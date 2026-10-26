@@ -151,6 +151,10 @@ const DISCOVER = [
   { key: 'top',       label: 'Top rated',       desc: 'Highest rated of all time', ic: 'star' },
 ];
 let discoverKey = 'topAiring', LATEST_ITEMS = null;       // null means still loading
+/* Phones (same breakpoint as the bottom nav) show 15 titles in Discover; larger screens show everything */
+const DISCOVER_MOBILE_MAX = 15, mobileMQ = window.matchMedia('(max-width:900px)');
+const discoverCap = list => mobileMQ.matches ? (list || []).slice(0, DISCOVER_MOBILE_MAX) : list;
+if (mobileMQ.addEventListener) mobileMQ.addEventListener('change', () => setDiscover(discoverKey));
 function setDiscover(key) {
   if (!DISCOVER.some(d => d.key === key)) key = 'topAiring';
   discoverKey = key;
@@ -165,8 +169,8 @@ function setDiscover(key) {
   if (key === 'latest') {
     if (LATEST_ITEMS === null) grid.innerHTML = skeletonGrid(12);
     else if (!LATEST_ITEMS.length) grid.innerHTML = '<p class="empty">Couldn\'t load the latest episodes. Try again in a moment.</p>';
-    else grid.innerHTML = `<div class="grid">${LATEST_ITEMS.map(latestCardHTML).join('')}</div>`;
-  } else grid.innerHTML = gridHTML(RAILS[key]);
+    else grid.innerHTML = `<div class="grid">${discoverCap(LATEST_ITEMS).map(latestCardHTML).join('')}</div>`;
+  } else grid.innerHTML = gridHTML(discoverCap(RAILS[key]));
 }
 function wireDiscoverPicker() {
   const btn = $('#discover-btn'), pop = $('#discover-pop'), back = $('#discover-back');
