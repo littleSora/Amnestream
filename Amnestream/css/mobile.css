@@ -45,3 +45,9 @@
   .genre-cloud{grid-template-columns:repeat(2,minmax(0,1fr))}
   .home-cols{gap:20px}
 }
+
+/* Touch screens: no always-on play button over every poster. Tapping the card opens it. */
+@media (hover:none){
+  .card-play,.card:hover .card-play{opacity:0;pointer-events:none;transform:translate(-50%,-50%) scale(.7)}
+  .card-play:focus-visible{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+}
