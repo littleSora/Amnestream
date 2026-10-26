@@ -1,0 +1,47 @@
+/* Mobile polish layer: loaded last, only adds phone-specific fixes. Desktop is untouched. */
+@media (max-width:900px){
+  html{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+  body{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
+  /* Bottom nav clears the iPhone home bar */
+  .site-header,.site-header.scrolled{box-sizing:border-box;height:calc(72px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px)}
+  .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+  .to-top{bottom:calc(92px + env(safe-area-inset-bottom,0px))}
+  .search-pop{top:calc(12px + env(safe-area-inset-top,0px))}
+  /* 16px inputs stop iOS Safari zooming in on focus */
+  input,select,textarea{font-size:16px}
+  /* Snappier taps, no double-tap zoom delay, comfortable targets */
+  a,button,.tab,.card,.icon-btn,.btn{touch-action:manipulation}
+  .btn,.tab,.icon-btn{min-height:40px}
+  /* Heroes follow the visible viewport as the browser bars collapse */
+  .hero{height:70vh;height:70svh}
+  .tl-scroll,.rail-track,.sched-days,.dp-tabs{-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+  img{-webkit-touch-callout:none}
+}
+@media (max-width:640px){
+  .dd .dd-pop,.picker-pop{bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+  .container{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+}
+/* Phone held sideways: slimmer nav, player gets the room */
+@media (max-width:900px) and (orientation:landscape) and (max-height:500px){
+  body{padding-bottom:calc(60px + env(safe-area-inset-bottom,0px))}
+  .site-header,.site-header.scrolled{height:calc(52px + env(safe-area-inset-bottom,0px))}
+  .main-nav a{padding:4px 0}
+  .hero{height:auto;min-height:calc(100svh - 70px)}
+  .intro{padding-top:24px}
+  .intro-cols{height:auto;min-height:60svh}
+}
+
+/* Fix: atlas.css re-declared the 2-column home layout after style.css, so it never collapsed on small screens */
+@media (max-width:1180px){
+  .home-cols{grid-template-columns:minmax(0,1fr)}
+  .home-cols .home-side{min-width:0}
+  .side-sticky{position:static}
+}
+@media (max-width:900px){
+  .genre-cloud{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .home-main .grid,.grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
+}
+@media (max-width:480px){
+  .genre-cloud{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .home-cols{gap:20px}
+}
