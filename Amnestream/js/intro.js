@@ -89,14 +89,14 @@
 
   // Random picks from AniList trending (new order each load), each paired with a recent AniList user
   async function loadItems() {
-    const trendingReq = gql(`query{Page(page:1,perPage:50){media(type:ANIME,sort:TRENDING_DESC,isAdult:false){${IMG_Q}}}}`, {}, { ttl: 15 * 60e3 });
+    const trendingReq = gql(`query{Page(page:1,perPage:50){media(type:ANIME,sort:TRENDING_DESC,isAdult:false){${IMG_Q} status episodes nextAiringEpisode{episode}}}}`, {}, { ttl: 15 * 60e3 });
     const usersReq = gql(`query{Page(page:1,perPage:50){activities(type:MEDIA_LIST,sort:ID_DESC){
       ... on ListActivity{user{name avatar{medium}}}}}}`, {}, { ttl: 5 * 60e3 }).catch(() => null);
     const [t, u] = await Promise.all([trendingReq, usersReq]);
     const seen = new Set();
     const users = shuffle((u?.Page.activities || []).filter(a => a.user && !seen.has(a.user.name) && seen.add(a.user.name))
       .map(a => ({ name: a.user.name, avatar: a.user.avatar?.medium })));
-    return shuffle(t.Page.media.filter(m => !m.isAdult)).slice(0, 20)
+    return shuffle(t.Page.media.filter(m => !m.isAdult && (typeof hasEpisodes !== 'function' || hasEpisodes(m)))).slice(0, 20)
       .map((m, i) => ({ ...m, user: users.length ? users[i % users.length] : { name: 'anon' } }));
   }
 

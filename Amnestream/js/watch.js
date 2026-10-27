@@ -71,6 +71,15 @@ async function initWatch() {
   try {
     const { Media } = await Api.playerMeta(WID);
     MEDIA = Media;
+    if (airedCount(MEDIA) === 0) {                                      // Nothing to play yet
+      document.title = `${titleOf(MEDIA)} - Amnestream`;
+      $('#w-title').textContent = titleOf(MEDIA);
+      $('#w-sub').textContent = 'This anime has not aired yet.';
+      $('#player').innerHTML = `<div class="player-fallback"><div>No episodes have aired yet.<br><a class="btn btn-primary" style="margin-top:14px" href="anime.html?id=${MEDIA.id}">Back to details</a></div></div>`;
+      $$('.player-bar, .player-help, .side-panel').forEach(el => { el.style.display = 'none'; });
+      return;
+    }
+    if (EP > epCountOf(MEDIA)) { EP = epCountOf(MEDIA); syncURL(); }      // A link to an episode that has not aired yet opens the latest one
     document.title = `${titleOf(MEDIA)} - Episode ${EP} - Amnestream`;
     buildPage();
   } catch (err) {

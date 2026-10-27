@@ -1,6 +1,6 @@
 # Amnestream
 
-A static anime streaming website. Browse, search, filter, read details, and watch episodes with sub/dub switching. It has **no backend, no build step, and no API keys**. It is just files that run in the browser.
+A static anime streaming website. Browse, search, filter, read details, and watch episodes with sub/dub switching. The site is plain files. Logins are handled by Supabase.
 
 ## What it's made of
 
@@ -12,7 +12,8 @@ A static anime streaming website. Browse, search, filter, read details, and watc
 | Data              | **AniList GraphQL API** (queries are written in GraphQL, sent from JavaScript)                        |
 | Video             | Embedded player (MegaPlay), loaded in an iframe                                                       |
 | Offline / install | Service worker (`sw.js`) and web manifest (`manifest.webmanifest`), so it works as an installable PWA |
-| Saved data        | Browser `localStorage` (watchlist, progress, settings, accounts)                                      |
+| Accounts          | **Supabase** Auth + a `profiles` table (`supabase/schema.sql`, keys in `js/config.js`)                |
+| Saved data        | Browser `localStorage` (watchlist, progress, settings)                                                |
 
 Because it is plain HTML/CSS/JS, you can edit any file in a text editor and refresh the browser.
 
@@ -32,14 +33,12 @@ npx serve .
 
 Then open <http://localhost:8080>.
 
-## How to deploy
+Notes:
 
-The site is 100% static. Upload or drag the folder to any static host:
-
-- Netlify
-- Vercel
-- Cloudflare Pages
-- GitHub Pages
+- Passwords are handled by Supabase (never stored by the site). Each user can only read and edit their own profile.
+- "Remember me" off keeps the login only until the tab closes.
+- Watchlist, progress and settings still live in each browser (use the Sync code in Settings to move them).
+- The supabase-js library loads from jsDelivr only when someone is signed in or opens the login popup.
 
 ## Pages
 
@@ -62,13 +61,6 @@ The site is 100% static. Upload or drag the folder to any static host:
 - **Estimated schedule** is fixed to GMT+8 (Manila) with a 12-hour clock.
 - **Playback:** the player embeds `https://megaplay.buzz/stream/ani/{anilistId}/{episode}/{sub|dub}`. A MAL-ID fallback server is in the server dropdown.
 - **Your data** (watchlist, progress, language, server choice) lives only in your browser's `localStorage`. Clearing site data resets it.
-
-## Handy tips
-
-- **Force a host (testing):** add `?host=official` to the URL to use the official AniList host first. Use `?host=0` to clear it.
-- **Skip the baked catalog:** add `?live=1` to always load live data. Use `?live=0` to turn it back off.
-- **After editing files**, if you don't see the change, bump `VERSION` in `sw.js` (change the number, for example `amnestream-v1` to `amnestream-v2`) or hard refresh (Ctrl+Shift+R) so the service worker drops its old copy.
-- **18+ titles** are hidden by default. Turn them on in **Settings** (the `includeAdult` option).
 
 ## Limits
 

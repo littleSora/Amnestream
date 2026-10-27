@@ -83,64 +83,120 @@ function setAdult(on) {
 const scrollMode = () => Settings.get().reduceMotion ? 'auto' : 'smooth';   // Reduce motion also disables smooth scrolling
 window.addEventListener('storage', e => { if (e.key === 'as_settings' || e.key === null) Settings.apply(); });   // Changed in another tab
 
-/* Accounts (local to this browser): as_accounts holds users, as_session the signed-in user (remember me or ends after leaving), as_alive a heartbeat used to drop non-remembered sessions */
-const SESSION_GRACE = 3 * 60e3;
+/* Accounts use Supabase Auth (see supabase/schema.sql and js/config.js). The site asks for a username, so each username maps to a placeholder email.
+   The browser keeps a cached copy of the signed-in profile in as_me so pages can read it instantly; Auth.refresh() re-checks the real session on every page load,
+   so the same account works on PC and phone. The supabase-js library is only downloaded when someone has a session or opens the login popup. */
+const SB_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js';
+const EMAIL_DOMAIN = '@amnestream.app';
 const Auth = {
-  accounts: () => jget('as_accounts', {}),
-  _norm: u => String(u || '').trim().toLowerCase(),
-  /* Drop a non-remembered session after the site was closed a while */
-  expire() {
-    const s = jget('as_session', null);
-    if (!s) return;
-    if (!s.remember && Date.now() - Number(localStorage.getItem('as_alive') || 0) > SESSION_GRACE) localStorage.removeItem('as_session');
+  _me: () => jget('as_me', null),
+  session() { const u = Auth._me(); return u ? { username: u.username } : null; },
+  current() { return Auth._me(); },
+  configured() {
+    const c = window.AS_CONFIG || {};
+    return /^https:\/\/[a-z0-9-]+\.supabase\.(co|in)\/?$/i.test(c.supabaseUrl || '') && !!c.supabaseAnonKey && !/YOUR-/.test(c.supabaseUrl + c.supabaseAnonKey);
   },
-  beat() { try { localStorage.setItem('as_alive', String(Date.now())); } catch { /* Storage full or blocked */ } },
-  session() {
-    const s = jget('as_session', null);
-    return s && Auth.accounts()[s.username] ? s : null;
+  /* Remember me off: the session lives in sessionStorage (ends when the tab closes) instead of localStorage */
+  _store: () => (localStorage.getItem('as_sb_temp') === '1' ? sessionStorage : localStorage),
+  _storage: {
+    getItem: k => Auth._store().getItem(k),
+    setItem: (k, v) => Auth._store().setItem(k, v),
+    removeItem: k => { localStorage.removeItem(k); sessionStorage.removeItem(k); },
   },
-  current() { const s = Auth.session(); return s ? Auth.accounts()[s.username] : null; },
-  async _hash(pw, salt, alg) {
-    const data = new TextEncoder().encode(pw);
-    if (alg === 'pbkdf2' && window.crypto?.subtle) {
-      const key = await crypto.subtle.importKey('raw', data, 'PBKDF2', false, ['deriveBits']);
-      const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: new TextEncoder().encode(salt), iterations: 100000 }, key, 256);
-      return Array.from(new Uint8Array(bits), b => b.toString(16).padStart(2, '0')).join('');
+  _clientP: null,
+  client() {
+    if (!Auth.configured()) return Promise.reject(Object.assign(new Error('Login is not set up yet: add your Supabase URL and key in js/config.js (see README).'), { setup: true }));
+    if (!Auth._clientP) {
+      Auth._clientP = new Promise((res, rej) => {
+        const make = () => res(window.supabase.createClient(window.AS_CONFIG.supabaseUrl, window.AS_CONFIG.supabaseAnonKey,
+          { auth: { storage: Auth._storage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } }));
+        if (window.supabase?.createClient) return make();
+        const sc = document.createElement('script');
+        sc.src = SB_LIB; sc.onload = make;
+        sc.onerror = () => { Auth._clientP = null; rej(Object.assign(new Error('Could not reach the server. Check your connection.'), { offline: true })); };
+        document.head.appendChild(sc);
+      });
     }
-    let h = 5381; const str = salt + pw;                       // Fallback when WebCrypto is unavailable (insecure context)
-    for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
-    return (h >>> 0).toString(36);
+    return Auth._clientP;
   },
-  _alg: () => (window.crypto?.subtle ? 'pbkdf2' : 'simple'),
-  _start(username, remember) {
-    jset('as_session', { username, remember: !!remember });
-    Auth.beat();
+  _email: username => Auth._norm(username) + EMAIL_DOMAIN,
+  _norm: u => String(u || '').trim().toLowerCase(),
+  _fail(e, fallback) {
+    const m = String(e?.message || '');
+    if (e?.offline || /fetch|network/i.test(m)) return Object.assign(new Error('Could not reach the server. Check your connection.'), { offline: true });
+    if (e?.code === '23505' || /already registered|already been registered/i.test(m)) return new Error('That username is already taken');
+    if (/at least \d+ char/i.test(m)) return new Error('Password must be at least 6 characters');
+    if (/rate limit|too many/i.test(m)) return new Error('Too many attempts. Wait a minute and try again.');
+    return new Error(e?.setup ? m : (fallback || m || 'Something went wrong'));
   },
-  async register(username, password) {
-    const key = Auth._norm(username), all = Auth.accounts();
+  async _profile(sb, uid) {
+    const { data, error } = await sb.from('profiles').select('*').eq('id', uid).single();
+    if (error) throw error;
+    return { username: data.username, name: data.name, bio: data.bio, avatar: data.avatar, joined: Number(data.joined) };
+  },
+  async register(username, password, remember = true) {
+    const key = Auth._norm(username);
     if (!/^[a-z0-9_.-]{3,20}$/.test(key)) throw new Error('Username must be 3-20 characters: letters, numbers, . _ -');
     if (password.length < 6) throw new Error('Password must be at least 6 characters');
-    if (all[key]) throw new Error('That username is already taken');
-    const salt = Array.from(crypto.getRandomValues(new Uint8Array(12)), b => b.toString(16).padStart(2, '0')).join(''), alg = Auth._alg();
-    all[key] = { username: key, name: username.trim() || key, bio: 'Hello, I\'m a new user of ' + SITE_NAME + '!', avatar: '', joined: Date.now(),
-      salt, alg, hash: await Auth._hash(password, salt, alg) };
-    jset('as_accounts', all);
-    Auth._start(key, false);                                    // Registering signs you in
-    return all[key];
+    try {
+      const sb = await Auth.client();
+      localStorage.setItem('as_sb_temp', remember ? '0' : '1');
+      const free = await sb.rpc('username_available', { u: key });
+      if (free.error) throw free.error;
+      if (free.data === false) throw new Error('That username is already taken');
+      const { data, error } = await sb.auth.signUp({ email: Auth._email(key), password, options: { data: { username: key, name: username.trim().slice(0, 30) || key } } });
+      if (error) throw error;
+      if (!data.session) throw new Error('Supabase still has "Confirm email" turned on. Turn it off under Authentication > Providers > Email.');
+      const user = await Auth._profile(sb, data.user.id);
+      jset('as_me', user);
+      return user;
+    } catch (e) { throw Auth._fail(e); }
   },
   async login(username, password, remember) {
-    const key = Auth._norm(username), acc = Auth.accounts()[key];
-    if (!acc || (await Auth._hash(password, acc.salt, acc.alg)) !== acc.hash) throw new Error('Wrong username or password');
-    Auth._start(key, remember);
-    return acc;
+    try {
+      const sb = await Auth.client();
+      localStorage.setItem('as_sb_temp', remember ? '0' : '1');
+      localStorage.removeItem('as_me');
+      const { data: found } = await sb.rpc('email_for_username', { u: username });
+      const { data, error } = await sb.auth.signInWithPassword({ email: found || Auth._email(username), password });
+      if (error) throw /invalid login|invalid credentials/i.test(error.message) ? new Error('Wrong username or password') : error;
+      const user = await Auth._profile(sb, data.user.id);
+      jset('as_me', user);
+      return user;
+    } catch (e) { throw Auth._fail(e); }
   },
-  logout() { localStorage.removeItem('as_session'); },
+  /* Asks Supabase who is signed in; resolves true when the signed-in/out state changed. Offline keeps the cached state */
+  async refresh() {
+    const before = !!Auth._me();
+    const hasSession = Object.keys(localStorage).concat(Object.keys(sessionStorage)).some(k => /^sb-.*-auth-token$/.test(k));
+    if (!Auth.configured() || (!before && !hasSession)) { if (before && !Auth.configured()) localStorage.removeItem('as_me'); return before !== !!Auth._me(); }
+    try {
+      const sb = await Auth.client();
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) localStorage.removeItem('as_me');
+      else {
+        const { data, error } = await sb.auth.getUser();
+        if (error && [401, 403].includes(error.status)) { await sb.auth.signOut({ scope: 'local' }); localStorage.removeItem('as_me'); }
+        else if (!error) jset('as_me', await Auth._profile(sb, data.user.id));
+      }
+    } catch { /* Offline or temporary error: keep the cached state */ }
+    return before !== !!Auth._me();
+  },
+  logout() {
+    localStorage.removeItem('as_me');
+    Auth.client().then(sb => sb.auth.signOut()).catch(() => {});
+  },
 };
-Auth.expire();
-Auth.beat();
-setInterval(Auth.beat, 10e3);
-window.addEventListener('pagehide', Auth.beat);
-document.addEventListener('visibilitychange', Auth.beat);
+/* Re-check the session on load; if it flipped (signed out elsewhere, or still signed in on a fresh visit) update the page */
+Auth.refresh().then(flipped => {
+  if (!flipped) return;
+  const page = location.pathname.split('/').pop();
+  if (/^(profile|settings|leaderboard)\.html$/.test(page)) location.reload();
+  else if (typeof buildHeader === 'function' && document.getElementById('site-header')) buildHeader();
+});
+document.addEventListener('visibilitychange', () => {       // Coming back to the tab/app: pick up changes made on another device
+  if (document.visibilityState === 'visible') Auth.refresh().then(f => { if (f && typeof buildHeader === 'function') buildHeader(); });
+});
 
 const User = {
   /* Signed in: your account; signed out: a local Guest profile */
@@ -151,17 +207,29 @@ const User = {
     if (!u) { u = { name: 'Guest', username: 'guest', bio: 'Hello, I\'m a new user of ' + SITE_NAME + '!', avatar: '', joined: Date.now() }; jset('as_user', u); }
     return u;
   },
+  /* Saved locally right away, then to the server; if the server refuses (for example the username is taken) the old values come back */
   set(patch) {
     const a = Auth.current();
-    if (!a) { jset('as_user', { ...User.get(), ...patch }); return; }
-    const all = Auth.accounts(), old = a.username;
-    const { name, bio, avatar } = { ...a, ...patch };
-    let username = patch.username ? Auth._norm(patch.username) : old;
-    if (username !== old && all[username]) username = old;                       // Taken: keep the current one
-    delete all[old];
-    all[username] = { ...a, name, bio, avatar, username };
-    jset('as_accounts', all);
-    if (username !== old) jset('as_session', { ...jget('as_session', {}), username });
+    if (!a) { jset('as_user', { ...User.get(), ...patch }); return Promise.resolve(); }
+    const { name, bio, avatar, username } = patch;
+    const clean = { name, bio, avatar, username };
+    Object.keys(clean).forEach(k => clean[k] === undefined && delete clean[k]);
+    if (clean.username !== undefined) clean.username = Auth._norm(clean.username);
+    jset('as_me', { ...a, ...clean });
+    return Auth.client().then(async sb => {
+      const { data: { user } } = await sb.auth.getUser();
+      const { data, error } = await sb.from('profiles').update(clean).eq('id', user.id).select().single();
+      if (error) throw error;
+      jset('as_me', { username: data.username, name: data.name, bio: data.bio, avatar: data.avatar, joined: Number(data.joined) });
+    }).catch(e => {
+      const err = Auth._fail(e, /check constraint|violates/i.test(e?.message || '') ? 'Those profile details are not allowed' : undefined);
+      jset('as_me', a);
+      toast(err.offline ? 'Could not save: you are offline' : err.message);
+      if (typeof buildHeader === 'function') buildHeader();
+      const pg = location.pathname.split('/').pop();                       // Redraw with the restored values, keeping the toast on screen
+      if (pg === 'settings.html' && typeof render === 'function') render();
+      else if (pg === 'profile.html' && typeof paintProfile === 'function') paintProfile();
+    });
   },
   logout() { Auth.logout(); },
 };
@@ -201,14 +269,20 @@ const fmtLabel = m => FORMAT_LABEL[m?.format] || m?.format || '';
 const STATUS_LABEL = { FINISHED: 'Finished', RELEASING: 'Airing', NOT_YET_RELEASED: 'Upcoming', CANCELLED: 'Cancelled', HIATUS: 'Hiatus' };
 const statusLabel = m => STATUS_LABEL[m?.status] || '';
 
-function epCountOf(m) {
-  if (!m) return 1;
+/* Episodes that have aired and can be watched: 0 for a show that has not started (not released, or episode 1 still to come); for an airing show only what has aired, not the planned total */
+function airedCount(m) {
+  if (!m) return 0;
+  if (m.status === 'NOT_YET_RELEASED') return 0;
+  if (m.status === 'RELEASING' && m.nextAiringEpisode?.episode) return Math.max(0, m.nextAiringEpisode.episode - 1);
   if (m.episodes) return m.episodes;
-  if (m.nextAiringEpisode?.episode) return Math.max(1, m.nextAiringEpisode.episode - 1);
+  if (m.nextAiringEpisode?.episode) return Math.max(0, m.nextAiringEpisode.episode - 1);
   if (m.format === 'MOVIE' || m.format === 'MUSIC') return 1;
   return 12;
 }
+/* Same, but never below 1 (saved progress and episode navigation need a number) */
+const epCountOf = m => (m ? Math.max(1, airedCount(m)) : 1);
 function epLabel(m) {
+  if (airedCount(m) === 0) return 'Soon';
   const n = epCountOf(m);
   if (m?.status === 'RELEASING') return 'Ep ' + n;
   if (m?.format === 'MOVIE') return 'Movie';
@@ -359,7 +433,7 @@ const playBtnHTML = (href, label) =>
 function cardHTML(m) {
   if (!m) return '';
   const score = scoreOf(m), title = titleOf(m), details = `anime.html?id=${m.id}`;
-  const pt = m.status === 'NOT_YET_RELEASED' ? null : playTarget(m);      // Nothing to play yet
+  const pt = airedCount(m) === 0 ? null : playTarget(m);      // Nothing to play yet
   return `
     <article class="card">
       <div class="card-media">
@@ -883,7 +957,7 @@ function openAuth(mode = 'login') {
     if (m === 'register' && pw !== $('#au-pass2', bg).value) { err.textContent = 'Passwords do not match'; return; }
     go.disabled = true;
     try {
-      const acc = m === 'register' ? await Auth.register(name, pw) : await Auth.login(name, pw, $('#au-rem', bg).checked);
+      const acc = m === 'register' ? await Auth.register(name, pw, true) : await Auth.login(name, pw, $('#au-rem', bg).checked);
       close();
       toast(m === 'register' ? `Welcome to ${SITE_NAME}, ${acc.name}!` : `Welcome back, ${acc.name}!`);
       const page = location.pathname.split('/').pop();
