@@ -54,14 +54,14 @@ function render() {
   const watchEp = Settings.get().resume && prog ? Math.min(prog.ep, total) : 1;
   const inList = Store.inList(m.id), isFav = Fav.has(m.id);
   const next = m.nextAiringEpisode;
-  const released = m.status === 'NOT_YET_RELEASED' ? 0 : next ? next.episode - 1 : (m.episodes || total);
+  const released = airedCount(m), noEps = released === 0;
   const alt = [m.title.romaji, m.title.english, m.title.native].find(t => t && t !== title);
   const audio = AUDIO_OF[m.countryOfOrigin];
   const tags = (m.tags || []).filter(t => !t.isMediaSpoiler && !t.isGeneralSpoiler && t.rank >= 50).slice(0, 5).map(t => t.name);
   const studios = (m.studios?.nodes || []).map(s => s.name);
   const rel = (m.relations?.edges || []).filter(e => e.node);
   const chars = m.characters?.nodes || [];
-  const recs = (m.recommendations?.nodes || []).map(n => n.mediaRecommendation).filter(Boolean);
+  const recs = (m.recommendations?.nodes || []).map(n => n.mediaRecommendation).filter(Boolean).filter(hasEpisodes);
   const avg = scoreOf(m), mean = m.meanScore ? (m.meanScore / 10).toFixed(1) : null;
   const trailer = m.trailer?.site === 'youtube' ? `https://www.youtube.com/watch?v=${m.trailer.id}` : '';
   const nextIn = next ? `Ep ${next.episode} in ${Math.floor(next.timeUntilAiring / 86400)}d ${Math.floor(next.timeUntilAiring % 86400 / 3600)}h` : '';
@@ -101,7 +101,8 @@ function render() {
 
       <div class="dp-row">
         <div class="dp-actions">
-          <a class="dp-btn primary" href="watch.html?id=${m.id}&ep=${watchEp}">${icon('play', 13)} Watch Ep ${watchEp}</a>
+          ${noEps ? `<span class="dp-btn primary" aria-disabled="true" style="opacity:.55;cursor:default;pointer-events:none">${icon('clock', 13)} Not aired yet</span>`
+            : `<a class="dp-btn primary" href="watch.html?id=${m.id}&ep=${watchEp}">${icon('play', 13)} Watch Ep ${watchEp}</a>`}
           <button class="dp-btn ${inList ? 'on' : ''}" id="list-btn">${icon(inList ? 'check' : 'plus', 14)} <span>${inList ? 'In My List' : 'Add to My List'}</span></button>
           <button class="dp-btn ico ${isFav ? 'on' : ''}" id="fav-btn" title="${isFav ? 'Remove from favourites' : 'Add to favourites'}" aria-label="Favourite">${icon('heart', 16)}</button>
           <a class="dp-ext al" target="_blank" rel="noopener" href="https://anilist.co/anime/${m.id}" title="Open on AniList">A</a>
@@ -383,7 +384,7 @@ const EpModal = {
 const STYLE_NAME = { list: 'Cards', compact: 'Compact', grid: 'Numbers' };
 
 function renderEps() {
-  const m = M, total = epCountOf(m), s = Settings.get();
+  const m = M, total = airedCount(m), s = Settings.get();
   const seen = new Set(Store.seen()[m.id] || []);
   const prog = Store.progress()[m.id];
   const cur = prog ? prog.ep : 0;
@@ -399,6 +400,13 @@ function renderEps() {
   $('#ep-style').title = `View: ${STYLE_NAME[style]} (click to change)`;
 
   $('#ep-wrap').className = s.hideSpoilers ? 'spoil' : '';
+  if (!total) {                                             // Nothing has aired: no made-up episode list
+    const at = m.nextAiringEpisode?.airingAt, sd = m.startDate || {};
+    const when = at ? new Date(at * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+      : sd.year ? new Date(sd.year, (sd.month || 1) - 1, sd.day || 1).toLocaleDateString(undefined, { year: 'numeric', ...(sd.month ? { month: 'long' } : {}), ...(sd.day ? { day: 'numeric' } : {}) }) : '';
+    $('#ep-wrap').innerHTML = `<p class="empty">No episodes have aired yet.${when ? ` Episode 1 is expected ${esc(when)}.` : ''}</p>`;
+    return;
+  }
   $('#ep-wrap').innerHTML = nums.length ? `<div class="ep-cards ${style}">${nums.map(n => {
     const e = EPS[n], done = seen.has(n), href = `watch.html?id=${m.id}&ep=${n}`;
     return `<article class="ep-card ${done ? 'done' : ''} ${n === cur ? 'cur' : ''} ${n > maxSeen + 1 ? 'hide' : ''}" data-n="${n}">

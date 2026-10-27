@@ -130,6 +130,9 @@ fragment MediaSuggest on Media {
   averageScore
   format
   isAdult
+  status
+  episodes
+  nextAiringEpisode { episode }
 }`;
 
 /* Cache */
@@ -510,6 +513,19 @@ function _deepQuery(base, segs, per) {
   return { query: `${MEDIA_CARD}\nquery Deep${decl.length ? '(' + decl.join(', ') + ')' : ''} {\n  ${rows.join('\n  ')}\n}`, vars };
 }
 
+
+/* Titles with nothing to watch yet (not released, or episode 1 not aired) are hidden from lists */
+function hasEpisodes(m) {
+  if (!m || !m.status) return true;                                   // Unknown: do not hide
+  if (m.status === 'NOT_YET_RELEASED') return false;
+  if (m.episodes === 0) return false;
+  if (m.status === 'RELEASING' && m.nextAiringEpisode && m.nextAiringEpisode.episode <= 1) return false;   // Episode 1 not aired yet
+  return true;
+}
+const _playable = list => Array.isArray(list) ? list.filter(hasEpisodes) : list;
+/* Copy of a Page-style result with unreleased titles removed (the cached object is left untouched) */
+const _scrubPage = d => (d && d.Page && Array.isArray(d.Page.media)) ? { ...d, Page: { ...d.Page, media: _playable(d.Page.media) } } : d;
+
 const Api = {
   /* Debug helper: live and parked hosts */
   endpoints() {
@@ -549,7 +565,13 @@ const Api = {
         upcoming: Page(page: 1, perPage: 12) {
           media(type: ANIME, status: NOT_YET_RELEASED, sort: POPULARITY_DESC, isAdult: $adult) { ...MediaCard }
         }
-      }`, { season, year, adult: adultVar() }, { ttl: TTL.long, bake: () => `homeRails:${season}:${year}:${adultOn() ? 1 : 0}` });
+      }`, { season, year, adult: adultVar() }, { ttl: TTL.long, bake: () => `homeRails:${season}:${year}:${adultOn() ? 1 : 0}` })
+      .then(d => {
+        if (!d) return d;
+        const out = { ...d };
+        for (const k of ['trending', 'seasonPopular', 'topRated', 'topAiring']) if (d[k]) out[k] = _scrubPage({ Page: d[k] }).Page;   // "upcoming" stays: it is the Coming soon row
+        return out;
+      });
   },
 
   /* Quick trending list (card fields) so the Trending row paints fast */
@@ -559,7 +581,7 @@ const Api = {
         Page(page: 1, perPage: 18) {
           media(type: ANIME, sort: TRENDING_DESC, isAdult: $adult) { ...MediaCard }
         }
-      }`, { adult: adultVar() }, { ttl: TTL.long, bake: () => `trendingQuick:${adultOn() ? 1 : 0}` });
+      }`, { adult: adultVar() }, { ttl: TTL.long, bake: () => `trendingQuick:${adultOn() ? 1 : 0}` }).then(_scrubPage);
   },
 
   /* Most recently aired episodes, newest first; `until` is rounded to 5 min for a stable cache key */
@@ -623,11 +645,16 @@ const Api = {
                 status: $status, season: $season, seasonYear: $year,
                 sort: $sort, isAdult: $adult) { ...MediaCard }
         }
-      }`, { page, perPage, search, genres, tags, format, status, season, year, sort, adult: adultVar() }, { ttl: TTL.long, ...opts });   // Cached 15 min so revisiting a genre is instant
+      }`, { page, perPage, search, genres, tags, format, status, season, year, sort, adult: adultVar() }, { ttl: TTL.long, ...opts })   // Cached 15 min so revisiting a genre is instant
+      .then(d => status === 'NOT_YET_RELEASED' ? d : _scrubPage(d));           // Picking "Upcoming" on purpose still lists unreleased titles
   },
 
   /* Like browse() but not limited to the first 5000 titles; only POPULARITY_DESC can be stitched from ranges, other sorts use browse() */
   async browseDeep(vars, page = vars.page, opts = {}) {
+    const d = await Api._browseDeep(vars, page, opts);
+    return vars.status === 'NOT_YET_RELEASED' ? d : _scrubPage(d);
+  },
+  async _browseDeep(vars, page = vars.page, opts = {}) {
     const per = vars.perPage || 30;
     const sort = [].concat(vars.sort || [])[0];
     const offset = (page - 1) * per;
@@ -710,7 +737,7 @@ const Api = {
             }
           }
           recommendations(perPage: 14, sort: RATING_DESC) {
-            nodes { mediaRecommendation { id title { romaji english } coverImage { large } description(asHtml: false) genres seasonYear averageScore format status episodes } }
+            nodes { mediaRecommendation { id title { romaji english } coverImage { large } description(asHtml: false) genres seasonYear averageScore format status episodes nextAiringEpisode { episode } } }
           }
           characters(perPage: 14, sort: [ROLE, RELEVANCE]) {
             nodes { id name { full } image { medium } }
@@ -737,7 +764,7 @@ const Api = {
         Page(page: 1, perPage: $perPage) {
           media(type: ANIME, search: $q, sort: SEARCH_MATCH, isAdult: $adult) { ...MediaSuggest }
         }
-      }`, { q, perPage, adult: adultVar() }, opts);
+      }`, { q, perPage, adult: adultVar() }, opts).then(_scrubPage);
   },
 
   /* One day of airing (up to 150 entries) in a single request; bad pages from mirrors are skipped */
@@ -811,7 +838,7 @@ const Api = {
             media(type: ANIME, sort: TRENDING_DESC, isAdult: $adult) { ...MediaCard }
           }
         }`, { adult: adultVar() }, { ttl: TTL.long });
-      return t.Page.media;
+      return _playable(t.Page.media);
     }
 
     const acc = new Map();
@@ -821,7 +848,7 @@ const Api = {
       e.sum += t.trending || 0;
       acc.set(t.mediaId, e);
     });
-    return [...acc.values()].sort((x, y) => y.sum - x.sum).map(e => e.m);
+    return _playable([...acc.values()].sort((x, y) => y.sum - x.sum).map(e => e.m));
   },
 
   async random() {

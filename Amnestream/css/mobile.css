@@ -51,3 +51,27 @@
   .card-play,.card:hover .card-play{opacity:0;pointer-events:none;transform:translate(-50%,-50%) scale(.7)}
   .card-play:focus-visible{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
 }
+
+/* Watch page on phones: player edge-aligned with the controls below it, controls in tidy equal-width rows */
+@media (max-width:900px){
+  .watch-layout{padding:max(12px,env(safe-area-inset-top,0px)) 0 16px;gap:16px;min-width:0}
+  .watch-layout>div{min-width:0}
+  .player-wrap{width:100%;border-radius:18px;margin:0}
+  .player-wrap iframe{display:block}
+  .watch-head{padding:14px 2px 4px}
+  .watch-head h1{font-size:19px;line-height:1.25;overflow-wrap:anywhere}
+  .player-bar{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px;border-radius:20px}
+  .player-bar>*{min-width:0;width:100%;box-sizing:border-box;margin:0}
+  .player-bar .seg{display:grid;grid-template-columns:1fr 1fr;border-radius:999px}
+  .player-bar .seg button{padding:10px 0;text-align:center}
+  .player-bar select{grid-column:2;height:42px;text-overflow:ellipsis}
+  .player-bar .nav-eps{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .player-bar .nav-eps .btn{width:100%;justify-content:center}
+  .player-bar .btn,.player-bar label.btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:42px;box-sizing:border-box;text-align:center}
+  .player-help{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px;border-radius:20px}
+  .player-help #help-text{grid-column:1/-1;flex:none}
+  .player-help .btn{width:100%;box-sizing:border-box;justify-content:center;text-align:center}
+  .player-help #help-reload{grid-column:1/-1}
+  .side-panel{padding:12px;border-radius:20px}
+  .side-eps{grid-template-columns:repeat(auto-fill,minmax(46px,1fr))}
+}

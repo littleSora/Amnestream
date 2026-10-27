@@ -61,7 +61,7 @@ function rowHTML(it, sec) {
       `<button class="theme-opt ${s.theme === id ? 'on' : ''}" data-theme-pick="${id}" style="--tb:${b};--ta:${a}"><i></i>${n}</button>`).join('')}</div></div>`;
     case 'btn': return `<div class="${cls}">${head}${txt}<button class="btn-sm ${it.danger ? 'btn-danger' : ''}" data-act="${it.act}">${it.label}</button></div>`;
     case 'link': return `<div class="${cls}">${head}${txt}<a class="btn-sm" href="${it.href}">${it.label}</a></div>`;
-    case 'info': return `<div class="${cls}"><div class="sq" ${st}>${icon('info', 16)}</div><div class="set-txt"><strong>About ${SITE_NAME}</strong><span class="d">Settings, profile, list and history are stored <b>on this device</b> (browser storage). ${SITE_NAME} doesn't host any video files; it links to third-party sources.</span></div></div>`;
+    case 'info': return `<div class="${cls}"><div class="sq" ${st}>${icon('info', 16)}</div><div class="set-txt"><strong>About ${SITE_NAME}</strong><span class="d">Settings, list and history are stored <b>on this device</b> (browser storage); your account (login and profile) is stored online so it works on every device. ${SITE_NAME} doesn't host any video files; it links to third-party sources.</span></div></div>`;
     case 'account': { const u = User.get(); return `<div class="${cls} acct">
       <div class="acct-av">${avatarHTML(78)}</div>
       <div class="set-col">
@@ -141,7 +141,7 @@ function wireRows() {
   $$('[data-act]').forEach(b => b.onclick = () => act(b.dataset.act));
 }
 
-const WIPE_ONLY = ['as_epstyle19', 'as_dead_servers', 'as_accounts', 'as_session', 'as_alive'];     // Housekeeping keys: not backed up, but removed by "Delete all local data"
+const WIPE_ONLY = ['as_epstyle19', 'as_dead_servers', 'as_me'];     // Housekeeping keys: not backed up, but removed by "Delete all local data"
 const KEYS = ['as_settings', 'as_user', 'as_list', 'as_progress', 'as_seen', 'as_activity', 'as_lang', 'as_server', 'as_browse_last', 'as_browse_presets', 'as_fav'];
 /* Sync code: your data as one pasteable string (gzip + base64) */
 async function packData() {
@@ -217,7 +217,7 @@ function act(a) {
   } else if (a === 'reset') {
     if (confirm('Reset all settings to defaults?')) { Settings.reset(); localStorage.removeItem('as_lang'); toast('Settings reset'); render(); }
   } else if (a === 'wipe') {
-    if (confirm('Delete ALL local data? This cannot be undone.')) { [...KEYS, ...WIPE_ONLY].forEach(k => localStorage.removeItem(k)); toast('All data deleted'); setTimeout(() => location.href = 'index.html', 600); }
+    if (confirm('Delete ALL local data? This cannot be undone.')) { Auth.logout(); [...KEYS, ...WIPE_ONLY].forEach(k => localStorage.removeItem(k)); toast('All data deleted'); setTimeout(() => location.href = 'index.html', 600); }
   }
 }
 document.addEventListener('DOMContentLoaded', render);
