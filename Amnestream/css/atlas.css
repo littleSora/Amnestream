@@ -364,6 +364,8 @@ html{overflow-y:scroll;scrollbar-gutter:stable}
 .dp-tab.on{background:transparent;box-shadow:none}                      /* The sliding .dp-ink draws the highlight */
 .dp-ink{position:absolute;left:0;top:4px;bottom:4px;width:0;border-radius:9px;background:var(--card2);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);pointer-events:none}
 .dp-ink.ready{transition:transform .32s cubic-bezier(.2,.8,.2,1),width .32s cubic-bezier(.2,.8,.2,1)}
+/* Details tabs animate their cards themselves (below); the generic grid entrance would replay on top of it and again when the tab animation ends */
+.dp-panel .grid .card{animation:none}
 .dp-panel.dp-anim{animation:dpIn .38s cubic-bezier(.2,.8,.2,1)}
 .dp-panel.dp-anim .ep-card,.dp-panel.dp-anim .card,.dp-panel.dp-anim .dp-char{animation:dpItem .5s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:calc(var(--i,0)*40ms + 60ms)}
 .dp-char{transition:transform .2s,box-shadow .2s}
