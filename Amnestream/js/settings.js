@@ -141,7 +141,7 @@ function wireRows() {
   $$('[data-act]').forEach(b => b.onclick = () => act(b.dataset.act));
 }
 
-const WIPE_ONLY = ['as_epstyle19', 'as_dead_servers', 'as_me'];     // Housekeeping keys: not backed up, but removed by "Delete all local data"
+const WIPE_ONLY = ['as_epstyle19', 'as_dead_servers', 'as_me', 'as_sync'];     // Housekeeping keys: not backed up, but removed by "Delete all local data"
 const KEYS = ['as_settings', 'as_user', 'as_list', 'as_progress', 'as_seen', 'as_activity', 'as_lang', 'as_server', 'as_browse_last', 'as_browse_presets', 'as_fav'];
 /* Sync code: your data as one pasteable string (gzip + base64) */
 async function packData() {
@@ -194,7 +194,7 @@ function act(a) {
   } else if (a === 'syncpaste') {
     const code = prompt('Paste your sync code');
     if (!code) return;
-    unpackData(code).then(o => { mergeData(o); toast('Merged. Reloading...'); setTimeout(() => location.reload(), 700); })
+    unpackData(code).then(o => { mergeData(o); Sync.touch('list'); Sync.touch('fav'); toast('Merged. Reloading...'); setTimeout(() => location.reload(), 700); })
       .catch(() => toast('That sync code is not valid'));
   } else if (a === 'export') {
     const out = {}; KEYS.forEach(k => { const v = localStorage.getItem(k); if (v !== null) out[k] = v; });
@@ -208,12 +208,13 @@ function act(a) {
         const o = JSON.parse(await f.files[0].text());
         if (!o || typeof o !== 'object' || Array.isArray(o) || !Object.keys(o).some(k => KEYS.includes(k))) throw new Error('bad file');
         Object.entries(o).forEach(([k, v]) => KEYS.includes(k) && typeof v === 'string' && localStorage.setItem(k, v));
+        Sync.touch('list'); Sync.touch('fav'); Sync.later();
         toast('Backup restored'); setTimeout(() => location.reload(), 600); }
       catch { toast('That file isn\'t a valid backup'); }
     };
     f.click();
   } else if (a === 'clearhist') {
-    if (confirm('Clear your watch history?')) { ['as_progress', 'as_seen', 'as_activity'].forEach(k => localStorage.removeItem(k)); toast('History cleared'); }
+    if (confirm('Clear your watch history?')) { Store.clearHistory(); toast('History cleared'); }
   } else if (a === 'reset') {
     if (confirm('Reset all settings to defaults?')) { Settings.reset(); localStorage.removeItem('as_lang'); toast('Settings reset'); render(); }
   } else if (a === 'wipe') {

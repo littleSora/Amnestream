@@ -182,20 +182,26 @@ const Auth = {
     } catch { /* Offline or temporary error: keep the cached state */ }
     return before !== !!Auth._me();
   },
+  /* Saves any last changes to the cloud first, then clears this browser's copy of the account's data */
   logout() {
-    localStorage.removeItem('as_me');
-    Auth.client().then(sb => sb.auth.signOut()).catch(() => {});
+    const synced = Auth.current() ? Promise.race([Sync.run().catch(() => false), new Promise(r => setTimeout(r, 2500))]) : Promise.resolve();
+    return synced.then(() => {
+      if (Auth.current() && !Sync.off && !Sync._p) Sync._wipeLocal();
+      localStorage.removeItem('as_me');
+      return Auth.client().then(sb => sb.auth.signOut()).catch(() => {});
+    });
   },
 };
 /* Re-check the session on load; if it flipped (signed out elsewhere, or still signed in on a fresh visit) update the page */
 Auth.refresh().then(flipped => {
+  if (typeof Sync !== 'undefined') Sync.start();                  // Pull this account's list and progress from the cloud
   if (!flipped) return;
   const page = location.pathname.split('/').pop();
   if (/^(profile|settings|leaderboard)\.html$/.test(page)) location.reload();
   else if (typeof buildHeader === 'function' && document.getElementById('site-header')) buildHeader();
 });
 document.addEventListener('visibilitychange', () => {       // Coming back to the tab/app: pick up changes made on another device
-  if (document.visibilityState === 'visible') Auth.refresh().then(f => { if (f && typeof buildHeader === 'function') buildHeader(); });
+  if (document.visibilityState === 'visible') Auth.refresh().then(f => { if (f && typeof buildHeader === 'function') buildHeader(); Sync.run(); });
 });
 
 const User = {
@@ -231,7 +237,7 @@ const User = {
       else if (pg === 'profile.html' && typeof paintProfile === 'function') paintProfile();
     });
   },
-  logout() { Auth.logout(); },
+  logout() { return Auth.logout(); },
 };
 function avatarHTML(size = 34) {
   const u = User.get();
@@ -303,8 +309,12 @@ const Store = {
     if (i > -1) l.splice(i, 1);
     else l.unshift({ id: m.id, title: titleOf(m), titles: titlesOf(m), cover: coverOf(m), format: m.format, score: m.averageScore });
     jset('as_list', l.slice(0, 500));
+    Sync.touch('list');
     return i === -1;
   },
+  setList(l) { jset('as_list', l.slice(0, 500)); Sync.touch('list'); },
+  /* Clears progress, seen episodes and activity here and (through the stamp) on your other devices */
+  clearHistory() { ['as_progress', 'as_seen', 'as_activity'].forEach(k => localStorage.removeItem(k)); Sync.touch('hist'); },
   progress: () => jget('as_progress', {}),
   seen: () => jget('as_seen', {}),
   activity: () => jget('as_activity', {}),
@@ -314,6 +324,7 @@ const Store = {
     const p = Store.progress();
     p[m.id] = { id: m.id, title: titleOf(m), titles: titlesOf(m), cover: coverOf(m), ep, total: epCountOf(m), ts: Date.now() };
     jset('as_progress', p);
+    Sync.later();
     const seen = Store.seen();
     const arr = seen[m.id] || [];
     if (!arr.includes(ep)) {
@@ -341,6 +352,134 @@ const Store = {
     return Object.values(Store.progress()).filter(x => x.ep < x.total).sort((a, b) => b.ts - a.ts).slice(0, 24);
   },
 };
+
+/* Cloud sync: while signed in, your list, favourites, progress and watch history live in the Supabase table user_data (see supabase/sync.sql),
+   so Continue watching is the same on every device. Each device merges with the cloud copy on load, on login, when you come back to the tab,
+   every minute while open, and a moment after each change. Merge rules: progress keeps the newest entry per title, seen episodes and daily
+   activity are combined, the list and favourites follow whichever device changed them last (so removing a title sticks), and "Clear watch
+   history" wins over older data. A guest's local data is combined with the account on first login. */
+const Sync = {
+  _p: null, _again: false, _t: 0, _poll: 0, off: '',
+  meta: () => jget('as_sync', {}),
+  /* Stamp a change so merges know which device edited last; only stamped while signed in */
+  touch(kind) {
+    if (!Auth.current()) return;
+    const m = Sync.meta(), now = Date.now();
+    if (kind === 'list') m.listTs = now; else if (kind === 'fav') m.favTs = now; else if (kind === 'hist') m.histTs = now;
+    jset('as_sync', m);
+    Sync.later();
+  },
+  later(ms = 400) { if (Auth.current() && !Sync.off) { clearTimeout(Sync._t); Sync._t = setTimeout(() => Sync.run(), ms); } },
+  /* Called whenever the user looks at content: syncs unless it already did a few seconds ago */
+  _last: 0,
+  view() { if (Date.now() - Sync._last > 6000) return Sync.run(); return Sync._p || Promise.resolve(false); },
+  /* Resolves when a sync finishes or after ms, whichever is first (never blocks the page for long) */
+  fresh(ms = 1500) { return Promise.race([Sync.view().catch(() => false), new Promise(r => setTimeout(r, ms))]); },
+  _stable: v => JSON.stringify(v, (k, x) => (x && typeof x === 'object' && !Array.isArray(x)) ? Object.keys(x).sort().reduce((o, key) => (o[key] = x[key], o), {}) : x),
+  _local(m) {
+    return { list: jget('as_list', []), listTs: m.listTs || 0, fav: jget('as_fav', []), favTs: m.favTs || 0,
+      progress: jget('as_progress', {}), seen: jget('as_seen', {}), activity: jget('as_activity', {}), histTs: m.histTs || 0 };
+  },
+  _norm: r => ({ list: Array.isArray(r?.list) ? r.list : [], listTs: Number(r?.listTs) || 0, fav: Array.isArray(r?.fav) ? r.fav : [], favTs: Number(r?.favTs) || 0,
+    progress: r?.progress && typeof r.progress === 'object' ? r.progress : {}, seen: r?.seen && typeof r.seen === 'object' ? r.seen : {},
+    activity: r?.activity && typeof r.activity === 'object' ? r.activity : {}, histTs: Number(r?.histTs) || 0 }),
+  /* baseline: this device has synced with this account before, so timestamps can be trusted for list/favourites */
+  merge(l, r, baseline) {
+    const uniq = (arr, key) => { const s = new Set(); return arr.filter(x => { const k = key(x); if (s.has(k)) return false; s.add(k); return true; }); };
+    const out = {};
+    if (baseline) { const w = l.listTs >= r.listTs ? l : r; out.list = w.list; out.listTs = w.listTs; }
+    else { out.list = uniq([...r.list, ...l.list].filter(x => x && x.id != null), x => x.id).slice(0, 500); out.listTs = Math.max(l.listTs, r.listTs); }
+    if (baseline) { const w = l.favTs >= r.favTs ? l : r; out.fav = w.fav; out.favTs = w.favTs; }
+    else { out.fav = uniq([...r.fav, ...l.fav], x => x).slice(0, 500); out.favTs = Math.max(l.favTs, r.favTs); }
+    out.histTs = Math.max(l.histTs, r.histTs);
+    out.progress = {};
+    for (const src of [r.progress, l.progress]) for (const [id, p] of Object.entries(src)) {
+      if (!p || !(p.ts > out.histTs)) continue;
+      if (!out.progress[id] || p.ts > out.progress[id].ts) out.progress[id] = p;
+    }
+    if (l.histTs !== r.histTs) { const w = l.histTs > r.histTs ? l : r; out.seen = w.seen; out.activity = w.activity; }
+    else {
+      out.seen = {};
+      for (const src of [r.seen, l.seen]) for (const [id, a] of Object.entries(src)) out.seen[id] = [...new Set([...(out.seen[id] || []), ...(Array.isArray(a) ? a : [])])].sort((x, y) => x - y);
+      out.activity = {};
+      for (const src of [r.activity, l.activity]) for (const [d, n] of Object.entries(src)) out.activity[d] = Math.max(out.activity[d] || 0, Number(n) || 0);
+    }
+    return out;
+  },
+  /* Writes merged data into localStorage; true if anything on this device changed */
+  _apply(merged, local) {
+    let changed = false;
+    const put = (key, val, old) => { if (Sync._stable(val) !== Sync._stable(old)) { jset(key, val); changed = true; } };
+    put('as_list', merged.list, local.list); put('as_fav', merged.fav, local.fav);
+    put('as_progress', merged.progress, local.progress); put('as_seen', merged.seen, local.seen); put('as_activity', merged.activity, local.activity);
+    return changed;
+  },
+  _wipeLocal() { ['as_list', 'as_fav', 'as_progress', 'as_seen', 'as_activity', 'as_sync'].forEach(k => localStorage.removeItem(k)); },
+  run() {
+    if (!Auth.current() || !Auth.configured() || Sync.off) return Promise.resolve(false);
+    if (Sync._p) { Sync._again = true; return Sync._p; }       // One at a time; changes made meanwhile get a follow-up pass
+    Sync._p = Sync._do().catch(() => false).finally(() => {
+      Sync._p = null;
+      if (Sync._again) { Sync._again = false; Sync.run(); }
+    });
+    return Sync._p;
+  },
+  async _do() {
+    Sync._last = Date.now();
+    const sb = await Auth.client();
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return false;
+    const uid = session.user.id;
+    Sync._tok = session.access_token; Sync._uid = uid;
+    let meta = Sync.meta();
+    if (meta.uid && meta.uid !== uid) { Sync._wipeLocal(); meta = {}; }          // Another account used this browser: do not mix the two
+    const { data: row, error } = await sb.from('user_data').select('data').eq('user_id', uid).maybeSingle();
+    if (error) {
+      if (error.code === 'PGRST205' || error.code === '42P01' || /does not exist|schema cache/i.test(error.message || '')) {
+        Sync.off = 'missing';
+        console.warn('[Amnestream] Cloud sync is off: the "user_data" table is missing in Supabase. Run supabase/sync.sql once in the Supabase SQL editor.');
+      }
+      return false;
+    }
+    const remote = row?.data ? Sync._norm(row.data) : null;
+    const local = Sync._local(meta);
+    const merged = remote ? Sync.merge(local, remote, !!meta.uid && meta.uid === uid) : local;
+    const changed = Sync._apply(merged, local);
+    jset('as_sync', { uid, listTs: merged.listTs, favTs: merged.favTs, histTs: merged.histTs });
+    Sync._sig = Sync._stable(Sync._local(Sync.meta()));
+    if (!remote || Sync._stable(merged) !== Sync._stable(remote)) {
+      const { error: e2 } = await sb.from('user_data').upsert({ user_id: uid, data: { v: 1, ...merged }, updated_at: new Date().toISOString() });
+      if (e2) return changed;
+    }
+    if (changed) document.dispatchEvent(new Event('as:synced'));
+    return changed;
+  },
+  /* Leaving the page: send unsaved changes with a keepalive request, which survives the page closing */
+  flush() {
+    try {
+      if (!Auth.current() || Sync.off || !Sync._tok || !Sync._uid) return;
+      const local = Sync._local(Sync.meta());
+      if (Sync._stable(local) === Sync._sig) return;
+      const c = window.AS_CONFIG;
+      fetch(c.supabaseUrl.replace(/\/$/, '') + '/rest/v1/user_data', { method: 'POST', keepalive: true,
+        headers: { apikey: c.supabaseAnonKey, Authorization: 'Bearer ' + Sync._tok, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
+        body: JSON.stringify({ user_id: Sync._uid, data: { v: 1, ...local }, updated_at: new Date().toISOString() }) }).catch(() => {});
+      Sync._sig = Sync._stable(local);
+    } catch { /* best effort */ }
+  },
+  /* Called once per page: first sync now, then keep the tab fresh */
+  start() {
+    Sync.run();
+    if (Sync._poll) return;
+    Sync._poll = setInterval(() => { if (document.visibilityState === 'visible') Sync.run(); }, 15000);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') Sync.flush(); else Sync.view(); });
+    window.addEventListener('pagehide', () => Sync.flush());
+    window.addEventListener('pageshow', () => Sync.view());          // Back/forward and restored tabs
+    window.addEventListener('focus', () => Sync.view());
+    window.addEventListener('online', () => Sync.run());
+  },
+};
+
 
 function toast(msg, ms = 2600) {
   let t = $('#toast');
@@ -823,7 +962,7 @@ function wireHeader() {
     if (pop.classList.contains('open')) input.focus();
   };
   $('#user-btn').onclick = e => { e.stopPropagation(); pop.classList.remove('open'); menu.classList.toggle('open'); };
-  if ($('#logout-btn')) $('#logout-btn').onclick = () => { User.logout(); toast('Logged out'); setTimeout(() => location.href = 'index.html', 500); };
+  if ($('#logout-btn')) $('#logout-btn').onclick = () => { toast('Logging out...'); User.logout().finally(() => { toast('Logged out'); setTimeout(() => location.href = 'index.html', 400); }); };
   if ($('#menu-login-btn')) $('#menu-login-btn').onclick = () => { closeAll(); openAuth('login'); };
   if (first) {
     document.addEventListener('click', e => { if (!e.target.closest('.search-pop, .user-wrap')) $$('.search-pop,.suggest,.user-menu').forEach(x => x.classList.remove('open')); });
@@ -960,6 +1099,7 @@ function openAuth(mode = 'login') {
       const acc = m === 'register' ? await Auth.register(name, pw, true) : await Auth.login(name, pw, $('#au-rem', bg).checked);
       close();
       toast(m === 'register' ? `Welcome to ${SITE_NAME}, ${acc.name}!` : `Welcome back, ${acc.name}!`);
+      Sync.start();                                                                                          // Bring this account's list and progress onto this device
       const page = location.pathname.split('/').pop();
       if (/^(profile|settings|leaderboard)\.html$/.test(page)) setTimeout(() => location.reload(), 400);   // These pages paint your account once
       else buildHeader();

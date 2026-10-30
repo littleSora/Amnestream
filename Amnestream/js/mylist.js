@@ -21,9 +21,8 @@ document.addEventListener('DOMContentLoaded', () => {
       : `<p class="empty">Your list is empty. Add titles from any anime page.</p>`;
 
     $$('[data-rm]').forEach(b => b.onclick = () => {
-      const l = Store.list().filter(x => x.id !== +b.dataset.rm);
-      localStorage.setItem('as_list', JSON.stringify(l));
-      location.reload();
+      Store.setList(Store.list().filter(x => x.id !== +b.dataset.rm));
+      paintList();
     });
   };
   paintList();
@@ -37,6 +36,9 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   paint(Continue.quick());                            // Instant, from storage
   Continue.load().then(paint).catch(() => {});        // Then add new-episode badges
+  document.addEventListener('as:synced', () => {        // Another device changed your list or progress
+    paintList(); paint(Continue.quick()); Continue.load().then(paint).catch(() => {});
+  });
   Store.fillTitles().then(changed => {                // Titles saved by older versions: add both languages once
     if (!changed) return;
     paintList(); paint(Continue.quick()); Continue.load().then(paint).catch(() => {});

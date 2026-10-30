@@ -468,11 +468,30 @@ async function _countSlices(base, slices, signal, lazy = true) {
 /* Deep paging past AniList's 5000-title cap: split by popularity ranges, count each, map a page to its ranges */
 const _planCache = new Map();                                   // Filters to cached plan of popularity ranges (lowest first)
 const _planKey = base => JSON.stringify([base, adultOn()]);
-const _planPeek = base => { const h = _planCache.get(_planKey(base)); return !!(h && h.exp > Date.now()); };
+/* Plans are also kept in localStorage (2 hours): counting the ranges takes several round trips, so a reload or a later visit should not repeat it */
+const PLAN_TTL = 2 * 3600e3, _planStoreKey = base => 'as_plan:' + _hash(_planKey(base));
+function _planStored(base) {
+  try {
+    const o = JSON.parse(localStorage.getItem(_planStoreKey(base)));
+    if (o && o.exp > Date.now() && Array.isArray(o.p) && o.p.length) return o.p;
+  } catch { /* storage unavailable */ }
+  return null;
+}
+function _planSave(base, p) {
+  try {
+    const keys = Object.keys(localStorage).filter(k => k.startsWith('as_plan:'));
+    if (keys.length > 40) keys.forEach(k => { try { if (JSON.parse(localStorage.getItem(k)).exp < Date.now()) localStorage.removeItem(k); } catch { localStorage.removeItem(k); } });
+    localStorage.setItem(_planStoreKey(base), JSON.stringify({ exp: Date.now() + PLAN_TTL, p }));
+  } catch { /* storage full */ }
+}
+/* True when the plan is already known (finished in memory or stored), so using it costs no network */
+const _planPeek = base => { const h = _planCache.get(_planKey(base)); return !!((h && h.exp > Date.now() && h.done) || _planStored(base)); };
 
 function _popBuckets(base) {
   const key = _planKey(base), hit = _planCache.get(key);
   if (hit && hit.exp > Date.now()) return hit.p;
+  const stored = _planStored(base);
+  if (stored) { _planCache.set(key, { exp: Date.now() + TTL.long, p: Promise.resolve(stored), done: true }); return Promise.resolve(stored); }
   const expand = async slices => {                              // No abort signal: the plan is shared, so one cancelled page must not kill it
     const totals = await _countSlices(base, slices, undefined, false);
     const parts = await Promise.all(slices.map((sl, i) => {
@@ -483,8 +502,9 @@ function _popBuckets(base) {
     return parts.flat();                                        // Promise.all keeps order, so ranges stay sorted by popularity
   };
   const p = expand(popSlices(null));
-  _planCache.set(key, { exp: Date.now() + TTL.long, p });
-  p.catch(() => _planCache.delete(key));
+  const entry = { exp: Date.now() + TTL.long, p, done: false };
+  _planCache.set(key, entry);
+  p.then(leaves => { entry.done = true; _planSave(base, leaves); }, () => _planCache.delete(key));
   return p;
 }
 
@@ -661,12 +681,7 @@ const Api = {
     if (sort !== 'POPULARITY_DESC') return Api.browse({ ...vars, page }, opts);
 
     const base = _baseOf(vars);
-    let plain = null;
-    if (offset + per <= COUNT_CAP) {
-      plain = await Api.browse({ ...vars, page }, opts);
-      if (plain.Page.pageInfo.total !== COUNT_CAP) return plain;
-    }
-    if (page === 1 && !Object.values(base).some(Boolean)) {            // Unfiltered landing page
+    if (page === 1 && !Object.values(base).some(Boolean)) {            // Unfiltered landing page: the baked copy needs no network at all
       const baked = await _bakeGetAsync(`browseLanding:${adultOn() ? 1 : 0}`);
       if (baked && baked.media) {
         const total = baked.total || baked.media.length;
@@ -678,6 +693,14 @@ const Api = {
           deep: !!baked.totalExact,
         }, media: baked.media.slice(0, per) } };
       }
+    }
+    let plain = null;
+    if (offset + per <= COUNT_CAP) {
+      plain = await Api.browse({ ...vars, page }, opts);
+      if (plain.Page.pageInfo.total !== COUNT_CAP) return plain;
+      /* Capped at 5000: this page is already here, so show it now. The exact total and page count are worked out afterwards (Api.deepInfo)
+         instead of making every page wait for several counting round trips. */
+      if (!_planPeek(base)) return { Page: { ...plain.Page, pageInfo: { ...plain.Page.pageInfo, capped: true } } };
     }
     if (opts.lazy && !_planPeek(base)) throw new Error('AniList is busy');   // Prefetch never pays for counting
 
@@ -696,6 +719,14 @@ const Api = {
       return all.slice(sg.cut, sg.cut + sg.take);
     });
     return { Page: { pageInfo, media } };
+  },
+
+  /* Exact total and page count for a capped popularity listing; runs after the page is already on screen */
+  async deepInfo(vars, page = vars.page) {
+    const per = vars.perPage || 30;
+    const leaves = await _popBuckets(_baseOf(vars));
+    const total = leaves.reduce((n, lf) => n + lf.count, 0);
+    return { currentPage: page, lastPage: Math.max(1, Math.ceil(total / per)), hasNextPage: page * per < total, total, deep: true };
   },
 
   /* Exact result count for a Browse search; only needed when the total hits the cap */

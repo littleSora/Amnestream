@@ -75,3 +75,95 @@
   .side-panel{padding:12px;border-radius:20px}
   .side-eps{grid-template-columns:repeat(auto-fill,minmax(46px,1fr))}
 }
+
+/* ===== Compact phone scale: smaller, tidier type and posters (3 per row), slimmer nav, search bar floats above the nav ===== */
+@media (max-width:900px){
+  :root{--m-nav:60px}
+  body{font-size:14px;padding-bottom:calc(var(--m-nav) + 22px + env(safe-area-inset-bottom,0px))}
+  .container{padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px))}
+
+  /* Bottom nav: slimmer */
+  .site-header,.site-header.scrolled{height:calc(var(--m-nav) + env(safe-area-inset-bottom,0px))}
+  .main-nav a{width:54px;padding:6px 0;gap:3px;font-size:9.5px;border-radius:16px}
+  .main-nav a svg{width:17px;height:17px}
+  .icon-btn{width:34px;height:34px;min-height:0}
+  .avatar-btn .avatar{width:30px!important;height:30px!important;font-size:12px!important}
+  .toast{bottom:calc(var(--m-nav) + 14px + env(safe-area-inset-bottom,0px));font-size:13px;padding:10px 16px}
+  .to-top{bottom:calc(var(--m-nav) + 16px + env(safe-area-inset-bottom,0px));width:40px;height:40px;border-radius:13px}
+
+  /* Search: floats just above the bottom nav (results open upward) so no nav button is covered */
+  .search-pop{top:auto;bottom:calc(100% + 10px);left:12px;right:12px;width:auto}
+  .search-pop.open{display:flex;flex-direction:column-reverse}
+  .search-pop input{padding:11px 16px;font-size:16px;border-radius:16px}
+  .suggest{margin-top:0;margin-bottom:8px;max-height:min(52vh,420px)}
+  .suggest-item{padding:7px 10px}
+  .suggest-item img{width:34px;height:48px}
+  .suggest-item strong{font-size:13px}
+  .user-menu{bottom:calc(100% + 10px)}
+
+  /* Intro + spotlight */
+  .intro{padding-top:60px}
+  .intro-word{font-size:clamp(30px,9.4vw,60px)}
+  .intro-cols{height:40vh;height:40svh;margin-top:0}
+  .hero{height:clamp(300px,52svh,430px);border-radius:20px}
+  .hero-content{padding:0 16px 48px}
+  .hero-dots{left:16px;bottom:18px}
+  .hero-content h1{font-size:clamp(21px,6.4vw,28px);letter-spacing:-.03em}
+  .spot-tag{font-size:11px;padding:4px 10px;margin-bottom:8px}
+  .hero-meta{gap:5px;margin:10px 0}
+  .chip-s{padding:3px 8px;font-size:10.5px;border-radius:8px}
+  .hero-desc{font-size:12.5px;line-height:1.5;-webkit-line-clamp:2}
+  .hero-actions{gap:8px}
+  .hero-actions .btn{min-height:36px;padding:8px 16px;font-size:13px}
+  .btn{font-size:13px}
+
+  /* Section titles */
+  .rail-head h2,.sec-title,.section h2{font-size:18px}
+  .rail-head{margin-bottom:10px}
+  .rail-link{font-size:12px}
+  .block-head{margin-bottom:10px}
+  .picker-btn{padding:7px 12px;font-size:13px}
+  #rail-continue,#rail-trending,#rail-latest{margin-top:18px}
+
+  /* Posters: 3 across, smaller type and badges */
+  .home-main .grid,.grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  .rail-track{gap:10px;padding:2px 14px 10px}
+  .rail-track .card{width:112px;flex-basis:112px}
+  .card-media{border-radius:14px}
+  .card-title{left:8px;right:8px;bottom:8px;font-size:11px;line-height:1.25;-webkit-line-clamp:2}
+  .card-tags{left:8px;right:8px;bottom:42px;gap:3px}
+  .card-tags .tag,.card-tags span{font-size:9px;padding:2px 6px}
+  .badge,.card-sub{font-size:9.5px;padding:2px 6px;border-radius:7px;top:6px}
+  .badge-score,.card-sub{left:6px}
+  .badge-air,.badge-new,.badge-watched{right:6px}
+  .badge-air+.badge-18{top:26px}
+  .card-play{width:36px;height:36px;border-radius:13px}
+
+  /* Cards on the side: Top 10 and Genres */
+  .side-card{padding:14px;border-radius:20px;margin-bottom:16px}
+  .side-card h3{font-size:16px;margin-bottom:10px}
+  .side-card .tab{font-size:12px;padding:5px 4px;min-height:0}
+  .top-row{gap:10px;padding:8px 4px}
+  .top-row img{width:36px;height:50px;border-radius:9px}
+  .top-rank{font-size:15px;min-width:26px}
+  .top-info strong{font-size:12.5px}
+  .top-info span{font-size:11px}
+  .genre-cloud{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .genre-cloud a{padding:7px 6px;font-size:11.5px;text-align:center;border-radius:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* Schedule */
+  .sched-days{gap:6px}
+  .sched-row{font-size:12.5px;padding:10px 12px}
+
+  /* Browse, details, lists */
+  .page-head h1{font-size:26px}
+  .filters{gap:8px}
+  .dd-btn{padding:8px 10px;font-size:12.5px}
+  .pager button{padding:8px 14px;font-size:13px}
+  .site-footer{margin-top:30px;padding:24px 0}
+}
+@media (max-width:380px){
+  .genre-cloud{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .rail-track .card{width:104px;flex-basis:104px}
+}
+@media (max-width:900px){.hero-ctrl{display:none}}
