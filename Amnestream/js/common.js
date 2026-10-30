@@ -201,7 +201,7 @@ Auth.refresh().then(flipped => {
   else if (typeof buildHeader === 'function' && document.getElementById('site-header')) buildHeader();
 });
 document.addEventListener('visibilitychange', () => {       // Coming back to the tab/app: pick up changes made on another device
-  if (document.visibilityState === 'visible') Auth.refresh().then(f => { if (f && typeof buildHeader === 'function') buildHeader(); Sync.run(); });
+  if (document.visibilityState === 'visible') Auth.refresh().then(f => { if (f && typeof buildHeader === 'function') buildHeader(); });
 });
 
 const User = {
@@ -471,12 +471,12 @@ const Sync = {
   start() {
     Sync.run();
     if (Sync._poll) return;
-    Sync._poll = setInterval(() => { if (document.visibilityState === 'visible') Sync.run(); }, 15000);
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') Sync.flush(); else Sync.view(); });
+    Sync._poll = 1;                                                  // Listeners below are added only once
+    /* Pulls only happen when a page loads (open, refresh, navigate, back/forward); no polling and no tab-focus syncing.
+       Pushes happen shortly after you change something, and when you leave the page. */
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') Sync.flush(); });
     window.addEventListener('pagehide', () => Sync.flush());
-    window.addEventListener('pageshow', () => Sync.view());          // Back/forward and restored tabs
-    window.addEventListener('focus', () => Sync.view());
-    window.addEventListener('online', () => Sync.run());
+    window.addEventListener('pageshow', e => { if (e.persisted) Sync.view(); });   // Back/forward cache restores skip a normal load
   },
 };
 
