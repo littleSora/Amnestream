@@ -167,3 +167,12 @@
   .rail-track .card{width:104px;flex-basis:104px}
 }
 @media (max-width:900px){.hero-ctrl{display:none}}
+
+/* Rails on phones: titles and first cards share one left edge, and the rows get breathing room */
+@media (max-width:900px){
+  .rail{margin:30px 0}
+  .rail-head{padding:0 14px}
+  .rail-track{scroll-padding-left:14px}
+  #rail-continue,#rail-trending,#rail-latest{margin-top:30px;margin-bottom:30px}
+  .block{margin-top:30px}
+}

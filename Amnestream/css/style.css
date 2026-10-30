@@ -136,6 +136,7 @@ body:not(.home) main{padding-top:calc(var(--header-h) + 14px)}
 .rail-wrap{position:relative;max-width:1500px;margin:0 auto}
 .rail-track{display:flex;gap:14px;overflow-x:auto;scroll-behavior:smooth;padding:4px 20px 12px;
   scroll-snap-type:x proximity;scrollbar-width:none}
+.rail-track{scroll-padding-left:20px}   /* Without this, snapping slides the first card flush to the edge and under the title's indent */
 .rail-track::-webkit-scrollbar{display:none}
 .rail-track .card{width:168px;flex:0 0 168px}
 .rail-nav{position:absolute;top:40%;transform:translateY(-50%);z-index:5;width:40px;height:40px;border-radius:50%;
@@ -283,6 +284,9 @@ body:not(.home) main{padding-top:calc(var(--header-h) + 14px)}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--card2)}
 .seg button{padding:8px 16px;border:0;background:transparent;cursor:pointer;font-size:13.5px;font-weight:600}
 .seg button.on{background:var(--accent);color:var(--accent-ink)}
+/* DUB with no dub available: crossed out and dimmed, still tappable */
+.seg button.no-dub,.epm-seg button.no-dub{text-decoration:line-through;text-decoration-thickness:2px;opacity:.5}
+.ep-chip.no-dub b{text-decoration:line-through;text-decoration-thickness:2px}.ep-chip.no-dub{opacity:.5}
 .side-panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;max-height:78vh;overflow-y:auto}
 .side-panel h3{font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:12px;font-family:var(--mono)}
 .side-eps{display:grid;gap:6px;grid-template-columns:repeat(auto-fill,minmax(52px,1fr))}

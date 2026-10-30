@@ -320,7 +320,7 @@ const EpModal = {
           </div>
           <div class="epm-seg" role="group" aria-label="Audio">
             <button data-l="sub" class="${this.lang === 'sub' ? 'on' : ''}">SUB</button>
-            <button data-l="dub" class="${this.lang === 'dub' ? 'on' : ''}">DUB</button>
+            <button data-l="dub" class="${this.lang === 'dub' ? 'on' : ''}${Dub.missing(m.id, n) ? ' no-dub' : ''}">DUB</button>
           </div>
         </div>
         <div class="epm-actions">
@@ -375,7 +375,9 @@ const EpModal = {
     let d = e.data; if (typeof d === 'string') { try { d = JSON.parse(d); } catch { return; } }
     if (!d) return;
     if ((d.event === 'complete' || d.event === 'ended') && Settings.get().autonext) EpModal.go(EpModal.n + 1);
+    if (/^(ready|playing|play|loaded|canplay)$/.test(String(d.event || '').toLowerCase()) && EpModal.lang === 'dub') Dub.clear(M.id, EpModal.n);
     if (d.event === 'error') {
+      if (EpModal.lang === 'dub') { Dub.mark(M.id, EpModal.n); EpModal.dirty = true; }
       const h = $('#epm-hint', EpModal.ui.el);
       if (h) { h.hidden = false; h.textContent = 'Playback error. Try the other audio, or open the full player and switch server.'; }
     }
@@ -423,7 +425,7 @@ function renderEps() {
       <a class="ep-num" href="${href}">${n}</a>
       <div class="ep-foot">
         <a class="ep-chip" data-l="sub" href="${href}&lang=sub" title="Preview with subtitles"><b>SUB</b><i>${icon('play', 8)}</i></a>
-        <a class="ep-chip" data-l="dub" href="${href}&lang=dub" title="Preview dubbed"><b>DUB</b><i>${icon('play', 8)}</i></a>
+        <a class="ep-chip${Dub.missing(m.id, n) ? ' no-dub' : ''}" data-l="dub" href="${href}&lang=dub" title="${Dub.missing(m.id, n) ? 'No dub found for this episode' : 'Preview dubbed'}"><b>DUB</b><i>${icon('play', 8)}</i></a>
         <span class="ep-state" title="${done ? 'Watched' : 'Not watched yet'}">${done ? icon('check', 10) : ''}</span>
       </div>
     </article>`;
