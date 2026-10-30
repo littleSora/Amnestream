@@ -20,9 +20,6 @@ async function initHome() {
     `<a href="browse.html?genre=${encodeURIComponent(g)}">${g}</a>`).join('');
   renderContinue();
   document.addEventListener('as:synced', renderContinue);      // Progress arrived from another device
-  if ('IntersectionObserver' in window) {                       // Sync again each time Continue watching comes into view
-    new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) Sync.view(); }, { threshold: 0.2 }).observe($('#rail-continue'));
-  }
   placeTop10();
   wireTabs();
   initSchedule();
