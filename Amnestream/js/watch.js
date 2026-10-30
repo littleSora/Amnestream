@@ -100,6 +100,7 @@ function buildPage() {
     b.classList.toggle('on', b.dataset.lang === LANG);
     b.onclick = () => setLang(b.dataset.lang);
   });
+  paintDub();
 
   buildServerOptions();
   $('#server').onchange = () => setServer($('#server').value);
@@ -156,6 +157,12 @@ function setServer(v) {
   mountPlayer();
 }
 
+/* Cross out DUB when this episode's dub is known not to play */
+function paintDub() {
+  const no = MEDIA && Dub.missing(MEDIA.id, EP), b = $('#lang-seg button[data-lang="dub"]');
+  if (b) { b.classList.toggle('no-dub', no); b.title = no ? 'No dub found for this episode' : ''; }
+}
+
 /* "Not playing?" bar */
 let loadTimer, readyTimer;
 function updateHelp() {
@@ -199,7 +206,8 @@ function mountPlayer() {
       mountPlayer();
     } else {
       setHelp(true);
-      toast('No server responded - pick one from the Server list.');
+      if (LANG === 'dub') { Dub.mark(MEDIA.id, EP); paintDub(); toast('No dub found for this episode - try Sub.'); }
+      else toast('No server responded - pick one from the Server list.');
     }
   }, 9000);
 
@@ -256,7 +264,8 @@ function onPlayerMessage(e) {
       mountPlayer();
     } else {
       setHelp(true);
-      toast('Playback error - try another server or reload.');
+      if (LANG === 'dub') { Dub.mark(MEDIA.id, EP); paintDub(); toast('No dub found for this episode - try Sub.'); }
+      else toast('Playback error - try another server or reload.');
     }
     return;
   }
@@ -266,6 +275,7 @@ function onPlayerMessage(e) {
     clearTimeout(readyTimer);
     autoTried = 0;
     markAlive(currentServer().id);
+    if (LANG === 'dub') { Dub.clear(MEDIA.id, EP); paintDub(); }
     const l = $('#player-loading'); if (l) l.remove();
   }
 }

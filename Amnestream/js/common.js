@@ -358,6 +358,21 @@ const Store = {
    every minute while open, and a moment after each change. Merge rules: progress keeps the newest entry per title, seen episodes and daily
    activity are combined, the list and favourites follow whichever device changed them last (so removing a title sticks), and "Clear watch
    history" wins over older data. A guest's local data is combined with the account on first login. */
+/* Dub availability: neither AniList nor the player provider says whether an English dub exists, so the site learns it.
+   When the player cannot start a dub on any server, that episode's DUB is remembered (7 days) and shown crossed out; it clears itself if a dub ever plays. */
+const Dub = {
+  _m: () => jget('as_nodub', {}),
+  missing(id, ep) { const t = Dub._m()[id + ':' + ep]; return !!t && t > Date.now(); },
+  mark(id, ep) {
+    const m = Dub._m(), now = Date.now();
+    m[id + ':' + ep] = now + 7 * 864e5;
+    const keys = Object.keys(m);
+    if (keys.length > 300) keys.forEach(k => { if (m[k] < now) delete m[k]; });
+    jset('as_nodub', m);
+  },
+  clear(id, ep) { const m = Dub._m(); if (m[id + ':' + ep]) { delete m[id + ':' + ep]; jset('as_nodub', m); } },
+};
+
 const Sync = {
   _p: null, _again: false, _t: 0, _poll: 0, off: '',
   meta: () => jget('as_sync', {}),

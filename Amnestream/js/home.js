@@ -168,8 +168,8 @@ const DISCOVER = [
   { key: 'top',       label: 'Top rated',       desc: 'Highest rated of all time', ic: 'star' },
 ];
 let discoverKey = 'topAiring', LATEST_ITEMS = null;       // null means still loading
-/* Phones (same breakpoint as the bottom nav) show 15 titles in Discover; larger screens show everything */
-const DISCOVER_MOBILE_MAX = 15, mobileMQ = window.matchMedia('(max-width:900px)');
+/* Phones (same breakpoint as the bottom nav) show 12 titles in Discover (4 full rows of 3); larger screens show whole rows only */
+const DISCOVER_MOBILE_MAX = 12, mobileMQ = window.matchMedia('(max-width:900px)');
 const discoverCap = list => mobileMQ.matches ? (list || []).slice(0, DISCOVER_MOBILE_MAX) : list;
 if (mobileMQ.addEventListener) mobileMQ.addEventListener('change', () => setDiscover(discoverKey));
 function setDiscover(key) {
@@ -188,7 +188,20 @@ function setDiscover(key) {
     else if (!LATEST_ITEMS.length) grid.innerHTML = '<p class="empty">Couldn\'t load the latest episodes. Try again in a moment.</p>';
     else grid.innerHTML = `<div class="grid">${discoverCap(LATEST_ITEMS).map(latestCardHTML).join('')}</div>`;
   } else grid.innerHTML = gridHTML(discoverCap(RAILS[key]));
+  trimRows();
 }
+/* Hide the leftover cards of an incomplete last row, so Discover never ends with a half-empty row; re-checked when the width changes */
+function trimRows() {
+  const g = $('#discover-grid .grid');
+  if (!g) return;
+  const cards = [...g.children];
+  cards.forEach(c => { c.style.display = ''; });
+  const cols = getComputedStyle(g).gridTemplateColumns.split(' ').filter(Boolean).length || 1;
+  const keep = cards.length >= cols ? Math.floor(cards.length / cols) * cols : cards.length;
+  cards.slice(keep).forEach(c => { c.style.display = 'none'; });
+}
+let _trimT = 0;
+addEventListener('resize', () => { clearTimeout(_trimT); _trimT = setTimeout(trimRows, 120); });
 function wireDiscoverPicker() {
   const btn = $('#discover-btn'), pop = $('#discover-pop'), back = $('#discover-back');
   pop.innerHTML = DISCOVER.map(d => `
