@@ -16,6 +16,7 @@ const Fav = {
     const l = Fav.ids(), i = l.indexOf(id);
     if (i > -1) l.splice(i, 1); else l.unshift(id);
     jset('as_fav', l.slice(0, 500));
+    Sync.touch('fav');
     return i === -1;
   },
 };

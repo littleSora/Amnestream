@@ -19,6 +19,11 @@ async function initHome() {
   $('#genre-cloud').innerHTML = visibleGenres().map(g =>
     `<a href="browse.html?genre=${encodeURIComponent(g)}">${g}</a>`).join('');
   renderContinue();
+  document.addEventListener('as:synced', renderContinue);      // Progress arrived from another device
+  if ('IntersectionObserver' in window) {                       // Sync again each time Continue watching comes into view
+    new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) Sync.view(); }, { threshold: 0.2 }).observe($('#rail-continue'));
+  }
+  placeTop10();
   wireTabs();
   initSchedule();
 
@@ -134,6 +139,21 @@ function renderHero(items) {
   hero.addEventListener('mouseenter', () => clearInterval(heroTimer));
   hero.addEventListener('mouseleave', restart);
   restart();
+}
+
+/* Phones: the Top 10 card sits at the bottom of the page, right above Genres; larger screens keep it beside the spotlight */
+const topMQ = window.matchMedia('(max-width:900px)');
+function placeTop10() {
+  const card = $('.bento-side .side-card') || $('.home-side .side-sticky > #top-card');
+  const side = $('.bento-side'), dock = $('.home-side .side-sticky');
+  if (!card || !side || !dock) return;
+  card.id = 'top-card';
+  const apply = () => {
+    if (topMQ.matches) { dock.insertBefore(card, dock.firstElementChild); side.hidden = true; }
+    else { side.appendChild(card); side.hidden = false; }
+  };
+  apply();
+  if (topMQ.addEventListener) topMQ.addEventListener('change', apply);
 }
 
 function wireTabs() {

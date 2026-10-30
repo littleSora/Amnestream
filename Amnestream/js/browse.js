@@ -281,6 +281,42 @@ function updateFilterHint(empty) {
   };
 }
 
+/* Pager: Prev / Next. Hovering or touching Next starts loading that page early, so the click usually finds it ready */
+function paintPager(pageInfo) {
+  $('#pager').innerHTML = pageInfo.lastPage > 1 ? `
+    <button id="pg-prev" ${pageInfo.currentPage === 1 ? 'disabled' : ''}>&lsaquo; Prev</button>
+    <span class="muted">Page ${pageInfo.currentPage} of ${pageInfo.lastPage}</span>
+    <button id="pg-next" ${!pageInfo.hasNextPage ? 'disabled' : ''}>Next &rsaquo;</button>` : '';
+  if ($('#pg-prev')) $('#pg-prev').onclick = () => { page--; load(); scrollTo(0, 0); };
+  const next = $('#pg-next');
+  if (next) {
+    next.onclick = () => { page++; load(); scrollTo(0, 0); };
+    const warm = () => fetchBrowse(browseVars(page + 1), page + 1, { lazy: true }).catch(() => {});
+    next.addEventListener('pointerenter', warm, { once: true });
+    next.addEventListener('touchstart', warm, { once: true, passive: true });
+  }
+}
+function prefetchNext(ctrl, pageInfo) {
+  if (!pageInfo.hasNextPage) return;
+  const idle = window.requestIdleCallback ? fn => requestIdleCallback(fn, { timeout: 500 }) : fn => setTimeout(fn, 300);
+  idle(() => { if (ctrl === browseCtrl) fetchBrowse(browseVars(page + 1), page + 1, { lazy: true }).catch(() => {}); });
+}
+/* Popularity listings that hit AniList's 5000 cap: count the rest in the background, then fix the count and the page total */
+function countCapped(ctrl, pageInfo, vars) {
+  clearTimeout(countTimer); if (countCtrl) countCtrl.abort();
+  const token = ++countToken, el = $('#result-count');
+  el.textContent = 'Counting...';
+  Api.deepInfo(vars, pageInfo.currentPage).then(info => {
+    if (ctrl !== browseCtrl || token !== countToken) return;
+    showCount(info, vars);
+    paintPager({ ...pageInfo, ...info, hasNextPage: info.hasNextPage });
+    prefetchNext(ctrl, info);
+  }).catch(err => {
+    if (err?.name === 'AbortError' || ctrl !== browseCtrl || token !== countToken) return;
+    showCount(pageInfo, vars);                                                  // Counting failed: fall back to the older count
+  });
+}
+
 async function load() {
   if (browseCtrl) browseCtrl.abort();             // Drop the stale request
   const ctrl = browseCtrl = new AbortController();
@@ -306,26 +342,16 @@ async function load() {
         ? `<div class="grid">${media.map(m => latestCardHTML({ m, ep: m.__ep, at: m.__at })).join('')}</div>`
         : '<p class="empty">No episodes matched those filters.</p>';
     } else {
-      showCount(pageInfo, browseVars(page));
+      if (pageInfo.capped) countCapped(ctrl, pageInfo, browseVars(page));            // Exact total arrives a moment later, without holding up the page
+      else showCount(pageInfo, browseVars(page));
       box.innerHTML = gridHTML(media, 'No anime matched those filters.');
     }
     updateFilterHint(!media.length);
     box.classList.remove('is-loading'); box.style.minHeight = '';
     Reveal.watch(box, '.card');
 
-    $('#pager').innerHTML = pageInfo.lastPage > 1 ? `
-      <button id="pg-prev" ${pageInfo.currentPage === 1 ? 'disabled' : ''}>&lsaquo; Prev</button>
-      <span class="muted">Page ${pageInfo.currentPage} of ${pageInfo.lastPage}</span>
-      <button id="pg-next" ${!pageInfo.hasNextPage ? 'disabled' : ''}>Next &rsaquo;</button>` : '';
-
-    if ($('#pg-prev')) $('#pg-prev').onclick = () => { page--; load(); scrollTo(0, 0); };
-    if ($('#pg-next')) $('#pg-next').onclick = () => { page++; load(); scrollTo(0, 0); };
-
-    // Warm the cache for the next page
-    if (pageInfo.hasNextPage) {
-      const idle = window.requestIdleCallback || (fn => setTimeout(fn, 1200));
-      idle(() => { if (ctrl === browseCtrl) fetchBrowse(browseVars(page + 1), page + 1, { lazy: true }).catch(() => {}); });
-    }
+    paintPager(pageInfo);
+    prefetchNext(ctrl, pageInfo);
   } catch (err) {
     if (err.name === 'AbortError' || ctrl !== browseCtrl) return;
     box.classList.remove('is-loading'); box.style.minHeight = '';

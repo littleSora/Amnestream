@@ -34,4 +34,5 @@ function paintProfile() {
 document.addEventListener('DOMContentLoaded', () => {
   paintProfile();
   Store.fillTitles().then(changed => { if (changed) paintProfile(); });
+  document.addEventListener('as:synced', paintProfile);                // Another device changed your data
 });

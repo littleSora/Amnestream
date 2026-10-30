@@ -37,7 +37,7 @@ Notes:
 
 - Passwords are handled by Supabase (never stored by the site). Each user can only read and edit their own profile.
 - "Remember me" off keeps the login only until the tab closes.
-- Watchlist, progress and settings still live in each browser (use the Sync code in Settings to move them).
+- **Cloud sync:** while signed in, your list, favourites, Continue watching progress and watch history sync through the `user_data` table, so every device shows the same data. Run `supabase/sync.sql` once in the Supabase SQL editor to create it. Settings still live per browser (use the Sync code in Settings to move them).
 - The supabase-js library loads from jsDelivr only when someone is signed in or opens the login popup.
 
 ## Pages
