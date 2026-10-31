@@ -1,25 +1,26 @@
-/* Settings: everything saves to this device as you change it */
-const G = { rose:'linear-gradient(120deg,#e11d48,#ff4d79)', amber:'linear-gradient(120deg,#d97706,#fb923c)', blue:'linear-gradient(120deg,#2563eb,#38bdf8)',
-  purple:'linear-gradient(120deg,#7c3aed,#c084fc)', green:'linear-gradient(120deg,#059669,#34d399)', gray:'linear-gradient(120deg,#52525b,#a1a1aa)', slate:'linear-gradient(120deg,#334155,#64748b)' };
-const GC = { rose:'#fb7185', amber:'#fb923c', blue:'#60a5fa', purple:'#c084fc', green:'#34d399', gray:'#d4d4d8', slate:'#94a3b8' };
+/* Settings: everything saves to this device as you change it.
+   Two layouts share the same settings and controls: Modern (the Stage: click the part of a miniature site you want to change) and Classic (stacked panels with a live preview). */
 
 const THEMES = [['sakura','Atlas','#181c25','#9db4ff'],['midnight','Midnight','#0e1420','#60a5fa'],['crimson','Crimson','#1a0d0f','#f43f5e'],
   ['emerald','Emerald','#0c1713','#34d399'],['amoled','AMOLED','#000','#ffffff'],['sunset','Sunset','#1a100a','#fb923c'],
   ['amber','Amber','#191309','#fbbf24'],['galaxy','Galaxy','#130d1d','#a78bfa'],['ocean','Ocean','#0a161b','#22d3ee']];
+const ACCENTS = ['#9db4ff', '#f472b6', '#fb923c', '#fbbf24', '#34d399', '#22d3ee', '#a78bfa', '#f43f5e'];
 
 const ALL_SECTIONS = [
   { id: 'playback', name: 'Playback', sub: 'What happens when you press play', ic: 'play', g: 'rose', items: [
     { t: 'toggle', k: 'autonext', ic: 'skip', n: 'Autonext', d: 'Play the next episode when this one ends' },
-    { t: 'toggle', k: 'resume', ic: 'clock', n: 'Resume where you left off', d: 'Watch button on details pages continues from your last episode' },
+    { t: 'toggle', k: 'resume', ic: 'clock', n: 'Resume where you left off', d: 'The Watch button on details pages continues from your last episode' },
     { t: 'seg', k: 'audio', ic: 'mic', n: 'Default audio', d: 'Japanese with subtitles, or the English dub when there is one', full: 1, opts: [['sub', 'Sub'], ['dub', 'Dub']] },
   ] },
-  { id: 'appearance', name: 'Appearance', sub: 'Colours, titles and episode lists', ic: 'palette', g: 'purple', items: [
-    { t: 'themes', ic: 'palette', n: 'Theme', d: 'Colour scheme for the whole site, saved on this device', kw: 'color colour scheme dark light', full: 1 },
+  { id: 'appearance', name: 'Appearance', sub: 'Colours, titles, posters and episode lists', ic: 'palette', g: 'purple', items: [
+    { t: 'themes', ic: 'palette', n: 'Theme', d: 'Colour scheme for the whole site', kw: 'color colour scheme dark light', full: 1 },
+    { t: 'accent', ic: 'sliders', n: 'Accent colour', d: 'Buttons, highlights and progress. Overrides the theme\'s accent', kw: 'color colour custom highlight', full: 1 },
     { t: 'seg', k: 'titleLang', ic: 'lang', n: 'Title language', d: 'How anime names show across the site', full: 1, opts: [['english', 'English'], ['romaji', 'Romaji']] },
+    { t: 'seg', k: 'cardSize', ic: 'grid', n: 'Poster size', d: 'Size of posters in grids and rows on computers. Phones always show three across', full: 1, opts: [['small', 'Small'], ['normal', 'Normal'], ['large', 'Large']] },
     { t: 'seg', k: 'epOrder', ic: 'sort', n: 'Episode order', d: 'Which end of the episode list comes first', full: 1, opts: [['asc', 'First to latest'], ['desc', 'Latest first']] },
     { t: 'seg', k: 'epStyle', ic: 'grid', n: 'Episode list style', d: 'On details pages', full: 1, opts: [['list', 'Cards'], ['compact', 'Compact'], ['grid', 'Numbers']] },
     { t: 'toggle', k: 'continueRow', ic: 'clock', n: 'Continue watching row', d: 'Show your recent episodes at the top of the homepage' },
-    { t: 'toggle', k: 'hoverTrailer', ic: 'film', n: 'Trailer preview on hover', d: 'Hover a poster for a floating card that autoplays the trailer (desktop only)' },
+    { t: 'toggle', k: 'hoverTrailer', ic: 'film', n: 'Trailer preview on hover', d: 'Hover a poster for a floating card that autoplays the trailer (computers only)' },
     { t: 'toggle', k: 'reduceMotion', ic: 'ghost', n: 'Reduce motion', d: 'Turn off animations and transitions across the site' },
   ] },
   { id: 'privacy', name: 'Content and privacy', sub: 'What you see and what gets saved', ic: 'shield', g: 'green', items: [
@@ -27,109 +28,490 @@ const ALL_SECTIONS = [
     { t: 'toggle', k: 'incognito', ic: 'eye', n: 'Incognito mode', d: 'Pause watch history and activity tracking' },
     { t: 'toggle', k: 'hideSpoilers', ic: 'eye', n: 'Hide spoilers', d: 'Blur thumbnails and titles of episodes you haven\'t watched yet' },
   ] },
-  { id: 'account', name: 'Account', sub: 'Your public profile', ic: 'user', g: 'gray', items: [{ t: 'account', n: 'Profile', d: 'Display name, username, avatar and bio', kw: 'account profile name username bio avatar picture', full: 1 }] },
-  { id: 'data', name: 'Data and about', sub: 'Backups, your list and the fine print', ic: 'database', g: 'slate', items: [
-    { t: 'btn', ic: 'database', n: 'Backup', d: 'Save your settings, list and history to a file', label: 'Export', act: 'export', full: 1 },
-    { t: 'btn', ic: 'database', n: 'Restore backup', d: 'Load a file exported from here', label: 'Import', act: 'import', full: 1 },
-    { t: 'btn', ic: 'link', n: 'Sync code', d: 'Copy a code to move your list and history to another device', label: 'Copy code', act: 'synccopy', full: 1 },
+  { id: 'sync', name: 'Sync and devices', sub: 'Keep Continue watching the same everywhere', ic: 'cloud', g: 'blue', items: [
+    { t: 'syncstatus', n: 'Cloud sync', d: 'Your list, progress and history follow your account', kw: 'cloud sync devices account continue watching', full: 1 },
+    { t: 'btn', ic: 'link', n: 'Sync code', d: 'Copy a code to move your list and history to another device without an account', label: 'Copy code', act: 'synccopy', full: 1 },
     { t: 'btn', ic: 'link', n: 'Use a sync code', d: 'Paste a code from another device. It is merged with what you have here', label: 'Paste code', act: 'syncpaste', full: 1 },
+  ] },
+  { id: 'account', name: 'Account', sub: 'Your public profile and password', ic: 'user', g: 'gray', items: [
+    { t: 'account', n: 'Profile', d: 'Display name, username, avatar and bio', kw: 'account profile name username bio avatar picture', full: 1 },
+    { t: 'password', n: 'Change password', d: 'At least 6 characters', kw: 'password security login', full: 1 },
+  ] },
+  { id: 'data', name: 'Data and storage', sub: 'Backups, what this device stores and cleanup', ic: 'database', g: 'slate', items: [
+    { t: 'storage', n: 'Storage on this device', d: 'What Amnestream keeps in this browser', kw: 'storage cache space size', full: 1 },
+    { t: 'btn', ic: 'refresh', n: 'Clear cached data', d: 'Removes saved search results and cached posters. Your list, history and settings stay', label: 'Clear cache', act: 'clearcache', full: 1, kw: 'cache storage free space' },
+    { t: 'btn', ic: 'download', n: 'Backup', d: 'Save your settings, list and history to a file', label: 'Export', act: 'export', full: 1 },
+    { t: 'btn', ic: 'download', n: 'Restore backup', d: 'Load a file exported from here', label: 'Import', act: 'import', full: 1 },
     { t: 'btn', ic: 'clock', n: 'Clear watch history', d: 'Empties Continue watching and resume points. Your list stays', label: 'Clear', act: 'clearhist', full: 1 },
-    { t: 'btn', ic: 'trash', n: 'Reset settings', d: 'Everything on this page back to defaults', label: 'Reset', act: 'reset', full: 1 },
+    { t: 'btn', ic: 'trash', n: 'Reset settings', d: 'Everything on the Settings page back to defaults', label: 'Reset', act: 'reset', full: 1 },
+    { t: 'btn', ic: 'trash', n: 'Delete all local data', d: 'Removes profile, list, history and settings from this browser', label: 'Delete', act: 'wipe', full: 1, danger: 1 },
+  ] },
+  { id: 'about', name: 'About and shortcuts', sub: 'Keyboard shortcuts and the fine print', ic: 'info', g: 'slate', items: [
+    { t: 'keys', n: 'Keyboard shortcuts', d: 'Faster ways around the site', kw: 'keyboard shortcuts keys hotkeys', full: 1 },
     { t: 'info', n: 'About', d: 'Settings are stored on this device', kw: 'about local storage browser', full: 1 },
     { t: 'link', ic: 'info', n: 'DMCA and copyright', d: 'How copyright owners can send a takedown notice', label: 'Read', href: 'dmca.html', kw: 'dmca copyright takedown legal disclaimer', full: 1 },
-    { t: 'btn', ic: 'trash', n: 'Delete all local data', d: 'Removes profile, list, history and settings from this browser', label: 'Delete', act: 'wipe', full: 1, danger: 1 },
   ] },
 ];
 /* Account section is for signed-in users only */
 const SECTIONS = ALL_SECTIONS.filter(s => s.id !== 'account' || !!Auth.session());
 let CUR = new URLSearchParams(location.search).get('s') || 'playback';
 let Q = '';   // Text in "Search settings"
+const isModern = () => Settings.get().uiMode !== 'classic';
 
 const hayOf = (it, sec) => ((it.n || '') + ' ' + (it.d || '') + ' ' + (it.kw || '') + ' ' + sec.name).toLowerCase();
 /* What a segmented control currently shows (default audio can also change from the player, saved as as_lang) */
 const segValue = (it, s) => it.k === 'audio' ? (localStorage.getItem('as_lang') || s.audio) : s[it.k];
 
-function rowHTML(it, sec) {
-  const s = Settings.get(), st = `style="--g-c:${GC[sec.g]}"`;
-  const head = it.ic ? `<div class="sq" ${st}>${icon(it.ic, 16)}</div>` : '';
-  const txt = `<div class="set-txt"><strong>${it.n}</strong><span class="d">${it.d || ''}</span></div>`;
-  const cls = `set-row ${it.full ? 'full' : ''} ${it.danger ? 'danger' : ''}`;
+/* ---------- Pieces shared by both layouts ---------- */
+const ago = t => {
+  if (!t) return 'never';
+  const s = Math.max(1, Math.round((Date.now() - t) / 1000));
+  return s < 60 ? 'just now' : s < 3600 ? Math.round(s / 60) + ' min ago' : s < 86400 ? Math.round(s / 3600) + ' h ago' : Math.round(s / 86400) + ' d ago';
+};
+const kb = n => n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(1) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
+function storageStats() {
+  const size = k => { try { return ((k.length + (localStorage.getItem(k) || '').length) * 2); } catch { return 0; } };
+  const keys = Object.keys(localStorage);
+  const sum = list => list.reduce((n, k) => n + size(k), 0);
+  const cache = keys.filter(k => k.startsWith('as_plan:')).reduce((n, k) => n + size(k), 0) +
+    Object.keys(sessionStorage).filter(k => k.startsWith('al:')).reduce((n, k) => n + (k.length + (sessionStorage.getItem(k) || '').length) * 2, 0);
+  return [
+    ['Watch history', sum(['as_progress', 'as_seen', 'as_activity'])],
+    ['List and favourites', sum(['as_list', 'as_fav'])],
+    ['Settings and profile', sum(['as_settings', 'as_user', 'as_lang', 'as_server', 'as_browse_last', 'as_browse_presets', 'as_sync', 'as_nodub'])],
+    ['Cached data', cache],
+  ];
+}
+function syncStatusHTML() {
+  const me = Auth.session();
+  if (!me) return `<div class="sy-line"><span class="sy-dot off"></span><div><strong>Not signed in</strong><span class="d">Log in to keep your list and Continue watching the same on your phone and computer.</span></div></div><button class="btn-sm" data-act="login">Log in</button>`;
+  if (Sync.off === 'missing') return `<div class="sy-line"><span class="sy-dot bad"></span><div><strong>Cloud sync isn't set up yet</strong><span class="d">The sync table is missing on the server. Run supabase/sync.sql once in the Supabase SQL editor.</span></div></div>`;
+  const at = Number(localStorage.getItem('as_sync_at')) || 0;
+  return `<div class="sy-line"><span class="sy-dot ${at ? 'ok' : 'wait'}"></span><div><strong>${at ? 'Synced ' + ago(at) : 'Waiting for the first sync'}</strong><span class="d">Signed in as @${esc(me.username)}. Checks when a page opens and saves a moment after you change something.</span></div></div><button class="btn-sm" data-act="syncnow">Sync now</button>`;
+}
+function storageHTML() {
+  const st = storageStats(), max = Math.max(1, ...st.map(x => x[1]));
+  return `<div class="st-list">${st.map(([n, b]) => `<div class="st-row"><span>${n}</span><i><b style="width:${Math.max(2, Math.round(b / max * 100))}%"></b></i><em>${kb(b)}</em></div>`).join('')}</div>`;
+}
+const KEYS_HELP = [['/', 'Open search'], ['Esc', 'Close search, menus and pop-ups'], ['Enter', 'Open the highlighted search result'], ['←  →', 'Previous or next episode in the episode preview'], ['↑  ↓', 'Move through search results and menus']];
+const keysHTML = () => `<dl class="keys">${KEYS_HELP.map(([k, d]) => `<div><dt><kbd>${k}</kbd></dt><dd>${d}</dd></div>`).join('')}</dl>`;
+function accountFormHTML() {
+  const u = User.get();
+  return `<div class="acct-av">${avatarHTML(78)}</div>
+    <div class="set-col">
+      <div class="acct-two">
+        <label class="set-lbl">Display name<input class="set-in" id="a-name" value="${esc(u.name)}" maxlength="30"></label>
+        <label class="set-lbl">Username<input class="set-in" id="a-user" value="${esc(u.username)}" maxlength="20"></label>
+      </div>
+      <label class="set-lbl">Avatar image URL (optional)<input class="set-in" id="a-avatar" value="${esc(u.avatar)}" placeholder="https://..."></label>
+      <label class="set-lbl">Bio<textarea class="set-in" id="a-bio" maxlength="160">${esc(u.bio)}</textarea></label>
+      <div><button class="btn btn-primary" id="a-save">Save changes</button></div>
+    </div>`;
+}
+const passwordFormHTML = () => `<div class="set-col">
+  <div class="acct-two">
+    <label class="set-lbl">New password<input class="set-in" id="pw-1" type="password" autocomplete="new-password"></label>
+    <label class="set-lbl">Confirm password<input class="set-in" id="pw-2" type="password" autocomplete="new-password"></label>
+  </div>
+  <div><button class="btn btn-ghost" data-act="changepw">Update password</button></div></div>`;
+const aboutHTML = () => `<p class="d" style="margin:0;line-height:1.55">Settings, list and history are stored <b>on this device</b> (browser storage). Your account (login, profile and, once signed in, your list and progress) is stored online so it works on every device. ${SITE_NAME} doesn't host any video files; it links to third-party sources.</p>`;
+
+/* The control on the right of a simple row, same markup in both layouts (CSS decides how it looks) */
+function ctlHTML(it, s) {
   switch (it.t) {
-    case 'toggle': return `<div class="${cls}">${head}${txt}<button class="toggle ${s[it.k] ? 'on' : ''}" data-k="${it.k}" role="switch" aria-checked="${!!s[it.k]}" aria-label="${it.n}"></button></div>`;
-    case 'seg': { const cur = segValue(it, s); return `<div class="${cls}">${head}${txt}<div class="segc">${it.opts.map(([v, l]) => `<button class="${cur === v ? 'on' : ''}" data-k="${it.k}" data-v="${v}">${l}</button>`).join('')}</div></div>`; }
-    case 'themes': return `<div class="${cls}" style="flex-wrap:wrap">${head}${txt}<div class="themes">${THEMES.map(([id, n, b, a]) =>
-      `<button class="theme-opt ${s.theme === id ? 'on' : ''}" data-theme-pick="${id}" style="--tb:${b};--ta:${a}"><i></i>${n}</button>`).join('')}</div></div>`;
-    case 'btn': return `<div class="${cls}">${head}${txt}<button class="btn-sm ${it.danger ? 'btn-danger' : ''}" data-act="${it.act}">${it.label}</button></div>`;
-    case 'link': return `<div class="${cls}">${head}${txt}<a class="btn-sm" href="${it.href}">${it.label}</a></div>`;
-    case 'info': return `<div class="${cls}"><div class="sq" ${st}>${icon('info', 16)}</div><div class="set-txt"><strong>About ${SITE_NAME}</strong><span class="d">Settings, list and history are stored <b>on this device</b> (browser storage); your account (login and profile) is stored online so it works on every device. ${SITE_NAME} doesn't host any video files; it links to third-party sources.</span></div></div>`;
-    case 'account': { const u = User.get(); return `<div class="${cls} acct">
-      <div class="acct-av">${avatarHTML(78)}</div>
-      <div class="set-col">
-        <div class="acct-two">
-          <label class="set-lbl">Display name<input class="set-in" id="a-name" value="${esc(u.name)}" maxlength="30"></label>
-          <label class="set-lbl">Username<input class="set-in" id="a-user" value="${esc(u.username)}" maxlength="20"></label>
-        </div>
-        <label class="set-lbl">Avatar image URL (optional)<input class="set-in" id="a-avatar" value="${esc(u.avatar)}" placeholder="https://..."></label>
-        <label class="set-lbl">Bio<textarea class="set-in" id="a-bio" maxlength="160">${esc(u.bio)}</textarea></label>
-        <div><button class="btn btn-primary" id="a-save">Save changes</button></div>
-      </div></div>`; }
+    case 'toggle': return `<button class="toggle ${s[it.k] ? 'on' : ''}" data-k="${it.k}" role="switch" aria-checked="${!!s[it.k]}" aria-label="${it.n}"><span>${s[it.k] ? 'On' : 'Off'}</span></button>`;
+    case 'seg': { const cur = segValue(it, s), i = Math.max(0, it.opts.findIndex(o => o[0] === cur));
+      return `<div class="segc" style="--n:${it.opts.length};--i:${i}">${it.opts.map(([v, l]) => `<button class="${cur === v ? 'on' : ''}" data-k="${it.k}" data-v="${v}">${l}</button>`).join('')}</div>`; }
+    case 'btn': return `<button class="btn-sm ${it.danger ? 'btn-danger' : ''}" data-act="${it.act}">${it.label}</button>`;
+    case 'link': return `<a class="btn-sm" href="${it.href}">${it.label}</a>`;
   }
   return '';
 }
-
-/* Page: sidebar once, then only banner and rows redraw so search keeps focus */
-function render() {
-  const u = User.get();
-  $('#page').innerHTML = `<div class="set-layout">
-    <aside class="set-side">
-      <div class="set-prof"><div class="me">${avatarHTML(38)}<div><strong>${esc(u.name)}</strong><span>@${esc(u.username)}</span></div></div></div>
-      <div class="set-search">${icon('search', 14)}<input id="set-q" placeholder="Search settings" aria-label="Search settings" value="${esc(Q)}"></div>
-      <div class="set-nav">${SECTIONS.map(s => `<button data-sec="${s.id}"><span class="sq" style="--g:${G[s.g]}">${icon(s.ic, 15)}</span>${s.name}</button>`).join('')}</div>
-      <p class="set-note">Changes save as you make them.</p>
-    </aside>
-    <section>
-      <div class="set-banner" id="banner"></div>
-      <div class="set-rows" id="rows"></div>
-    </section>
-  </div>`;
-  $$('[data-sec]').forEach(b => b.onclick = () => {
-    CUR = b.dataset.sec; Q = ''; $('#set-q').value = '';
-    history.replaceState(null, '', '?s=' + CUR); renderMain();
-  });
-  $('#set-q').oninput = e => { Q = e.target.value; renderMain(); };
-  $('#set-q').onkeydown = e => { if (e.key === 'Escape' && Q) { Q = ''; e.target.value = ''; renderMain(); } };
-  renderMain();
+function themesHTML(s) {
+  return `<div class="themes">${THEMES.map(([id, n, b, a]) =>
+    `<button class="theme-opt ${s.theme === id ? 'on' : ''}" data-theme-pick="${id}" style="--tb:${b};--ta:${a}"><i></i><em class="tm-bar"></em>${n}</button>`).join('')}</div>`;
 }
-
-function renderMain() {
-  const q = Q.trim().toLowerCase(), sec = SECTIONS.find(s => s.id === CUR) || SECTIONS[0];
-  const banner = $('#banner'), rows = $('#rows');
-  $$('[data-sec]').forEach(b => b.classList.toggle('on', !q && b.dataset.sec === sec.id));
-  if (q) {                                                  // Search looks through every section, not just the open one
-    const hits = SECTIONS.flatMap(sc => sc.items.filter(it => hayOf(it, sc).includes(q)).map(it => [it, sc]));
-    banner.style.setProperty('--g', G.blue);
-    banner.innerHTML = `<div class="sq">${icon('search', 20)}</div><h1>Search results</h1><p>${hits.length} setting${hits.length === 1 ? '' : 's'} matching "${esc(Q.trim())}"</p>`;
-    rows.innerHTML = hits.length ? hits.map(([it, sc]) => rowHTML(it, sc)).join('') : '<p class="empty" style="grid-column:1/-1">No settings match that.</p>';
-  } else {
-    banner.style.setProperty('--g', G[sec.g]);
-    banner.innerHTML = `<div class="sq">${icon(sec.ic, 20)}</div><h1>${sec.name}</h1><p>${sec.sub}</p>`;
-    rows.innerHTML = sec.items.map(i => rowHTML(i, sec)).join('');
+function accentHTML(s) {
+  const cur = (s.accent || '').toLowerCase();
+  return `<div class="accents">${ACCENTS.map(c => `<button class="acc-dot ${cur === c ? 'on' : ''}" data-accent="${c}" style="--c:${c}" aria-label="Accent ${c}"></button>`).join('')}
+    <label class="acc-custom ${cur && !ACCENTS.includes(cur) ? 'on' : ''}" title="Pick any colour"><input type="color" id="acc-pick" value="${/^#[0-9a-f]{6}$/i.test(cur) ? cur : '#9db4ff'}"><span>Custom</span></label>
+    <button class="btn-sm" data-accent="" ${cur ? '' : 'disabled'}>Use theme colour</button></div>`;
+}
+/* Body of any item that is more than a label and a control */
+function bodyHTML(it, s) {
+  switch (it.t) {
+    case 'themes': return themesHTML(s);
+    case 'accent': return accentHTML(s);
+    case 'syncstatus': return `<div class="sy" id="sync-status">${syncStatusHTML()}</div>`;
+    case 'storage': return `<div id="storage-box">${storageHTML()}</div>`;
+    case 'keys': return keysHTML();
+    case 'info': return aboutHTML();
+    case 'account': return `<div class="acct">${accountFormHTML()}</div>`;
+    case 'password': return passwordFormHTML();
   }
-  wireRows();
+  return '';
 }
+const BODY_TYPES = ['themes', 'accent', 'syncstatus', 'storage', 'keys', 'info', 'account', 'password'];
+
+/* ---------- Layout switch (both layouts) ---------- */
+function uiSwitchHTML() {
+  const m = isModern();
+  return `<div class="uiswitch" role="group" aria-label="Page layout"><span class="uis-l">Layout</span>
+    <div class="segc" style="--n:2;--i:${m ? 0 : 1}"><button data-ui-pick="modern" class="${m ? 'on' : ''}">Modern</button><button data-ui-pick="classic" class="${m ? '' : 'on'}">Classic</button></div></div>`;
+}
+function wireSwitch() {
+  $$('[data-ui-pick]').forEach(b => b.onclick = () => { if (Settings.get().uiMode === b.dataset.uiPick) return; Settings.set('uiMode', b.dataset.uiPick); document.body.classList.remove('stg-open'); render(); window.scrollTo({ top: 0 }); });
+}
+
+/* ---------- Classic layout (stacked panels, jump bar, live preview) ---------- */
+function mRowHTML(it, sec) {
+  const s = Settings.get();
+  const hay = esc(hayOf(it, sec));
+  if (BODY_TYPES.includes(it.t)) {
+    const head = `<div class="mtxt"><strong>${it.n}</strong><span>${it.d || ''}</span></div>`;
+    return `<div class="mrow stack ${it.t}" data-hay="${hay}">${head}${bodyHTML(it, s)}</div>`;
+  }
+  return `<div class="mrow ${it.danger ? 'danger' : ''}" data-hay="${hay}"><div class="mtxt"><strong>${it.n}</strong><span>${it.d || ''}</span></div>${ctlHTML(it, s)}</div>`;
+}
+function renderPanels() {
+  $('#page').innerHTML = `<div class="mset">
+    <header class="mset-top">
+      <div><h1>Settings</h1><p>Changes save on this device as you make them.</p></div>
+      ${uiSwitchHTML()}
+    </header>
+    <div class="mset-bar">
+      <nav class="mset-jump" aria-label="Sections">${SECTIONS.map(s => `<a href="#sec-${s.id}" data-jump="${s.id}">${s.name}</a>`).join('')}</nav>
+      <label class="mset-find">${icon('search', 14)}<input id="set-q" placeholder="Search settings" aria-label="Search settings" value="${esc(Q)}"></label>
+    </div>
+    <div class="mset-body">
+      <div class="mset-main" id="mmain">${SECTIONS.map(sec => `
+        <section class="mpanel" id="sec-${sec.id}" data-sec-id="${sec.id}">
+          <h2>${sec.name}</h2><p class="msub">${sec.sub}</p>
+          <div class="mrows">${sec.items.map(it => mRowHTML(it, sec)).join('')}</div>
+        </section>`).join('')}
+        <p class="mnone" id="mnone" hidden>No settings match that.</p>
+      </div>
+      <aside class="mset-prev" aria-label="Live preview"><div id="mprev"></div></aside>
+    </div>
+  </div>`;
+  wireSwitch();
+  wireRows();
+  paintPrev();
+  $('#set-q').oninput = e => { Q = e.target.value; filterPanels(); };
+  $('#set-q').onkeydown = e => { if (e.key === 'Escape' && Q) { Q = ''; e.target.value = ''; filterPanels(); } };
+  $$('[data-jump]').forEach(a => a.onclick = e => {
+    e.preventDefault();
+    const el = $('#sec-' + a.dataset.jump); if (!el) return;
+    el.scrollIntoView({ behavior: Settings.get().reduceMotion ? 'auto' : 'smooth', block: 'start' });
+    history.replaceState(null, '', '?s=' + a.dataset.jump);
+  });
+  if ('IntersectionObserver' in window) {                                // Highlight the jump chip of the section being read
+    const io = new IntersectionObserver(es => {
+      const vis = es.filter(e => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+      if (vis) $$('[data-jump]').forEach(a => a.classList.toggle('on', a.dataset.jump === vis.target.dataset.secId));
+    }, { rootMargin: '-120px 0px -60% 0px' });
+    $$('.mpanel').forEach(p => io.observe(p));
+  }
+  if (Q) filterPanels();
+  const want = new URLSearchParams(location.search).get('s');
+  if (want && $('#sec-' + want)) setTimeout(() => $('#sec-' + want).scrollIntoView({ block: 'start' }), 60);
+}
+function filterPanels() {
+  const q = Q.trim().toLowerCase();
+  let any = false;
+  $$('.mpanel').forEach(p => {
+    let n = 0;
+    $$('.mrow', p).forEach(r => { const hit = !q || r.dataset.hay.includes(q); r.hidden = !hit; if (hit) n++; });
+    p.hidden = !n; if (n) any = true;
+  });
+  $('#mnone').hidden = any;
+}
+
+
+/* ---------- Modern layout: the Stage ----------
+   A miniature of the site that reacts to every setting. Click (or tap) the part you want to change and its controls open in the inspector. */
+const REGIONS = [
+  { id: 'look', name: 'Colours and motion', ic: 'palette', desc: 'The theme and accent colour used across the whole site, and whether things animate.', pick: it => ['themes', 'accent'].includes(it.t) || it.k === 'reduceMotion' },
+  { id: 'titles', name: 'Titles', ic: 'lang', desc: 'How anime names are written on every page.', pick: it => it.k === 'titleLang' },
+  { id: 'posters', name: 'Posters and rows', ic: 'grid', desc: 'Poster size, the Continue watching row and hover previews.', pick: it => ['cardSize', 'continueRow', 'hoverTrailer'].includes(it.k) },
+  { id: 'episodes', name: 'Episode lists', ic: 'sort', desc: 'Order, style and spoilers on details pages.', pick: it => ['epOrder', 'epStyle', 'hideSpoilers'].includes(it.k) },
+  { id: 'player', name: 'Playback', ic: 'play', desc: 'What happens when you press play and when an episode ends.', pick: it => ['autonext', 'resume', 'audio'].includes(it.k) },
+  { id: 'privacy', name: 'Privacy', ic: 'shield', desc: 'What you see and what gets saved.', pick: it => ['includeAdult', 'incognito'].includes(it.k) },
+  { id: 'you', name: 'You and sync', ic: 'user', desc: 'Your account, password and keeping devices in step.', pick: it => ['syncstatus', 'account', 'password'].includes(it.t) || ['synccopy', 'syncpaste'].includes(it.act) },
+  { id: 'data', name: 'Data and about', ic: 'database', desc: 'Backups, storage, shortcuts and the fine print.', pick: it => ['storage', 'keys', 'info', 'link'].includes(it.t) || ['clearcache', 'export', 'import', 'clearhist', 'reset', 'wipe'].includes(it.act) },
+];
+const OLD_SECTION = { playback: 'player', appearance: 'look', privacy: 'privacy', sync: 'you', account: 'you', data: 'data', about: 'data' };
+let REG = '';
+const regionItems = r => SECTIONS.flatMap(sec => sec.items.filter(r.pick).map(it => ({ it, sec })));
+const STAGE_POSTERS = [['Delicious in Dungeon', 'Dungeon Meshi'], ['Kaiju No. 8', 'Kaijuu 8-gou'], ['Oshi no Ko', 'Oshi no Ko'], ['Solo Leveling', 'Ore dake Level Up na Ken'], ['Spy x Family', 'Spy x Family']];
+const STAGE_EPS = [[1, 'The Journey\'s End'], [2, 'It Didn\'t Have to Be Magic'], [3, 'Killing Magic'], [4, 'The Land Where Souls Rest'], [5, 'Phantoms of the Dead'], [6, 'Aura the Guillotine']];
+
+function stageHTML() {
+  const s = Settings.get(), u = User.get();
+  const hot = (id, cls = '') => `class="stg-hot ${cls}${REG === id ? ' sel' : ''}" data-region="${id}"`;
+  const tag = id => `<span class="stg-tag">${REGIONS.find(r => r.id === id).name}</span>`;
+  const rom = s.titleLang === 'romaji';
+  const aud = (localStorage.getItem('as_lang') || s.audio) === 'dub' ? 'Dub' : 'Sub';
+  const per = s.cardSize === 'small' ? 5 : s.cardSize === 'large' ? 3 : 4;
+  const eps = STAGE_EPS.slice(0, 5).map(([n, t]) => ({ n, t, seen: n <= 2 }));
+  if (s.epOrder === 'desc') eps.reverse();
+  const epHTML = s.epStyle === 'grid'
+    ? `<div class="stg-nums">${STAGE_EPS.concat([[7], [8], [9], [10]]).slice(0, 10).sort((a, b) => s.epOrder === 'desc' ? b[0] - a[0] : a[0] - b[0]).map(([n]) => `<b class="${n <= 2 ? 'seen' : ''}">${n}</b>`).join('')}</div>`
+    : s.epStyle === 'compact'
+      ? `<ul class="stg-compact">${eps.map(e => `<li class="${e.seen ? 'seen' : ''}"><b>${e.n}</b><span class="${!e.seen && s.hideSpoilers ? 'blur' : ''}">${esc(e.t)}</span>${e.seen ? icon('check', 12) : ''}</li>`).join('')}</ul>`
+      : `<ul class="stg-cards">${eps.slice(0, 3).map(e => `<li class="${e.seen ? 'seen' : ''}"><i class="${!e.seen && s.hideSpoilers ? 'blur' : ''}"></i><div><b>Episode ${e.n}</b><span class="${!e.seen && s.hideSpoilers ? 'blur' : ''}">${esc(e.t)}</span></div><em>${aud}</em></li>`).join('')}</ul>`;
+  return `
+  <div ${hot('look', 'stg-frame')}>${tag('look')}
+    <div ${hot('you', 'stg-nav')}>${tag('you')}
+      <b class="stg-logo">AMNE<i>STREAM</i></b><span class="stg-links"><em></em><em></em><em></em></span>
+      <span class="stg-me">${s.incognito ? `<span class="stg-ghost-ic" title="Incognito">${icon('ghost', 14)}</span>` : ''}<u class="stg-av">${esc((u.name || 'G')[0].toUpperCase())}</u></span>
+    </div>
+    <div ${hot('titles', 'stg-hero')}>${tag('titles')}
+      <div class="stg-hero-bg ${s.reduceMotion ? '' : 'move'}"></div>
+      <div class="stg-hero-in">
+        <h3>${rom ? 'Sousou no Frieren' : 'Frieren: Beyond Journey\'s End'}</h3>
+        <div class="stg-chips"><span>★ 9.3</span><span>TV</span><span>28 eps</span>${s.includeAdult ? '<span class="adult">18+ shown</span>' : ''}</div>
+        <span ${hot('look', 'stg-watch')}>${icon('play', 12)} Watch now</span>
+      </div>
+    </div>
+    <div ${hot('posters', 'stg-posters')}>${tag('posters')}
+      ${s.continueRow
+        ? `<h4>Continue watching</h4><div class="stg-rail s-${s.cardSize}">${STAGE_POSTERS.slice(0, per).map(([en, ro], i) => `<div class="stg-poster p${i}">${i === 0 && s.hoverTrailer ? `<span class="stg-prev">${icon('play', 9)} Trailer</span>` : ''}<span>${esc(rom ? ro : en)}</span></div>`).join('')}</div>`
+        : '<div class="stg-hidden">Continue watching is hidden</div>'}
+    </div>
+    <div ${hot('episodes', 'stg-eps ' + s.epStyle)}>${tag('episodes')}<h4>Episodes</h4>${epHTML}</div>
+    <div ${hot('player', 'stg-player')}>${tag('player')}
+      <span class="stg-play">${icon('play', 13)}</span><div class="stg-bar"><i></i></div>
+      <span class="pill">${aud}</span>${s.resume ? '<span class="pill">Resume Ep 8</span>' : ''}
+      <span class="pill ${s.autonext ? 'hot' : 'off'}">${s.autonext ? 'Next episode in 5s' : 'Autonext off'}</span>
+    </div>
+    <div class="stg-foot">
+      <span ${hot('privacy', 'stg-chip')}>${tag('privacy')}${icon('shield', 13)} Privacy${s.incognito ? ': history paused' : ''}</span>
+      <span ${hot('data', 'stg-chip')}>${tag('data')}${icon('database', 13)} Data and about</span>
+    </div>
+  </div>`;
+}
+function paintStage() { const m = $('#stg-mock'); if (m) m.innerHTML = stageHTML(); }
+/* Changing area only moves the highlight (the preview is not rebuilt), so the outline and corner handles can ease between parts */
+function markStage() { $$('#stg-mock [data-region]').forEach(e => e.classList.toggle('sel', e.dataset.region === REG)); }
+const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function inspectorHTML() {
+  const q = Q.trim().toLowerCase();
+  const close = `<button class="stg-x" id="stg-x" aria-label="Close panel">${icon('close', 16)}</button>`;
+  if (q) {
+    const hits = SECTIONS.flatMap(sec => sec.items.filter(it => hayOf(it, sec).includes(q)).map(it => ({ it, sec })));
+    return `<header>${close}<h2>Results</h2><p>${hits.length} setting${hits.length === 1 ? '' : 's'} matching “${esc(Q.trim())}”</p></header>
+      <div class="mrows">${hits.length ? hits.map(({ it, sec }) => mRowHTML(it, sec)).join('') : '<p class="mnone">No settings match that.</p>'}</div>`;
+  }
+  const r = REGIONS.find(x => x.id === REG);
+  if (!r) return `<header>${close}<h2>Pick something to change</h2><p>Tap any part of the preview, or choose one of the buttons above it.</p></header>`;
+  const items = regionItems(r);
+  return `<header>${close}<h2>${r.name}</h2><p>${r.desc}</p></header><div class="mrows">${items.map(({ it, sec }) => mRowHTML(it, sec)).join('')}</div>`;
+}
+/* Tab bar: one accent pill slides to the active tab, and the bar scrolls the active tab to the middle when it overflows (phones) */
+let tabsRO = null;
+function syncTabs(instant) {
+  const nav = $('#stg-tabs'); if (!nav) return;
+  const ind = $('.stg-ind', nav), on = $('button.on', nav);
+  if (!ind) return;
+  if (!on) { ind.classList.remove('show'); edgeFade(); return; }
+  const place = () => {
+    ind.style.setProperty('--x', on.offsetLeft + 'px'); ind.style.setProperty('--y', on.offsetTop + 'px');
+    ind.style.setProperty('--w', on.offsetWidth + 'px'); ind.style.setProperty('--h', on.offsetHeight + 'px');
+  };
+  if (instant || !ind.classList.contains('show') || reduceMotion()) {
+    ind.classList.add('still'); place(); void ind.offsetWidth; ind.classList.add('show');
+    requestAnimationFrame(() => ind.classList.remove('still'));
+  } else place();
+  if (nav.scrollWidth > nav.clientWidth + 1) nav.scrollTo({ left: on.offsetLeft - (nav.clientWidth - on.offsetWidth) / 2, behavior: instant || reduceMotion() ? 'auto' : 'smooth' });
+  edgeFade();
+}
+/* Soft fade on whichever side of the tab bar still has tabs hidden, so it is obvious the bar scrolls */
+function edgeFade() {
+  const nav = $('#stg-tabs'); if (!nav) return;
+  const max = nav.scrollWidth - nav.clientWidth;
+  nav.style.setProperty('--fl', max > 2 && nav.scrollLeft > 4 ? '30px' : '0px');
+  nav.style.setProperty('--fr', max > 2 && nav.scrollLeft < max - 4 ? '30px' : '0px');
+}
+function watchTabs() {
+  const nav = $('#stg-tabs'); if (!nav) return;
+  if (tabsRO) tabsRO.disconnect();
+  if (window.ResizeObserver) { tabsRO = new ResizeObserver(() => syncTabs(true)); tabsRO.observe(nav); $$('button', nav).forEach(b => tabsRO.observe(b)); }
+  nav.addEventListener('scroll', edgeFade, { passive: true });
+  /* Desktop: the mouse wheel and click-drag scroll the bar sideways (the page still scrolls once the bar reaches an end) */
+  nav.addEventListener('wheel', e => {
+    const max = nav.scrollWidth - nav.clientWidth;
+    if (max < 2 || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+    if ((e.deltaY < 0 && nav.scrollLeft <= 0) || (e.deltaY > 0 && nav.scrollLeft >= max - 1)) return;
+    e.preventDefault(); nav.scrollLeft += e.deltaY;
+  }, { passive: false });
+  let sx = 0, sl = 0, down = false, moved = false;
+  nav.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse' || e.button !== 0) return; down = true; moved = false; sx = e.clientX; sl = nav.scrollLeft; });
+  addEventListener('pointermove', e => {
+    if (!down) return;
+    const dx = e.clientX - sx;
+    if (!moved && Math.abs(dx) > 5) { moved = true; nav.classList.add('drag'); }
+    if (moved) nav.scrollLeft = sl - dx;
+  });
+  addEventListener('pointerup', () => { if (!down) return; down = false; nav.classList.remove('drag'); });
+  nav.addEventListener('click', e => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => syncTabs(true));
+}
+
+/* The inspector eases between areas: content slides in from the side the tab is on, rows follow one after another, and the panel resizes instead of jumping */
+let inspKey = null;
+function swapInspector(el, dir, h0, resize) {
+  if (reduceMotion()) return;
+  el.style.setProperty('--dir', dir);
+  $$('.mrows > *', el).forEach((c, i) => c.style.setProperty('--n', Math.min(i, 9)));
+  el.classList.remove('swap'); void el.offsetWidth; el.classList.add('swap');
+  clearTimeout(el._swapT); el._swapT = setTimeout(() => el.classList.remove('swap'), 760);
+  if (!resize) return;
+  const h1 = el.offsetHeight;
+  if (Math.abs(h1 - h0) < 2) return;
+  el.style.overflow = 'hidden'; el.style.height = h0 + 'px'; void el.offsetHeight;
+  el.style.transition = 'height .4s cubic-bezier(.22,1,.36,1)'; el.style.height = h1 + 'px';
+  clearTimeout(el._heightT);
+  el._heightT = setTimeout(() => { el.style.height = el.style.transition = el.style.overflow = ''; }, 440);
+}
+function paintInspector() {
+  const el = $('#stg-insp'); if (!el) return;
+  const key = Q.trim() ? '?q' : REG, changed = key !== inspKey;
+  const wasOpen = el.classList.contains('open'), h0 = el.offsetHeight;
+  const idx = k => REGIONS.findIndex(r => r.id === k), dir = idx(key) < idx(inspKey) ? -1 : 1;
+  clearTimeout(el._heightT); el.style.height = el.style.transition = el.style.overflow = '';
+  el.innerHTML = inspectorHTML();
+  if (changed) el.scrollTop = 0;
+  el.classList.toggle('open', !!REG || !!Q.trim());
+  document.body.classList.toggle('stg-open', !!REG || !!Q.trim());
+  $$('#stg-tabs button').forEach(b => { const on = b.dataset.region === REG && !Q.trim(); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+  syncTabs();
+  wireRows();
+  const x = $('#stg-x'); if (x) x.onclick = () => { REG = ''; Q = ''; const qi = $('#set-q'); if (qi) qi.value = ''; markStage(); paintInspector(); };
+  if (changed && inspKey !== null) swapInspector(el, dir, h0, wasOpen);
+  inspKey = key;
+}
+/* On a phone the sheet covers the lower part of the screen, so bring the chosen part of the preview up into view */
+function revealRegion(id) {
+  if (innerWidth > 900) return;
+  const t = $('#stg-mock [data-region="' + id + '"]'); if (!t) return;
+  const r = t.getBoundingClientRect(), bar = ($('#stg-tabs') || {}).offsetHeight || 0, room = innerHeight * 0.42;
+  if (r.bottom > room || r.top < bar + 8) scrollBy({ top: r.top - bar - 24, behavior: reduceMotion() ? 'auto' : 'smooth' });
+}
+function pickRegion(id) {
+  REG = id; Q = ''; const qi = $('#set-q'); if (qi) qi.value = '';
+  history.replaceState(null, '', '?s=' + id);
+  markStage(); paintInspector(); revealRegion(id);
+}
+function renderStage() {
+  const want = new URLSearchParams(location.search).get('s');
+  const fromUrl = REGIONS.some(r => r.id === want) ? want : OLD_SECTION[want] || '';
+  if (!REG) REG = fromUrl || (innerWidth > 900 ? 'look' : '');
+  $('#page').innerHTML = `<div class="stg">
+    <header class="stg-top">
+      <div><h1>Settings</h1><p>Click part of the preview to change it. Changes save on this device as you make them.</p></div>
+      ${uiSwitchHTML()}
+    </header>
+    <div class="stg-tools">
+      <nav class="stg-tabs" id="stg-tabs" aria-label="Settings areas"><span class="stg-ind" aria-hidden="true"></span>${REGIONS.map(r => `<button data-region="${r.id}" aria-pressed="false">${icon(r.ic, 14)}<span>${r.name}</span></button>`).join('')}</nav>
+      <label class="mset-find">${icon('search', 14)}<input id="set-q" placeholder="Search all settings" aria-label="Search settings" value="${esc(Q)}"></label>
+    </div>
+    <div class="stg-body">
+      <div class="stg-stage" aria-label="Live preview of the site"><div id="stg-mock" aria-hidden="true"></div></div>
+      <aside class="stg-insp" id="stg-insp" aria-live="polite"></aside>
+    </div>
+  </div>`;
+  wireSwitch();
+  inspKey = null;
+  paintStage(); paintInspector(); watchTabs();
+  $('#stg-mock').addEventListener('click', e => { const h = e.target.closest('[data-region]'); if (h) pickRegion(h.dataset.region); });
+  $('#stg-tabs').addEventListener('click', e => { const b = e.target.closest('button[data-region]'); if (b) pickRegion(b.dataset.region); });
+  $('#set-q').oninput = e => { Q = e.target.value; if (Q.trim()) REG = ''; paintStage(); paintInspector(); };
+  $('#set-q').onkeydown = e => { if (e.key === 'Escape' && Q) { Q = ''; e.target.value = ''; paintInspector(); } };
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && REG && !$('.auth-bg') && innerWidth <= 900 && isModern()) { REG = ''; paintStage(); paintInspector(); } });
+}
+
+/* Live preview (Classic layout): a poster, a tag row and a short episode list that follow title language, audio, poster size, spoilers and episode order */
+function paintPrev() {
+  const box = $('#mprev'); if (!box) return;
+  const s = Settings.get(), audio = (localStorage.getItem('as_lang') || s.audio) === 'dub' ? 'Dub' : 'Sub';
+  const title = s.titleLang === 'romaji' ? 'Sousou no Frieren' : 'Frieren: Beyond Journey\'s End';
+  const eps = [[1, 'The Journey\'s End', true], [2, 'It Didn\'t Have to Be Magic', true], [3, 'Killing Magic', false], [4, 'The Land Where Souls Rest', false]];
+  if (s.epOrder === 'desc') eps.reverse();
+  const w = s.cardSize === 'small' ? 112 : s.cardSize === 'large' ? 168 : 140;
+  box.innerHTML = `
+    <h3>Preview</h3>
+    <div class="pv-card" style="width:${w}px">
+      <div class="pv-poster"><span class="pv-score">★ 9.3</span><span class="pv-air">Airing</span>
+        <div class="pv-tags"><span>Ep 28</span><span>${audio}</span></div>
+        <strong>${esc(title)}</strong></div>
+    </div>
+    <ul class="pv-eps ${s.hideSpoilers ? 'spoil' : ''}">${eps.map(([n, t, seen]) =>
+      `<li class="${seen ? 'seen' : ''}"><b>${n}</b><span class="${!seen && s.hideSpoilers ? 'blur' : ''}">${esc(t)}</span>${seen ? icon('check', 13) : ''}</li>`).join('')}</ul>
+    <p class="pv-note">${s.incognito ? 'Incognito is on: nothing you watch is saved.' : s.autonext ? 'Autonext is on: the next episode starts by itself.' : 'Autonext is off: you pick each episode.'}</p>`;
+}
+
+/* ---------- Wiring shared by both layouts ---------- */
+const afterChange = () => { paintPrev(); paintStage(); };
+const ACT2 = {
+  login: () => openAuth('login'),
+  syncnow() {
+    const btn = $('[data-act="syncnow"]'); if (btn) { btn.disabled = true; btn.textContent = 'Syncing...'; }
+    Sync._last = 0;
+    Sync.run().then(() => { toast(Sync.off === 'missing' ? 'Cloud sync is not set up on the server yet' : 'Synced'); }).finally(() => { const b = $('#sync-status'); if (b) { b.innerHTML = syncStatusHTML(); wireRows(); } });
+  },
+  clearcache() {
+    if (!confirm('Clear cached data? Your list, history and settings are kept.')) return;
+    Object.keys(localStorage).filter(k => k.startsWith('as_plan:')).forEach(k => localStorage.removeItem(k));
+    Object.keys(sessionStorage).filter(k => k.startsWith('al:')).forEach(k => sessionStorage.removeItem(k));
+    (window.caches ? caches.delete('amnestream-img-v1') : Promise.resolve()).catch(() => {}).finally(() => {
+      toast('Cache cleared'); const b = $('#storage-box'); if (b) b.innerHTML = storageHTML();
+    });
+  },
+  changepw() {
+    const a = $('#pw-1').value, b = $('#pw-2').value;
+    if (a.length < 6) return toast('Password must be at least 6 characters');
+    if (a !== b) return toast('Passwords do not match');
+    Auth.client().then(sb => sb.auth.updateUser({ password: a })).then(({ error }) => {
+      if (error) throw error;
+      $('#pw-1').value = $('#pw-2').value = ''; toast('Password updated');
+    }).catch(e => toast(/same|different/i.test(e?.message || '') ? 'Choose a password you have not used for this account' : (Auth._fail(e).message || 'Could not update the password')));
+  },
+};
 
 function wireRows() {
-  $$('.toggle').forEach(b => b.onclick = () => { let on = !b.classList.contains('on'); if (b.dataset.k === 'includeAdult') { on = setAdult(on); b.classList.toggle('on', on); b.setAttribute('aria-checked', on); return; } b.classList.toggle('on', on); b.setAttribute('aria-checked', on); Settings.set(b.dataset.k, on); });
-  $$('.segc button').forEach(b => b.onclick = () => {
+  $$('.toggle').forEach(b => b.onclick = () => {
+    let on = !b.classList.contains('on');
+    if (b.dataset.k === 'includeAdult') { on = setAdult(on); }
+    else Settings.set(b.dataset.k, on);
+    b.classList.toggle('on', on); b.setAttribute('aria-checked', on);
+    const lab = $('span', b); if (lab) lab.textContent = on ? 'On' : 'Off';
+    afterChange();
+  });
+  $$('.segc button[data-k]').forEach(b => b.onclick = () => {
     Settings.set(b.dataset.k, b.dataset.v);
     if (b.dataset.k === 'audio') localStorage.setItem('as_lang', b.dataset.v);       // The player reads this first
     if (b.dataset.k === 'epStyle') localStorage.setItem('as_epstyle19', '1');        // So the details page does not move you off "Numbers" once
-    $$('.segc button', b.parentNode).forEach(x => x.classList.toggle('on', x === b));
+    const wrap = b.parentNode, btns = $$('button', wrap);
+    btns.forEach(x => x.classList.toggle('on', x === b));
+    wrap.style.setProperty('--i', btns.indexOf(b));
+    afterChange();
   });
   $$('[data-theme-pick]').forEach(b => b.onclick = () => {
     Settings.set('theme', b.dataset.themePick);
     $$('[data-theme-pick]').forEach(x => x.classList.toggle('on', x === b));
+    afterChange();
   });
+  const setAccent = c => {
+    Settings.set('accent', c);
+    $$('.acc-dot').forEach(x => x.classList.toggle('on', x.dataset.accent === c));
+    $$('.acc-custom').forEach(x => x.classList.toggle('on', !!c && !ACCENTS.includes(c)));
+    $$('button[data-accent=""]').forEach(x => { x.disabled = !c; });
+    afterChange();
+  };
+  $$('[data-accent]').forEach(b => b.onclick = () => setAccent(b.dataset.accent));
+  const pick = $('#acc-pick'); if (pick) pick.oninput = () => setAccent(pick.value.toLowerCase());
   if ($('#a-save')) $('#a-save').onclick = () => {
     const avatar = $('#a-avatar').value.trim();
     if (avatar && !/^(https?:\/\/|data:image\/)/i.test(avatar)) { toast('Avatar link must start with https://'); return; }
@@ -138,10 +520,13 @@ function wireRows() {
       avatar, bio: $('#a-bio').value.trim() });
     toast('Profile saved'); Q = ''; render(); buildHeader();
   };
-  $$('[data-act]').forEach(b => b.onclick = () => act(b.dataset.act));
+  $$('[data-act]').forEach(b => b.onclick = () => ACT2[b.dataset.act] ? ACT2[b.dataset.act]() : act(b.dataset.act));
 }
 
-const WIPE_ONLY = ['as_epstyle19', 'as_dead_servers', 'as_me', 'as_sync'];     // Housekeeping keys: not backed up, but removed by "Delete all local data"
+
+function render() { document.body.classList.toggle('stg-page', isModern()); return isModern() ? renderStage() : renderPanels(); }
+
+const WIPE_ONLY = ['as_epstyle19', 'as_dead_servers', 'as_me', 'as_sync', 'as_sync_at', 'as_nodub'];     // Housekeeping keys: not backed up, but removed by "Delete all local data"
 const KEYS = ['as_settings', 'as_user', 'as_list', 'as_progress', 'as_seen', 'as_activity', 'as_lang', 'as_server', 'as_browse_last', 'as_browse_presets', 'as_fav'];
 /* Sync code: your data as one pasteable string (gzip + base64) */
 async function packData() {

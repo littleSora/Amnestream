@@ -1,5 +1,5 @@
 /* Service worker: installable app and offline shell; pages, scripts and styles are network-first, AniList posters and Google Fonts cache-first; change VERSION to make every device drop its old copy */
-const VERSION = 'amnestream-v48', IMG = 'amnestream-img-v1';
+const VERSION = 'amnestream-v50', IMG = 'amnestream-img-v1';
 const SHELL = [
   "index.html",
   "browse.html",
@@ -15,6 +15,7 @@ const SHELL = [
   "manifest.webmanifest",
   "css/atlas.css",
   "css/mobile.css",
+  "css/me.css",
   "css/style.css",
   "js/anime.js",
   "js/api.js",

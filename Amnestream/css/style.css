@@ -685,3 +685,11 @@ html::-webkit-scrollbar,*::-webkit-scrollbar{display:none!important;width:0!impo
 .legal code{font-size:13px;padding:1px 6px;border-radius:6px;background:var(--card2)}
 .legal .addr{margin:14px 0;padding:14px 18px;border-radius:16px;background:var(--card);line-height:1.8;font-size:14px}
 
+
+/* Poster size (Settings > Appearance): desktop only, phones keep their 3-across layout */
+@media (min-width:901px){
+  html[data-cards=small] .grid{grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:12px}
+  html[data-cards=large] .grid{grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
+  html[data-cards=small] .rail-track .card{width:140px;flex-basis:140px}
+  html[data-cards=large] .rail-track .card{width:214px;flex-basis:214px}
+}

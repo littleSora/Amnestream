@@ -49,6 +49,17 @@ const ICONS = {
   ext:'<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
   share:'<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>',
 };
+Object.assign(ICONS, {
+  cloud: '<path d="M7 18a4 4 0 0 1-.6-7.96A6 6 0 0 1 18 9.5 4.3 4.3 0 0 1 17.5 18z"/>',
+  key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3"/>',
+  keyboard: '<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>',
+  refresh: '<path d="M20 11a8 8 0 0 0-14.9-3M4 5v4h4M4 13a8 8 0 0 0 14.9 3M20 19v-4h-4"/>',
+  sliders: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+  download: '<path d="M12 3v12M7 11l5 5 5-5M4 20h16"/>',
+  ticket: '<path d="M3 8a2 2 0 0 0 0 8v2a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-2a2 2 0 0 1 0-8V6a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1z"/><path d="M14 5v14" stroke-dasharray="2 2"/>',
+  check: '<path d="M5 12l5 5 9-10"/>',
+  edit: '<path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/>',
+});
 const icon = (n, s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ''}</svg>`;
 
 /* Settings and user (all local, no backend) */
@@ -57,6 +68,7 @@ const DEFAULTS = {
   theme: 'sakura', titleLang: 'english', epOrder: 'asc', epStyle: 'list',
   continueRow: true, reduceMotion: false, hoverTrailer: true,
   incognito: false, hideSpoilers: false, includeAdult: false,
+  uiMode: 'modern', accent: '', cardSize: 'normal',      // Settings and Profile layout, custom accent colour, poster size
 };
 const Settings = {
   get() {
@@ -71,6 +83,14 @@ const Settings = {
     const s = Settings.get();
     document.documentElement.dataset.theme = s.theme === 'sakura' ? '' : s.theme;
     document.documentElement.classList.toggle('reduce-motion', !!s.reduceMotion);
+    const root = document.documentElement;
+    root.dataset.ui = s.uiMode === 'classic' ? 'classic' : 'modern';
+    root.dataset.cards = ['small', 'large'].includes(s.cardSize) ? s.cardSize : 'normal';
+    if (/^#[0-9a-f]{6}$/i.test(s.accent || '')) {                       // Custom accent beats the theme's; ink flips to stay readable
+      const n = parseInt(s.accent.slice(1), 16), lum = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+      root.style.setProperty('--accent', s.accent);
+      root.style.setProperty('--accent-ink', lum > 0.58 ? '#0b0d14' : '#ffffff');
+    } else { root.style.removeProperty('--accent'); root.style.removeProperty('--accent-ink'); }
   },
 };
 Settings.apply();
@@ -466,6 +486,7 @@ const Sync = {
       const { error: e2 } = await sb.from('user_data').upsert({ user_id: uid, data: { v: 1, ...merged }, updated_at: new Date().toISOString() });
       if (e2) return changed;
     }
+    localStorage.setItem('as_sync_at', String(Date.now()));        // Shown in Settings > Sync and devices
     if (changed) document.dispatchEvent(new Event('as:synced'));
     return changed;
   },
