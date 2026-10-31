@@ -1,5 +1,8 @@
 /* Shared helpers: settings, user, header, footer, search, cards, storage */
 const SITE_NAME = 'Amnestream';
+const BIO_MAX = 28;                                   // Longest bio (characters)
+/* A saved bio as the edit boxes show it: the old long default becomes the short one, anything else is cut to the limit */
+const bioFit = b => { b = String(b || ''); if (b === "Hello, I'm a new user of " + SITE_NAME + '!') b = 'New to ' + SITE_NAME; return b.slice(0, BIO_MAX); };
 
 const $  = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -230,7 +233,7 @@ const User = {
     const a = Auth.current();
     if (a) return { name: a.name, username: a.username, bio: a.bio, avatar: a.avatar, joined: a.joined, account: true };
     let u = jget('as_user', null);
-    if (!u) { u = { name: 'Guest', username: 'guest', bio: 'Hello, I\'m a new user of ' + SITE_NAME + '!', avatar: '', joined: Date.now() }; jset('as_user', u); }
+    if (!u) { u = { name: 'Guest', username: 'guest', bio: 'New to ' + SITE_NAME, avatar: '', joined: Date.now() }; jset('as_user', u); }
     return u;
   },
   /* Saved locally right away, then to the server; if the server refuses (for example the username is taken) the old values come back */
@@ -1224,4 +1227,12 @@ if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
 document.addEventListener('DOMContentLoaded', () => {
   buildHeader(); buildFooter(); buildBackToTop();
   if (document.body.classList.contains('home')) Reveal.watch(document, '.rail, .block, .side-card');   // Home sections fade in on scroll
+});
+
+/* Live "12/28" counter under any bio box (the .bio-count inside the same label) */
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (!t.matches || !t.matches('textarea.bio-in')) return;
+  const c = t.parentElement && t.parentElement.querySelector('.bio-count');
+  if (c) { c.textContent = t.value.length + '/' + BIO_MAX; c.classList.toggle('full', t.value.length >= BIO_MAX); }
 });
