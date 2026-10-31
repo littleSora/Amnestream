@@ -357,3 +357,110 @@ kbd{display:inline-block;padding:3px 9px;border-radius:7px;border:1px solid var(
 .cin-credits div{padding:7px 0}
 .stg .pill{color:var(--text)}.stg .pill.off{opacity:.7}
 .cin-reel>*{width:100%!important;height:100%!important;min-width:0}.cin-reel img{object-fit:cover}.cin-reel{aspect-ratio:1}
+
+
+/* ---------- Profile photo: drop zone and circular crop pop-up ---------- */
+.avdz{position:relative;display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:16px;border:1.5px dashed color-mix(in srgb,var(--text) 24%,transparent);background:var(--card);cursor:pointer;text-align:left;font-weight:400;color:var(--text);transition:border-color .2s,background .2s,transform .25s cubic-bezier(.22,1,.36,1),box-shadow .2s;-webkit-tap-highlight-color:transparent}
+.pf-dlg .avdz{background:var(--bg2)}
+.avdz:hover{border-color:color-mix(in srgb,var(--accent) 70%,transparent)}
+.avdz:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 30%,transparent)}
+.avdz.over{border-style:solid;border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--card));transform:scale(1.015);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 22%,transparent)}
+.avdz-prev{flex:none;display:grid;transition:transform .3s cubic-bezier(.22,1,.36,1)}
+.avdz.over .avdz-prev{transform:scale(1.08)}
+.avdz-prev .avatar{width:56px;height:56px;border-radius:50%;object-fit:cover}
+.avdz-txt{display:grid;gap:3px;min-width:0;flex:1}
+.avdz-txt strong{font-size:13.5px;font-weight:700}
+.avdz-sub{font-size:12px;color:var(--muted);line-height:1.4}
+.avdz-t{display:none}
+.avdz-ic{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--card2);color:var(--muted)}
+.avdz.over .avdz-ic{background:var(--accent);color:var(--accent-ink)}
+.avdz-rm{display:none;flex:none}
+.avdz.has .avdz-rm{display:inline-flex}.avdz.has .avdz-ic{display:none}
+.avdz-note{display:none;font-size:12px;font-weight:700;color:var(--accent)}
+.avdz.changed .avdz-note{display:block}
+@media (hover:none){.avdz-d{display:none}.avdz-t{display:inline}}
+@media (max-width:420px){.avdz{gap:10px;padding:10px 12px}.avdz-ic{display:none}}
+
+.avc-dlg{width:min(600px,calc(100vw - 24px));max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow:auto;padding:22px;overscroll-behavior:contain}
+.avc-dlg[open]{animation:avcin .32s cubic-bezier(.22,1,.36,1)}
+.avc-dlg[open]::backdrop{animation:avcfade .25s ease}
+@keyframes avcin{from{opacity:0;transform:translateY(16px) scale(.97)}}
+@keyframes avcfade{from{opacity:0}}
+.avc-dlg h2{margin-bottom:14px}
+.avc-body{display:grid;grid-template-columns:minmax(0,1fr) 168px;gap:22px;align-items:start}
+.avc-stage{position:relative;width:100%;aspect-ratio:1;border-radius:16px;overflow:hidden;background:#0b0d12;touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none;outline:none;box-shadow:inset 0 0 0 1px var(--line)}
+.avc-stage:active{cursor:grabbing}
+.avc-stage:focus-visible{box-shadow:0 0 0 2px var(--accent)}
+.avc-stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.avc-mask{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 50%,transparent calc(var(--d,260px) / 2 - .5px),rgba(8,10,14,.7) calc(var(--d,260px) / 2 + .5px))}
+.avc-ring{position:absolute;left:50%;top:50%;width:var(--d,260px);height:var(--d,260px);transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;box-shadow:0 0 0 2px rgba(255,255,255,.85),0 0 0 3px rgba(0,0,0,.35)}
+.avc-ring::before,.avc-ring::after{content:"";position:absolute;inset:0;border-radius:50%;opacity:0;transition:opacity .2s;background:linear-gradient(90deg,transparent calc(33.3% - .5px),rgba(255,255,255,.3) calc(33.3% - .5px) calc(33.3% + .5px),transparent calc(33.3% + .5px) calc(66.6% - .5px),rgba(255,255,255,.3) calc(66.6% - .5px) calc(66.6% + .5px),transparent calc(66.6% + .5px))}
+.avc-ring::after{background:linear-gradient(0deg,transparent calc(33.3% - .5px),rgba(255,255,255,.3) calc(33.3% - .5px) calc(33.3% + .5px),transparent calc(33.3% + .5px) calc(66.6% - .5px),rgba(255,255,255,.3) calc(66.6% - .5px) calc(66.6% + .5px),transparent calc(66.6% + .5px))}
+.avc-stage:active .avc-ring::before,.avc-stage:active .avc-ring::after{opacity:1}
+.avc-zoom{display:flex;align-items:center;gap:10px;margin-top:14px}
+.avc-zoom input{flex:1;min-width:0;accent-color:var(--accent);height:28px;margin:0;cursor:pointer;font-size:16px}
+.avc-ib{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;border:0;background:var(--card2);color:var(--text);cursor:pointer;transition:background .2s,transform .15s}
+.avc-ib:hover{background:color-mix(in srgb,var(--accent) 25%,var(--card2))}.avc-ib:active{transform:scale(.9)}
+.avc-tools{display:flex;gap:8px;margin-top:10px}
+.avc-tools .btn-sm{display:inline-flex;align-items:center;gap:6px}
+.avc-right{display:grid;justify-items:center;gap:12px;text-align:center}
+.avc-lbl{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.avc-pv{display:grid;grid-template-columns:auto auto;gap:14px;align-items:center;justify-content:center}
+.avc-pv canvas{border-radius:50%;background:var(--card2);box-shadow:0 0 0 1px var(--line);justify-self:center}
+.avc-pv canvas:first-child{grid-column:1/-1}
+.avc-hint{margin:0;font-size:12px;line-height:1.45;color:var(--muted)}
+@media (max-width:560px){
+  .avc-dlg{padding:18px 16px}
+  .avc-body{grid-template-columns:minmax(0,1fr);gap:16px}
+  .avc-right{grid-template-columns:auto auto;justify-content:center;align-items:center;gap:6px 16px;text-align:left}
+  .avc-lbl{grid-column:1/-1;text-align:center}
+  .avc-pv{grid-auto-flow:column;grid-template-columns:none;gap:12px}.avc-pv canvas:first-child{grid-column:auto}
+  .avc-hint{display:none}
+  .avc-stage{max-width:340px;margin:0 auto}.avc-zoom,.avc-tools{max-width:340px;margin-left:auto;margin-right:auto}
+  .avc-tools{justify-content:center}
+}
+@media (prefers-reduced-motion:reduce){.avc-dlg[open],.avc-dlg[open]::backdrop{animation:none}.avdz,.avdz-prev,.avc-ib{transition:none}}
+
+/* ===== Settings polish: bio box, pop-ups, About list, real covers in the preview ===== */
+
+/* Bio: the drag handle stops at a set height. Past that the text scrolls, with a slim rounded bar */
+textarea.bio-in{min-height:58px;max-height:112px;resize:vertical;overflow-y:auto;line-height:1.45;overscroll-behavior:contain}
+textarea.bio-in::-webkit-scrollbar{width:12px}
+textarea.bio-in::-webkit-scrollbar-track{background:transparent;margin:8px 0}
+textarea.bio-in::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--text) 24%,transparent);border-radius:999px;border:4px solid transparent;background-clip:content-box;transition:background .2s}
+textarea.bio-in::-webkit-scrollbar-thumb:hover,textarea.bio-in:focus::-webkit-scrollbar-thumb{background:var(--accent);background-clip:content-box}
+textarea.bio-in::-webkit-resizer{background:transparent}
+@supports (-moz-appearance:none){textarea.bio-in{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--text) 30%,transparent) transparent}}
+.bio-count{display:block;margin-top:5px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums;color:var(--muted)}
+.bio-count.full{color:var(--accent)}
+
+/* Pop-ups (sync code, change password) reuse the Edit profile pop-up look */
+.stg-dlg{width:min(440px,calc(100vw - 32px))}
+.stg-dlg[open]{animation:avcin .32s cubic-bezier(.22,1,.36,1)}
+.stg-dlg[open]::backdrop{animation:avcfade .25s ease}
+.stg-dlg h2{margin-bottom:8px}
+.dlg-sub{margin:0 0 14px;font-size:13px;line-height:1.5;color:var(--muted)}
+.dlg-err{margin:2px 0 0;padding:9px 12px;border-radius:10px;background:color-mix(in srgb,#f43f5e 16%,transparent);color:#ff9aa8;font-size:12.5px;line-height:1.4}
+.dlg-err[hidden]{display:none}
+textarea.sync-in{min-height:112px;resize:none;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;line-height:1.45;word-break:break-all}
+.stg-dlg .pf-dlg-act .btn:disabled{opacity:.6;cursor:default}
+@media (max-width:900px){textarea.sync-in{font-size:16px}}
+
+/* About: one dot per point */
+.about-list{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+.about-list li{position:relative;padding-left:20px;line-height:1.55}
+.about-list li::before{content:"";position:absolute;left:5px;top:.68em;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+
+/* Preview: real covers on the posters, the anime's banner behind the title */
+.stg-poster>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.stg-poster.has-img::before{z-index:1;background:linear-gradient(0deg,rgba(0,0,0,.88),transparent 62%)}
+.stg-hero-bg.has-img{background:var(--bg2)}
+.stg-hero-bg.has-img.move{animation:none}
+.stg-hero-bg.has-img>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 30%;z-index:0}
+.stg-hero-bg.has-img::before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,rgba(0,0,0,.72),rgba(0,0,0,.12) 72%)}
+.stg-hero-bg.has-img.move>img{animation:stgzoom 14s ease-in-out infinite alternate}
+@keyframes stgzoom{to{transform:scale(1.08)}}
+.stg-hero-bg.has-img~.stg-hero-in h3{text-shadow:0 2px 14px rgba(0,0,0,.75)}
+.stg-hero-bg.has-img~.stg-hero-in .stg-chips span:not(.adult){background:rgba(0,0,0,.45);backdrop-filter:blur(6px)}
+.pv-poster>img.pv-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+@media (prefers-reduced-motion:reduce){.stg-dlg[open],.stg-dlg[open]::backdrop,.stg-hero-bg.has-img.move>img{animation:none}}

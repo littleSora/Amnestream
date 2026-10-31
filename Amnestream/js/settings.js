@@ -35,7 +35,7 @@ const ALL_SECTIONS = [
   ] },
   { id: 'account', name: 'Account', sub: 'Your public profile and password', ic: 'user', g: 'gray', items: [
     { t: 'account', n: 'Profile', d: 'Display name, username, avatar and bio', kw: 'account profile name username bio avatar picture', full: 1 },
-    { t: 'password', n: 'Change password', d: 'At least 6 characters', kw: 'password security login', full: 1 },
+    { t: 'btn', ic: 'shield', n: 'Change password', d: 'Enter your current password, then choose a new one (at least 6 characters)', label: 'Change', act: 'changepw', kw: 'password security login', full: 1 },
   ] },
   { id: 'data', name: 'Data and storage', sub: 'Backups, what this device stores and cleanup', ic: 'database', g: 'slate', items: [
     { t: 'storage', n: 'Storage on this device', d: 'What Amnestream keeps in this browser', kw: 'storage cache space size', full: 1 },
@@ -103,18 +103,16 @@ function accountFormHTML() {
         <label class="set-lbl">Display name<input class="set-in" id="a-name" value="${esc(u.name)}" maxlength="30"></label>
         <label class="set-lbl">Username<input class="set-in" id="a-user" value="${esc(u.username)}" maxlength="20"></label>
       </div>
-      <label class="set-lbl">Avatar image URL (optional)<input class="set-in" id="a-avatar" value="${esc(u.avatar)}" placeholder="https://..."></label>
-      <label class="set-lbl">Bio<textarea class="set-in" id="a-bio" maxlength="160">${esc(u.bio)}</textarea></label>
+      ${AvatarPicker.html('a-avatar', u.avatar, u.name)}
+      <label class="set-lbl">Bio<textarea class="set-in bio-in" id="a-bio" maxlength="${BIO_MAX}" rows="2">${esc(bioFit(u.bio))}</textarea><span class="bio-count">${bioFit(u.bio).length}/${BIO_MAX}</span></label>
       <div><button class="btn btn-primary" id="a-save">Save changes</button></div>
     </div>`;
 }
-const passwordFormHTML = () => `<div class="set-col">
-  <div class="acct-two">
-    <label class="set-lbl">New password<input class="set-in" id="pw-1" type="password" autocomplete="new-password"></label>
-    <label class="set-lbl">Confirm password<input class="set-in" id="pw-2" type="password" autocomplete="new-password"></label>
-  </div>
-  <div><button class="btn btn-ghost" data-act="changepw">Update password</button></div></div>`;
-const aboutHTML = () => `<p class="d" style="margin:0;line-height:1.55">Settings, list and history are stored <b>on this device</b> (browser storage). Your account (login, profile and, once signed in, your list and progress) is stored online so it works on every device. ${SITE_NAME} doesn't host any video files; it links to third-party sources.</p>`;
+const aboutHTML = () => `<ul class="about-list">
+  <li>Settings, list and history are stored <b>on this device</b> (browser storage).</li>
+  <li>Your account (login, profile and, once signed in, your list and progress) is stored online so it works on every device.</li>
+  <li>${SITE_NAME} doesn't host any video files; it links to third-party sources.</li>
+</ul>`;
 
 /* The control on the right of a simple row, same markup in both layouts (CSS decides how it looks) */
 function ctlHTML(it, s) {
@@ -147,11 +145,10 @@ function bodyHTML(it, s) {
     case 'keys': return keysHTML();
     case 'info': return aboutHTML();
     case 'account': return `<div class="acct">${accountFormHTML()}</div>`;
-    case 'password': return passwordFormHTML();
   }
   return '';
 }
-const BODY_TYPES = ['themes', 'accent', 'syncstatus', 'storage', 'keys', 'info', 'account', 'password'];
+const BODY_TYPES = ['themes', 'accent', 'syncstatus', 'storage', 'keys', 'info', 'account'];
 
 /* ---------- Layout switch (both layouts) ---------- */
 function uiSwitchHTML() {
@@ -237,13 +234,30 @@ const REGIONS = [
   { id: 'episodes', name: 'Episode lists', ic: 'sort', desc: 'Order, style and spoilers on details pages.', pick: it => ['epOrder', 'epStyle', 'hideSpoilers'].includes(it.k) },
   { id: 'player', name: 'Playback', ic: 'play', desc: 'What happens when you press play and when an episode ends.', pick: it => ['autonext', 'resume', 'audio'].includes(it.k) },
   { id: 'privacy', name: 'Privacy', ic: 'shield', desc: 'What you see and what gets saved.', pick: it => ['includeAdult', 'incognito'].includes(it.k) },
-  { id: 'you', name: 'You and sync', ic: 'user', desc: 'Your account, password and keeping devices in step.', pick: it => ['syncstatus', 'account', 'password'].includes(it.t) || ['synccopy', 'syncpaste'].includes(it.act) },
+  { id: 'you', name: 'Account and sync', ic: 'user', desc: 'Your account, password and keeping devices in step.', pick: it => ['syncstatus', 'account'].includes(it.t) || ['changepw', 'synccopy', 'syncpaste'].includes(it.act) },
   { id: 'data', name: 'Data and about', ic: 'database', desc: 'Backups, storage, shortcuts and the fine print.', pick: it => ['storage', 'keys', 'info', 'link'].includes(it.t) || ['clearcache', 'export', 'import', 'clearhist', 'reset', 'wipe'].includes(it.act) },
 ];
 const OLD_SECTION = { playback: 'player', appearance: 'look', privacy: 'privacy', sync: 'you', account: 'you', data: 'data', about: 'data' };
 let REG = '';
 const regionItems = r => SECTIONS.flatMap(sec => sec.items.filter(r.pick).map(it => ({ it, sec })));
 const STAGE_POSTERS = [['Delicious in Dungeon', 'Dungeon Meshi'], ['Kaiju No. 8', 'Kaijuu 8-gou'], ['Oshi no Ko', 'Oshi no Ko'], ['Solo Leveling', 'Ore dake Level Up na Ken'], ['Spy x Family', 'Spy x Family']];
+/* The anime shown in the preview: real covers and a banner, a different set on every visit (Api.showcase). The plain placeholders above stay if it cannot load. */
+let SHOW = null;
+const shuffled = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+function pickShowcase(list) {
+  let seen = []; try { seen = JSON.parse(sessionStorage.getItem('as_stg_seen')) || []; } catch { /* none yet */ }
+  const ok = (list || []).filter(m => m && m.coverImage && m.coverImage.large);
+  let pool = ok.filter(m => !seen.includes(m.id)); if (pool.length < 6) pool = ok;     // Skip what the last visits showed
+  pool = shuffled(pool);
+  const hero = pool.find(m => m.bannerImage) || pool[0];
+  if (!hero) return null;
+  const rail = pool.filter(m => m !== hero).slice(0, 5);
+  try { sessionStorage.setItem('as_stg_seen', JSON.stringify([hero.id, ...rail.map(m => m.id), ...seen].slice(0, 36))); } catch { /* storage full */ }
+  return { hero, rail };
+}
+function loadShowcase() {
+  Api.showcase().then(list => { SHOW = pickShowcase(list); if (SHOW) { paintStage(); paintPrev(); } }).catch(() => { /* offline: the plain preview stays */ });
+}
 const STAGE_EPS = [[1, 'The Journey\'s End'], [2, 'It Didn\'t Have to Be Magic'], [3, 'Killing Magic'], [4, 'The Land Where Souls Rest'], [5, 'Phantoms of the Dead'], [6, 'Aura the Guillotine']];
 
 function stageHTML() {
@@ -253,6 +267,11 @@ function stageHTML() {
   const rom = s.titleLang === 'romaji';
   const aud = (localStorage.getItem('as_lang') || s.audio) === 'dub' ? 'Dub' : 'Sub';
   const per = s.cardSize === 'small' ? 5 : s.cardSize === 'large' ? 3 : 4;
+  const hero = SHOW && SHOW.hero, heroImg = hero ? bannerOf(hero) : '';
+  const heroChips = hero
+    ? [scoreOf(hero) && '★ ' + scoreOf(hero), fmtLabel(hero), hero.episodes ? hero.episodes + ' eps' : statusLabel(hero)].filter(Boolean).map(c => `<span>${esc(c)}</span>`).join('')
+    : '<span>★ 9.3</span><span>TV</span><span>28 eps</span>';
+  const posters = SHOW ? SHOW.rail.map(m => ({ img: thumbOf(m), name: titleOf(m) })) : STAGE_POSTERS.map(([en, ro]) => ({ img: '', name: rom ? ro : en }));
   const eps = STAGE_EPS.slice(0, 5).map(([n, t]) => ({ n, t, seen: n <= 2 }));
   if (s.epOrder === 'desc') eps.reverse();
   const epHTML = s.epStyle === 'grid'
@@ -267,16 +286,16 @@ function stageHTML() {
       <span class="stg-me">${s.incognito ? `<span class="stg-ghost-ic" title="Incognito">${icon('ghost', 14)}</span>` : ''}<u class="stg-av">${esc((u.name || 'G')[0].toUpperCase())}</u></span>
     </div>
     <div ${hot('titles', 'stg-hero')}>${tag('titles')}
-      <div class="stg-hero-bg ${s.reduceMotion ? '' : 'move'}"></div>
+      <div class="stg-hero-bg ${heroImg ? 'has-img ' : ''}${s.reduceMotion ? '' : 'move'}">${heroImg ? `<img src="${esc(heroImg)}" alt="" decoding="async">` : ''}</div>
       <div class="stg-hero-in">
-        <h3>${rom ? 'Sousou no Frieren' : 'Frieren: Beyond Journey\'s End'}</h3>
-        <div class="stg-chips"><span>★ 9.3</span><span>TV</span><span>28 eps</span>${s.includeAdult ? '<span class="adult">18+ shown</span>' : ''}</div>
+        <h3>${hero ? esc(titleOf(hero)) : rom ? 'Sousou no Frieren' : 'Frieren: Beyond Journey\'s End'}</h3>
+        <div class="stg-chips">${heroChips}${s.includeAdult ? '<span class="adult">18+ shown</span>' : ''}</div>
         <span ${hot('look', 'stg-watch')}>${icon('play', 12)} Watch now</span>
       </div>
     </div>
     <div ${hot('posters', 'stg-posters')}>${tag('posters')}
       ${s.continueRow
-        ? `<h4>Continue watching</h4><div class="stg-rail s-${s.cardSize}">${STAGE_POSTERS.slice(0, per).map(([en, ro], i) => `<div class="stg-poster p${i}">${i === 0 && s.hoverTrailer ? `<span class="stg-prev">${icon('play', 9)} Trailer</span>` : ''}<span>${esc(rom ? ro : en)}</span></div>`).join('')}</div>`
+        ? `<h4>Continue watching</h4><div class="stg-rail s-${s.cardSize}">${posters.slice(0, per).map((p, i) => `<div class="stg-poster p${i}${p.img ? ' has-img' : ''}">${p.img ? `<img src="${esc(p.img)}" alt="" decoding="async">` : ''}${i === 0 && s.hoverTrailer ? `<span class="stg-prev">${icon('play', 9)} Trailer</span>` : ''}<span>${esc(p.name)}</span></div>`).join('')}</div>`
         : '<div class="stg-hidden">Continue watching is hidden</div>'}
     </div>
     <div ${hot('episodes', 'stg-eps ' + s.epStyle)}>${tag('episodes')}<h4>Episodes</h4>${epHTML}</div>
@@ -429,21 +448,22 @@ function renderStage() {
   $('#stg-tabs').addEventListener('click', e => { const b = e.target.closest('button[data-region]'); if (b) pickRegion(b.dataset.region); });
   $('#set-q').oninput = e => { Q = e.target.value; if (Q.trim()) REG = ''; paintStage(); paintInspector(); };
   $('#set-q').onkeydown = e => { if (e.key === 'Escape' && Q) { Q = ''; e.target.value = ''; paintInspector(); } };
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && REG && !$('.auth-bg') && innerWidth <= 900 && isModern()) { REG = ''; paintStage(); paintInspector(); } });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && REG && !$('.auth-bg') && !$('dialog[open]') && innerWidth <= 900 && isModern()) { REG = ''; paintStage(); paintInspector(); } });
 }
 
 /* Live preview (Classic layout): a poster, a tag row and a short episode list that follow title language, audio, poster size, spoilers and episode order */
 function paintPrev() {
   const box = $('#mprev'); if (!box) return;
   const s = Settings.get(), audio = (localStorage.getItem('as_lang') || s.audio) === 'dub' ? 'Dub' : 'Sub';
-  const title = s.titleLang === 'romaji' ? 'Sousou no Frieren' : 'Frieren: Beyond Journey\'s End';
+  const h = SHOW && SHOW.hero;
+  const title = h ? titleOf(h) : s.titleLang === 'romaji' ? 'Sousou no Frieren' : 'Frieren: Beyond Journey\'s End';
   const eps = [[1, 'The Journey\'s End', true], [2, 'It Didn\'t Have to Be Magic', true], [3, 'Killing Magic', false], [4, 'The Land Where Souls Rest', false]];
   if (s.epOrder === 'desc') eps.reverse();
   const w = s.cardSize === 'small' ? 112 : s.cardSize === 'large' ? 168 : 140;
   box.innerHTML = `
     <h3>Preview</h3>
     <div class="pv-card" style="width:${w}px">
-      <div class="pv-poster"><span class="pv-score">★ 9.3</span><span class="pv-air">Airing</span>
+      <div class="pv-poster">${h ? `<img class="pv-img" src="${esc(thumbOf(h))}" alt="" decoding="async">` : ''}<span class="pv-score">★ ${h && scoreOf(h) ? scoreOf(h) : '9.3'}</span><span class="pv-air">Airing</span>
         <div class="pv-tags"><span>Ep 28</span><span>${audio}</span></div>
         <strong>${esc(title)}</strong></div>
     </div>
@@ -454,6 +474,82 @@ function paintPrev() {
 
 /* ---------- Wiring shared by both layouts ---------- */
 const afterChange = () => { paintPrev(); paintStage(); };
+
+/* ---------- Pop-ups (sync code, password) ---------- */
+function openDlg(html) {
+  const d = document.createElement('dialog');
+  d.className = 'pf-dlg stg-dlg'; d.innerHTML = html;
+  document.body.appendChild(d);
+  d.addEventListener('close', () => d.remove());
+  d.addEventListener('click', e => {                                       // A click on the dimmed area outside the box closes it
+    const r = d.getBoundingClientRect();
+    if (e.target === d && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)) d.close();
+  });
+  d.addEventListener('click', e => { if (e.target.closest('[data-d="back"]')) d.close(); });
+  d.showModal();
+  return d;
+}
+const dlgFail = (d, id, m) => { const p = d.querySelector('#' + id); p.textContent = m; p.hidden = false; };
+
+function openSyncPaste() {
+  const d = openDlg(`<h2>Use a sync code</h2>
+    <p class="dlg-sub">Paste a code from another device. It is merged with what you have here, so nothing on this device is lost.</p>
+    <div class="pf-dlg-body">
+      <label class="set-lbl">Sync code<textarea class="set-in sync-in" id="sc-in" spellcheck="false" autocomplete="off" placeholder="AS1:..."></textarea></label>
+      <p class="dlg-err" id="sc-err" role="alert" hidden></p>
+    </div>
+    <div class="pf-dlg-act"><button type="button" class="btn btn-ghost" data-d="back">Back</button><button type="button" class="btn btn-primary" data-d="ok">Merge</button></div>`);
+  const box = d.querySelector('#sc-in'), ok = d.querySelector('[data-d="ok"]');
+  const submit = () => {
+    d.querySelector('#sc-err').hidden = true;
+    const code = box.value.trim();
+    if (!code) return dlgFail(d, 'sc-err', 'Paste a sync code first');
+    ok.disabled = true;
+    unpackData(code).then(o => { mergeData(o); Sync.touch('list'); Sync.touch('fav'); d.close(); toast('Merged. Reloading...'); setTimeout(() => location.reload(), 700); })
+      .catch(() => { ok.disabled = false; dlgFail(d, 'sc-err', 'That sync code is not valid'); });
+  };
+  ok.onclick = submit;
+  box.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } });
+  box.focus();
+}
+
+function openPasswordDialog() {
+  const d = openDlg(`<h2>Change password</h2>
+    <div class="pf-dlg-body">
+      <label class="set-lbl">Current password<input class="set-in" id="pw-cur" type="password" autocomplete="current-password"></label>
+      <label class="set-lbl">New password<input class="set-in" id="pw-new" type="password" autocomplete="new-password"></label>
+      <label class="set-lbl">Confirm new password<input class="set-in" id="pw-con" type="password" autocomplete="new-password"></label>
+      <p class="dlg-err" id="pw-err" role="alert" hidden></p>
+    </div>
+    <div class="pf-dlg-act"><button type="button" class="btn btn-ghost" data-d="back">Back</button><button type="button" class="btn btn-primary" data-d="ok">Confirm</button></div>`);
+  const ok = d.querySelector('[data-d="ok"]'), val = id => d.querySelector('#' + id).value;
+  const fail = m => dlgFail(d, 'pw-err', m);
+  async function submit() {
+    d.querySelector('#pw-err').hidden = true;
+    const cur = val('pw-cur'), a = val('pw-new'), b = val('pw-con');
+    if (!cur) return fail('Enter your current password');
+    if (a.length < 6) return fail('New password must be at least 6 characters');
+    if (a !== b) return fail('The new passwords do not match');
+    if (a === cur) return fail('Choose a password you have not used for this account');
+    ok.disabled = true; ok.textContent = 'Updating...';
+    try {
+      const sb = await Auth.client();
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user || !user.email) throw new Error('Please log in again');
+      const re = await sb.auth.signInWithPassword({ email: user.email, password: cur });   // Proves it is really you
+      if (re.error) throw /invalid login|invalid credentials/i.test(re.error.message || '') ? Object.assign(new Error('wrong'), { wrong: true }) : re.error;
+      const { error } = await sb.auth.updateUser({ password: a });
+      if (error) throw error;
+      d.close(); toast('Password updated');
+    } catch (e) {
+      fail(e.wrong ? 'Current password is incorrect' : /same|different/i.test(e?.message || '') ? 'Choose a password you have not used for this account' : (Auth._fail(e).message || 'Could not update the password'));
+      ok.disabled = false; ok.textContent = 'Confirm';
+    }
+  }
+  ok.onclick = submit;
+  d.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('input')) { e.preventDefault(); submit(); } });
+  d.querySelector('#pw-cur').focus();
+}
 const ACT2 = {
   login: () => openAuth('login'),
   syncnow() {
@@ -469,15 +565,7 @@ const ACT2 = {
       toast('Cache cleared'); const b = $('#storage-box'); if (b) b.innerHTML = storageHTML();
     });
   },
-  changepw() {
-    const a = $('#pw-1').value, b = $('#pw-2').value;
-    if (a.length < 6) return toast('Password must be at least 6 characters');
-    if (a !== b) return toast('Passwords do not match');
-    Auth.client().then(sb => sb.auth.updateUser({ password: a })).then(({ error }) => {
-      if (error) throw error;
-      $('#pw-1').value = $('#pw-2').value = ''; toast('Password updated');
-    }).catch(e => toast(/same|different/i.test(e?.message || '') ? 'Choose a password you have not used for this account' : (Auth._fail(e).message || 'Could not update the password')));
-  },
+  changepw: openPasswordDialog,
 };
 
 function wireRows() {
@@ -517,7 +605,7 @@ function wireRows() {
     if (avatar && !/^(https?:\/\/|data:image\/)/i.test(avatar)) { toast('Avatar link must start with https://'); return; }
     User.set({ name: $('#a-name').value.trim() || 'Guest',
       username: ($('#a-user').value.trim().replace(/\s+/g, '').toLowerCase().replace(/[^a-z0-9_.-]/g, '')) || 'guest',
-      avatar, bio: $('#a-bio').value.trim() });
+      avatar, bio: $('#a-bio').value.trim().slice(0, BIO_MAX) });
     toast('Profile saved'); Q = ''; render(); buildHeader();
   };
   $$('[data-act]').forEach(b => b.onclick = () => ACT2[b.dataset.act] ? ACT2[b.dataset.act]() : act(b.dataset.act));
@@ -577,10 +665,7 @@ function act(a) {
       () => toast('Sync code copied. Paste it on your other device.'),
       () => prompt('Copy this sync code:', code)));
   } else if (a === 'syncpaste') {
-    const code = prompt('Paste your sync code');
-    if (!code) return;
-    unpackData(code).then(o => { mergeData(o); Sync.touch('list'); Sync.touch('fav'); toast('Merged. Reloading...'); setTimeout(() => location.reload(), 700); })
-      .catch(() => toast('That sync code is not valid'));
+    openSyncPaste();
   } else if (a === 'export') {
     const out = {}; KEYS.forEach(k => { const v = localStorage.getItem(k); if (v !== null) out[k] = v; });
     const url = URL.createObjectURL(new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' }));
@@ -606,4 +691,4 @@ function act(a) {
     if (confirm('Delete ALL local data? This cannot be undone.')) { Auth.logout(); [...KEYS, ...WIPE_ONLY].forEach(k => localStorage.removeItem(k)); toast('All data deleted'); setTimeout(() => location.href = 'index.html', 600); }
   }
 }
-document.addEventListener('DOMContentLoaded', render);
+document.addEventListener('DOMContentLoaded', () => { render(); loadShowcase(); });

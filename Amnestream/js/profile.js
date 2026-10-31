@@ -105,8 +105,8 @@ function paintPass() {
       <div class="pf-dlg-body">
         <label class="set-lbl">Display name<input class="set-in" id="pf-name" value="${esc(u.name)}" maxlength="30"></label>
         <label class="set-lbl">Username<input class="set-in" id="pf-user" value="${esc(u.username)}" maxlength="20"></label>
-        <label class="set-lbl">Avatar image URL (optional)<input class="set-in" id="pf-avatar" value="${esc(u.avatar)}" placeholder="https://..."></label>
-        <label class="set-lbl">Bio<textarea class="set-in" id="pf-bio" maxlength="160">${esc(u.bio)}</textarea></label>
+        ${AvatarPicker.html('pf-avatar', u.avatar, u.name)}
+        <label class="set-lbl">Bio<textarea class="set-in bio-in" id="pf-bio" maxlength="${BIO_MAX}" rows="2">${esc(bioFit(u.bio))}</textarea><span class="bio-count">${bioFit(u.bio).length}/${BIO_MAX}</span></label>
       </div>
       <div class="pf-dlg-act"><button class="btn btn-ghost" value="cancel" id="pf-cancel">Cancel</button><button class="btn btn-primary" id="pf-save" value="save">Save changes</button></div>
     </form></dialog>
@@ -193,8 +193,8 @@ function editDialogHTML(u) {
       <div class="pf-dlg-body">
         <label class="set-lbl">Display name<input class="set-in" id="pf-name" value="${esc(u.name)}" maxlength="30"></label>
         <label class="set-lbl">Username<input class="set-in" id="pf-user" value="${esc(u.username)}" maxlength="20"></label>
-        <label class="set-lbl">Avatar image URL (optional)<input class="set-in" id="pf-avatar" value="${esc(u.avatar)}" placeholder="https://..."></label>
-        <label class="set-lbl">Bio<textarea class="set-in" id="pf-bio" maxlength="160">${esc(u.bio)}</textarea></label>
+        ${AvatarPicker.html('pf-avatar', u.avatar, u.name)}
+        <label class="set-lbl">Bio<textarea class="set-in bio-in" id="pf-bio" maxlength="${BIO_MAX}" rows="2">${esc(bioFit(u.bio))}</textarea><span class="bio-count">${bioFit(u.bio).length}/${BIO_MAX}</span></label>
       </div>
       <div class="pf-dlg-act"><button class="btn btn-ghost" value="cancel" id="pf-cancel">Cancel</button><button class="btn btn-primary" id="pf-save" value="save">Save changes</button></div>
     </form></dialog>`;
@@ -212,7 +212,7 @@ function wireEdit(p, stubs) {
     if (avatar && !/^(https?:\/\/|data:image\/)/i.test(avatar)) { toast('Avatar link must start with https://'); return; }
     User.set({ name: $('#pf-name').value.trim() || 'Guest',
       username: ($('#pf-user').value.trim().replace(/\s+/g, '').toLowerCase().replace(/[^a-z0-9_.-]/g, '')) || 'guest',
-      avatar, bio: $('#pf-bio').value.trim() });
+      avatar, bio: $('#pf-bio').value.trim().slice(0, BIO_MAX) });
     dlg.close(); toast('Profile saved'); setTimeout(() => { paintProfile(); buildHeader(); }, 50);
   };
   $('#pf-save-btn').onclick = () => savePass(p, stubs);

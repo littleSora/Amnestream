@@ -882,6 +882,17 @@ const Api = {
     return _playable([...acc.values()].sort((x, y) => y.sum - x.sum).map(e => e.m));
   },
 
+  /* A page of popular titles with covers and banners for the Settings preview. The page is random, so each visit can show different anime. Never 18+ */
+  async showcase() {
+    const page = 1 + Math.floor(Math.random() * 8);
+    const data = await gql(
+      `query Show($page: Int) { Page(page: $page, perPage: 40) {
+         media(type: ANIME, sort: POPULARITY_DESC, isAdult: false) {
+           id title { romaji english native } coverImage { extraLarge large color } bannerImage averageScore format status episodes
+         } } }`, { page }, { ttl: TTL.long });
+    return data.Page.media;
+  },
+
   async random() {
     const page = 1 + Math.floor(Math.random() * 40);
     const data = await gql(
