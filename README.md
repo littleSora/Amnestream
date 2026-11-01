@@ -101,4 +101,4 @@ Then open <http://localhost:8080>. There is nothing to install or build.
 
 Amnestream is not affiliated with AniList, MegaPlay, MegaVid, Anixo or any studio, publisher or streaming service. It does not host, upload or store any video files. Titles, artwork and trademarks belong to their owners.
 
-If you are a copyright owner and want something removed, read the **[DMCA policy](DMCA.md)** (also on the site as [`dmca.html`](dmca.html)) and email **m4cky5467@gmail.com**. Please do not post notices as public issues.
+If you are a copyright owner and want something removed, read the **[DMCA policy](DMCA.md)** (also on the site as [`dmca.html`](Amnestream/dmca.html)) and email **m4cky5467@gmail.com**. Please do not post notices as public issues.
