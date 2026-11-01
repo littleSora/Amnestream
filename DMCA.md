@@ -1,6 +1,6 @@
 # DMCA and copyright
 
-Last updated 1 November 2026. The same policy is published on the site as [`dmca.html`](dmca.html).
+Last updated 1 November 2026. The same policy is published on the site as [`dmca.html`](Amnestream/dmca.html).
 
 > This describes the project's policy. It is not legal advice. If you operate this site publicly, have a lawyer review it and make sure the contact details are yours.
 
