@@ -66,6 +66,41 @@ Object.assign(ICONS, {
 const icon = (n, s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ''}</svg>`;
 
 /* Settings and user (all local, no backend) */
+const THEME_IDS = ['sakura', 'retro96', 'cyberpunk', 'rgb', 'wave', 'voxel', 'vapor', 'terminal', 'blueprint', 'parchment', 'pealcd', 'brutal', 'frost', 'noir', 'aurora', 'magma', 'void', 'photo', 'pre-rich', 'pre-oxford', 'pre-charcoal', 'pre-brunswick', 'pre-violet', 'pre-cosmos', 'pre-jet', 'pre-alabaster'];   // Keep in step with THEMES and PRESETS in settings.js and the [data-theme] rules in themes.css
+const THEME_FONTS = { cyberpunk: 'Orbitron:wght@600;800', voxel: 'VT323', pealcd: 'VT323', terminal: 'JetBrains+Mono:wght@400;700', blueprint: 'IBM+Plex+Mono:wght@400;600',
+  parchment: 'Playfair+Display:ital,wght@0,700;1,700', noir: 'Playfair+Display:ital,wght@0,700;1,700', brutal: 'Space+Grotesk:wght@400;700' };   // Loaded only while that theme is on
+
+/* The Photo theme's picture lives in this device's storage (shrunk first), never in the synced settings */
+const Photo = {
+  get() { try { return localStorage.getItem('as_photo') || ''; } catch { return ''; } },
+  acc() { try { return localStorage.getItem('as_photo_acc') || ''; } catch { return ''; } },
+  clear() { try { localStorage.removeItem('as_photo'); localStorage.removeItem('as_photo_acc'); } catch { /* ignore */ } },
+  async save(file) {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => no(new Error('That picture could not be read.')); i.src = url; });
+      const draw = (max, q) => {
+        const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight)), c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(img.naturalWidth * k)); c.height = Math.max(1, Math.round(img.naturalHeight * k));
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        return c.toDataURL('image/jpeg', q);
+      };
+      const t = document.createElement('canvas'); t.width = t.height = 24;                      // Average colour of the picture becomes the accent
+      const tx = t.getContext('2d'); tx.drawImage(img, 0, 0, 24, 24);
+      const d = tx.getImageData(0, 0, 24, 24).data; let r = 0, g = 0, b = 0, n = 0;
+      for (let i = 0; i < d.length; i += 4) { const w = 1 + (Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2])) / 64; r += d[i] * w; g += d[i + 1] * w; b += d[i + 2] * w; n += w; }
+      r /= n; g /= n; b /= n;
+      const mx = Math.max(r, g, b) / 255, mn = Math.min(r, g, b) / 255; let h = 0;
+      if (mx !== mn) { const dl = mx - mn; h = mx === r / 255 ? ((g - b) / 255 / dl) % 6 : mx === g / 255 ? (b - r) / 255 / dl + 2 : (r - g) / 255 / dl + 4; h = (h * 60 + 360) % 360; }
+      const acc = `hsl(${Math.round(h)} 85% 68%)`;
+      let last;
+      for (const [max, q] of [[1920, .82], [1440, .72], [1000, .65]]) {
+        try { const data = draw(max, q); localStorage.setItem('as_photo', data); localStorage.setItem('as_photo_acc', acc); return; } catch (e) { last = e; }
+      }
+      throw new Error('This device has no room to keep that picture. Try a smaller one.');
+    } finally { URL.revokeObjectURL(url); }
+  },
+};
 const DEFAULTS = {
   autonext: true, audio: 'sub', resume: true,
   theme: 'sakura', titleLang: 'english', epOrder: 'asc', epStyle: 'list',
@@ -73,6 +108,16 @@ const DEFAULTS = {
   incognito: false, hideSpoilers: false, includeAdult: false,
   uiMode: 'modern', accent: '', cardSize: 'normal',      // Settings and Profile layout, custom accent colour, poster size
 };
+/* The Wave theme's living water is a canvas in js/wave.js, loaded only while that theme is on */
+function waveSync(th) {
+  if (th !== 'wave') { if (window.AsWave) AsWave.stop(); return; }
+  if (window.AsWave) { AsWave.start(); return; }
+  if (document.getElementById('as-wave-js')) return;
+  const sc = document.createElement('script');
+  sc.id = 'as-wave-js'; sc.src = 'js/wave.js';
+  sc.onload = () => { if (document.documentElement.dataset.theme === 'wave') AsWave.start(); };
+  document.head.appendChild(sc);
+}
 const Settings = {
   get() {
     const o = jget('as_settings', {});
@@ -80,16 +125,41 @@ const Settings = {
     delete o.showAdult;
     return { ...DEFAULTS, ...o };
   },
-  set(k, v) { const s = Settings.get(); s[k] = v; jset('as_settings', s); Settings.apply(); },
+  set(k, v) {
+    const s = Settings.get();
+    if (k === 'theme' && s.theme !== v) { try { localStorage.setItem('as_theme_t0', String(Date.now())); } catch { /* ignore */ } }   // When this theme was picked: the Wave's pour only plays for the first seconds after this
+    s[k] = v; jset('as_settings', s); Settings.apply();
+  },
   reset() { localStorage.removeItem('as_settings'); Settings.apply(); },
   apply() {
     const s = Settings.get();
-    document.documentElement.dataset.theme = s.theme === 'sakura' ? '' : s.theme;
+    const th = !THEME_IDS.includes(s.theme) || s.theme === 'sakura' || (s.theme === 'photo' && !Photo.get()) ? '' : s.theme;    // Unknown (removed) themes fall back to the default
+    document.documentElement.dataset.theme = th;
+    /* Animated themes read a shared clock (--clk) so a new page carries on from where the last one was instead of starting over,
+       and --since (seconds since the theme was picked) so one-off intros such as the Wave's pour never replay on page changes */
+    { const r = document.documentElement, first = Settings._th === undefined;
+      if (first || Settings._th !== th) {
+        const now = Date.now(); let t0 = 0; try { t0 = +localStorage.getItem('as_theme_t0') || 0; } catch { /* ignore */ }
+        r.style.setProperty('--clk', (now / 1000).toFixed(3));
+        r.style.setProperty('--since', t0 ? Math.max(0, (now - t0) / 1000).toFixed(2) : '99');
+        Settings._th = th;
+      } }
+    let fl = document.getElementById('as-theme-font');
+    if (THEME_FONTS[th]) { if (!fl) { fl = document.createElement('link'); fl.id = 'as-theme-font'; fl.rel = 'stylesheet'; document.head.appendChild(fl); } const u = `https://fonts.googleapis.com/css2?family=${THEME_FONTS[th]}&display=swap`; if (fl.href !== u) fl.href = u; }
+    else if (fl) fl.remove();
+    let ps = document.getElementById('as-photo-css');
+    if (th === 'photo') {
+      const pic = Photo.get(), a = Photo.acc();
+      if (!ps) { ps = document.createElement('style'); ps.id = 'as-photo-css'; document.head.appendChild(ps); }
+      const css = `html[data-theme=photo]{--photo:url("${pic}");${a ? `--accent:${a};--accent-ink:#0b0b12;` : ''}}`;
+      if (ps.textContent !== css) ps.textContent = css;
+    } else if (ps) ps.remove();
     document.documentElement.classList.toggle('reduce-motion', !!s.reduceMotion);
+    waveSync(th);
     const root = document.documentElement;
     root.dataset.ui = s.uiMode === 'classic' ? 'classic' : 'modern';
     root.dataset.cards = ['small', 'large'].includes(s.cardSize) ? s.cardSize : 'normal';
-    if (/^#[0-9a-f]{6}$/i.test(s.accent || '')) {                       // Custom accent beats the theme's; ink flips to stay readable
+    if (th !== 'rgb' && /^#[0-9a-f]{6}$/i.test(s.accent || '')) {                       // Custom accent beats the theme's; ink flips to stay readable
       const n = parseInt(s.accent.slice(1), 16), lum = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
       root.style.setProperty('--accent', s.accent);
       root.style.setProperty('--accent-ink', lum > 0.58 ? '#0b0d14' : '#ffffff');
@@ -1245,7 +1315,7 @@ if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
 
 document.addEventListener('DOMContentLoaded', () => {
   buildHeader(); buildFooter(); buildBackToTop();
-  if (document.body.classList.contains('home')) Reveal.watch(document, '.rail, .block, .side-card');   // Home sections fade in on scroll
+  // Home sections fade in on scroll through intro.js (a second reveal here made them show up early, with no visible fade)
 });
 
 /* Live "12/28" counter under any bio box (the .bio-count inside the same label) */

@@ -78,7 +78,7 @@ async function initWatch() {
       $('#w-title').textContent = titleOf(MEDIA);
       $('#w-sub').textContent = 'This anime has not aired yet.';
       $('#player').innerHTML = `<div class="player-fallback"><div>No episodes have aired yet.<br><a class="btn btn-primary" style="margin-top:14px" href="anime.html?id=${MEDIA.id}">Back to details</a></div></div>`;
-      $$('.player-bar, .player-help, .side-panel').forEach(el => { el.style.display = 'none'; });
+      $$('.player-bar, .side-col').forEach(el => { el.style.display = 'none'; });
       return;
     }
     if (EP > epCountOf(MEDIA)) { EP = epCountOf(MEDIA); syncURL(); }      // A link to an episode that has not aired yet opens the latest one
@@ -109,10 +109,7 @@ function buildPage() {
   buildServerOptions();
   $('#server').onchange = () => setServer($('#server').value);
 
-  $('#help-lang').onclick = () => setLang(LANG === 'dub' ? 'sub' : 'dub');
-  $('#help-server').onclick = () => { const n = nextServerId(SERVER); if (n) setServer(n); };
-  $('#help-reload').onclick = () => { autoTried = 0; mountPlayer(); };
-  updateHelp();
+  $('#reload-player').onclick = () => { autoTried = 0; mountPlayer(); };
 
   $('#prev-ep').disabled = EP <= 1;
   $('#next-ep').disabled = EP >= total;
@@ -120,13 +117,38 @@ function buildPage() {
   $('#next-ep').onclick = () => gotoEp(EP + 1);
 
   renderSideEps(total);
+  if (!_artAsked) {                                                      // Fill in missing episode previews and titles once, then repaint the panel
+    _artAsked = true;
+    Api.episodeArt(MEDIA.id).then(art => {
+      let changed = false; epTitleOf(1);
+      Object.keys(art).forEach(n => {
+        const cur = _epTitles[n] || (_epTitles[n] = { title: '', thumb: '' });
+        if (!cur.thumb && art[n].thumb) { cur.thumb = art[n].thumb; changed = true; }
+        if (!cur.title && art[n].title) { cur.title = art[n].title; changed = true; }
+      });
+      if (changed) renderSideEps(epCountOf(MEDIA));
+    }).catch(() => {});
+  }
+  renderSideSeasons();
   mountPlayer();
   checkDub();
+  mountComments();
   Store.saveProgress(MEDIA, EP);
 
   $('#autonext').checked = Settings.get().autonext;
   $('#autonext').onchange = e => Settings.set('autonext', e.target.checked);
   window.addEventListener('message', onPlayerMessage);
+}
+
+/* Comments for this episode only; remounted whenever the episode changes */
+function mountComments() {
+  const box = $('#p-cm'); if (!box) return;
+  const id = MEDIA.id, ep = EP;
+  $('#cm-title').firstChild.textContent = `Episode ${ep} comments `;
+  const count = () => Comments.count(id, ep).then(n => { if (ep === EP) $('#cm-total').textContent = n ? `(${n})` : ''; }).catch(() => {});
+  $('#cm-total').textContent = '';
+  if (typeof Comments === 'undefined') { box.innerHTML = '<p class="empty">Comments failed to load. Refresh the page.</p>'; return; }
+  Comments.mount(box, id, count, ep); count();
 }
 
 /* Options are built here so watch.html needs no edit */
@@ -152,7 +174,6 @@ function setLang(l) {
   localStorage.setItem('as_lang', LANG);
   if (HAS_LANG) syncURL();
   $$('#lang-seg button').forEach(x => x.classList.toggle('on', x.dataset.lang === LANG));
-  updateHelp();
   mountPlayer();
 }
 function setServer(v) {
@@ -160,7 +181,6 @@ function setServer(v) {
   localStorage.setItem('as_server', SERVER);
   autoTried = 0;
   buildServerOptions();
-  updateHelp();
   mountPlayer();
 }
 
@@ -168,7 +188,6 @@ function setServer(v) {
 function paintDub() {
   const no = MEDIA && Dub.missing(MEDIA.id, EP), b = $('#lang-seg button[data-lang="dub"]');
   if (b) { b.classList.toggle('no-dub', no); b.setAttribute('aria-disabled', String(no)); b.title = no ? 'No dub found for this episode' : ''; }
-  const h = $('#help-lang'); if (h && no && LANG !== 'dub') h.textContent = 'Dub unavailable', h.disabled = true; else if (h) h.disabled = false;
 }
 
 /* Finds out early whether this episode has a dub so DUB is crossed out before anyone clicks it */
@@ -186,23 +205,11 @@ function dubMissing() {                                              // Nothing 
   Dub.mark(MEDIA.id, EP); paintDub();
   LANG = 'sub';
   $$('#lang-seg button').forEach(x => x.classList.toggle('on', x.dataset.lang === LANG));
-  updateHelp();
   toast('No dub for this episode, switched to Sub.');
   mountPlayer();
 }
 
-/* "Not playing?" bar */
 let loadTimer, readyTimer;
-function updateHelp() {
-  $('#help-text').textContent = LANG === 'dub'
-    ? 'Dub not playing? Not every show or episode has an English dub yet.'
-    : 'Video not loading? Try another server or reload the player.';
-  $('#help-lang').textContent = LANG === 'dub' ? 'Switch to Sub' : 'Try Dub';
-  const others = liveServers().filter(s => s.id !== SERVER);
-  $('#help-server').disabled = others.length === 0;
-  $('#help-server').title = others.length ? '' : 'No alternate server for this title';
-}
-function setHelp(alert) { $('#player-help').classList.toggle('alert', !!alert); }
 
 /* In-player message instead of a provider's raw error page */
 function showPlayerError(text = 'Server error. Please swap to another server.') {
@@ -216,7 +223,6 @@ function showPlayerError(text = 'Server error. Please swap to another server.') 
   box.appendChild(el);
   $('#pe-swap', el).onclick = () => { const n = nextServerId(SERVER); if (n && n !== SERVER) setServer(n); else mountPlayer(); };
   $('#pe-reload', el).onclick = () => { autoTried = 0; mountPlayer(); };
-  setHelp(true);
 }
 
 /* A server did not work: bench it and move to the next one right away; when none is left, say so */
@@ -231,7 +237,7 @@ function failServer() {
     autoTried++;
     SERVER = nxt;
     localStorage.setItem('as_server', SERVER);
-    buildServerOptions(); updateHelp();
+    buildServerOptions();
     toast(`Switching to ${labelOf(nxt)}...`);
     mountPlayer();
     return;
@@ -255,7 +261,6 @@ function probeEmbed(url, seq) {
 let mountSeq = 0;
 function mountPlayer() {
   clearTimeout(loadTimer); clearTimeout(readyTimer);
-  setHelp(false);
   playerReady = false;
   const seq = ++mountSeq, url = embedURL();
 
@@ -269,18 +274,62 @@ function mountPlayer() {
 
   /* An iframe 'load' also fires for a provider's error page, so only a postMessage from the player proves it works */
   readyTimer = setTimeout(() => { if (seq === mountSeq && !playerReady) failServer(); }, 7000);
-  loadTimer = setTimeout(() => { if (seq === mountSeq && !playerReady) setHelp(true); }, 9000);
 }
 
+/* Episode panel: follows Settings (Episode list style + order), like the details page */
+let _epTitles = null, _artAsked = false;
+function epTitleOf(n) {
+  if (!_epTitles) {
+    _epTitles = {};
+    ((MEDIA && MEDIA.streamingEpisodes) || []).forEach(e => {
+      const x = /(\d+)\s*[-\u2013:.]\s*(.*)$/.exec(e.title || '') || /Episode\s+(\d+)/i.exec(e.title || '');
+      if (x && !_epTitles[+x[1]]) _epTitles[+x[1]] = { title: x[2] || '', thumb: e.thumbnail };
+    });
+  }
+  return _epTitles[n] || {};
+}
 function renderSideEps(total) {
-  const box = $('#side-eps');
-  box.innerHTML = Array.from({ length: total }, (_, i) => {
-    const n = i + 1;
-    return `<button class="${n === EP ? 'on' : ''}" data-ep="${n}">${n}</button>`;
+  const box = $('#side-eps'), s = Settings.get();
+  const style = ['list', 'compact', 'grid'].includes(s.epStyle) ? s.epStyle : 'grid';
+  const seen = new Set((Store.seen()[MEDIA.id]) || []);
+  const fb = bannerOf(MEDIA) || thumbOf(MEDIA);      // No episode preview: show the anime's art instead
+  let nums = Array.from({ length: total }, (_, i) => i + 1);
+  if (s.epOrder === 'desc') nums.reverse();
+  box.className = 'side-eps as-' + style;
+  box.innerHTML = nums.map(n => {
+    const cls = (n === EP ? 'on ' : '') + (seen.has(n) ? 'done' : '');
+    if (style === 'grid') return `<button class="${cls}" data-ep="${n}">${n}</button>`;
+    const e = epTitleOf(n), t = esc(e.title || 'Episode ' + n);
+    const thumb = style === 'list' ? `<span class="se-thumb">${(e.thumb || fb) ? `<img loading="lazy" src="${esc(e.thumb || fb)}" alt="" ${e.thumb && fb ? `onerror="this.onerror=null;this.src='${esc(fb)}'"` : ''}>` : ''}</span>` : '';
+    return `<button class="${cls}" data-ep="${n}">${thumb}<span class="se-body"><em>Episode ${n}</em><b>${t}</b></span><i class="se-state">${seen.has(n) ? '\u2713' : ''}</i></button>`;
   }).join('');
   $$('button', box).forEach(b => b.onclick = () => gotoEp(+b.dataset.ep));
   const active = $('button.on', box);
   if (active) active.scrollIntoView({ block: 'nearest' });
+}
+
+/* Seasons under the episode grid: every season, movie and OVA of this show; fetched once, then only repainted */
+let SEASONS = null;
+function renderSideSeasons() {
+  const box = $('#side-seasons'); if (!box) return;
+  if (SEASONS === null) {
+    SEASONS = [];
+    Api.seasonChain(MEDIA.id).then(list => { SEASONS = list || []; renderSideSeasons(); }).catch(() => {});
+    return;
+  }
+  if (SEASONS.length < 2) { box.hidden = true; return; }
+  let n = 0;
+  box.innerHTML = `<h3>Seasons</h3><div class="ss-list">${SEASONS.map(x => {
+    const tv = ['TV', 'TV_SHORT', 'ONA'].includes(x.format);
+    const label = tv ? 'Season ' + (++n) : x.format === 'MOVIE' ? 'Movie' : 'OVA';
+    const soon = x.status === 'NOT_YET_RELEASED';
+    const meta = [x.seasonYear || x.startDate?.year || '', soon ? 'Upcoming' : x.episodes ? x.episodes + ' eps' : ''].filter(Boolean).join(' \u00b7 ');
+    const cur = x.id === MEDIA.id;
+    return `<a class="ss-item${cur ? ' on' : ''}${soon ? ' soon' : ''}" ${soon ? '' : `href="watch.html?id=${x.id}&ep=1"`} ${cur ? 'aria-current="page"' : ''}>
+      <img loading="lazy" src="${esc(x.coverImage?.large || '')}" alt="">
+      <span><em>${esc(label)}</em><b>${esc(titleOf(x))}</b><i>${esc(meta)}</i></span></a>`;
+  }).join('')}</div>`;
+  box.hidden = false;
 }
 
 function gotoEp(n) {
@@ -316,7 +365,7 @@ function onPlayerMessage(e) {
     autoTried = 0;
     markAlive(currentServer().id);
     if (LANG === 'dub') { Dub.clear(MEDIA.id, EP); Dub.clearSeries(MEDIA.id); paintDub(); }
-    $('#player-loading')?.remove(); $('.player-error')?.remove(); setHelp(false);
+    $('#player-loading')?.remove(); $('.player-error')?.remove();
   }
 }
 

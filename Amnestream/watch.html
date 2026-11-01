@@ -18,8 +18,10 @@
 <script src="js/config.js"></script>
 <script defer src="js/common.js"></script>
 <script src="js/player.js"></script>
+<script defer src="js/comments.js"></script>
 <script defer src="js/watch.js"></script>
 <link rel="stylesheet" href="css/mobile.css">
+<link rel="stylesheet" href="css/themes.css">
 </head>
 <body>
 <header id="site-header"></header>
@@ -43,6 +45,7 @@
           <option value="ani">Server: MegaPlay (AniList)</option>
           <option value="mal">Server: MegaPlay (MAL)</option>
         </select>
+        <button class="btn" id="reload-player" type="button" title="Reload the player">Reload player</button>
         <div class="nav-eps">
           <button class="btn" id="prev-ep">&lsaquo; Prev</button>
           <button class="btn" id="next-ep">Next &rsaquo;</button>
@@ -51,17 +54,18 @@
         <a class="btn btn-ghost" id="info-link" href="#">Details</a>
       </div>
 
-      <div class="player-help" id="player-help">
-        <span id="help-text"></span>
-        <button class="btn btn-ghost" id="help-lang"></button>
-        <button class="btn btn-ghost" id="help-server">Try other server</button>
-        <button class="btn btn-ghost" id="help-reload">Reload player</button>
-      </div>
+      <section class="dp-comments" id="comments">
+        <h2 id="cm-title">Episode comments <span class="cm-total" id="cm-total"></span></h2>
+        <div id="p-cm"></div>
+      </section>
     </div>
 
-    <aside class="side-panel">
-      <h3>Episodes</h3>
-      <div class="side-eps" id="side-eps"></div>
+    <aside class="side-col">
+      <div class="side-panel">
+        <h3>Episodes</h3>
+        <div class="side-eps" id="side-eps"></div>
+      </div>
+      <section class="side-panel side-seasons" id="side-seasons" hidden></section>
     </aside>
   </div>
 </main>

@@ -65,13 +65,10 @@
   .player-bar .seg{display:grid;grid-template-columns:1fr 1fr;border-radius:999px}
   .player-bar .seg button{padding:10px 0;text-align:center}
   .player-bar select{grid-column:2;height:42px;text-overflow:ellipsis}
+  .player-bar #reload-player{grid-column:1/-1}
   .player-bar .nav-eps{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .player-bar .nav-eps .btn{width:100%;justify-content:center}
   .player-bar .btn,.player-bar label.btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:42px;box-sizing:border-box;text-align:center}
-  .player-help{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px;border-radius:20px}
-  .player-help #help-text{grid-column:1/-1;flex:none}
-  .player-help .btn{width:100%;box-sizing:border-box;justify-content:center;text-align:center}
-  .player-help #help-reload{grid-column:1/-1}
   .side-panel{padding:12px;border-radius:20px}
   .side-eps{grid-template-columns:repeat(auto-fill,minmax(46px,1fr))}
 }
@@ -175,4 +172,40 @@
   .rail-track{scroll-padding-left:14px}
   #rail-continue,#rail-trending,#rail-latest{margin-top:30px;margin-bottom:30px}
   .block{margin-top:30px}
+}
+
+/* ===== Episode lists on phones and small tablets (all three styles, every theme) ===== */
+@media (max-width:900px){
+  .dp-eptools{flex-wrap:wrap}
+  .dp-search.open{width:min(170px,44vw)}
+  .ep-cards{max-height:none;overflow:visible}       /* One scroll (the page) instead of a scrolling box inside the page */
+  .ep-chip{height:28px}                               /* Bigger tap targets for SUB / DUB */
+}
+@media (max-width:600px){
+  /* Cards: a thumbnail on the left and the details on the right, one episode per row, so titles stay readable */
+  .ep-cards:not(.compact):not(.grid){grid-template-columns:minmax(0,1fr);gap:14px}
+  .ep-cards:not(.compact):not(.grid) .ep-card{display:grid;grid-template-columns:minmax(0,42%) minmax(0,1fr);grid-template-rows:auto 1fr;column-gap:12px;align-items:start}
+  .ep-cards:not(.compact):not(.grid) .ep-thumb{grid-row:1 / span 2}
+  .ep-cards:not(.compact):not(.grid) .ep-body{padding:0;align-self:start}
+  .ep-cards:not(.compact):not(.grid) .ep-t{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-top:3px}
+  .ep-cards:not(.compact):not(.grid) .ep-foot{margin-top:10px;padding-top:10px}
+  .ep-cards:not(.compact):not(.grid) .ep-dur{left:5px;top:5px;padding:2px 6px;font-size:10.5px}
+  .ep-cards:not(.compact):not(.grid) .ep-flag{right:4px;top:4px;font-size:9px}
+
+  /* Compact: episode number above the title (the title gets the whole row), small SUB / DUB on the right */
+  .ep-cards.compact .ep-card{gap:10px;padding:9px 12px}
+  .ep-cards.compact .ep-body{flex-direction:column;align-items:stretch;gap:2px;min-width:0}
+  .ep-cards.compact .ep-n{width:auto}
+  .ep-cards.compact .ep-t{white-space:nowrap}
+  .ep-cards.compact .ep-foot{flex-shrink:0;gap:6px}
+  .ep-cards.compact .ep-chip i{display:none}
+  .ep-cards.compact .ep-chip b{padding:0 9px}
+
+  /* Numbers: five to a row, big enough to tap */
+  .ep-cards.grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+  .ep-cards.grid .ep-num{padding:13px 2px}
+}
+@media (max-width:360px){
+  .ep-cards.compact .ep-state{display:none}
+  .ep-cards.grid{grid-template-columns:repeat(4,minmax(0,1fr))}
 }

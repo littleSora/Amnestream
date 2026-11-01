@@ -1,9 +1,19 @@
 /* Settings: everything saves to this device as you change it.
    Two layouts share the same settings and controls: Modern (the Stage: click the part of a miniature site you want to change) and Classic (stacked panels with a live preview). */
 
-const THEMES = [['sakura','Atlas','#181c25','#9db4ff'],['midnight','Midnight','#0e1420','#60a5fa'],['crimson','Crimson','#1a0d0f','#f43f5e'],
-  ['emerald','Emerald','#0c1713','#34d399'],['amoled','AMOLED','#000','#ffffff'],['sunset','Sunset','#1a100a','#fb923c'],
-  ['amber','Amber','#191309','#fbbf24'],['galaxy','Galaxy','#130d1d','#a78bfa'],['ocean','Ocean','#0a161b','#22d3ee']];
+/* [id, name, tile background, dot colour, label colour, warn]. warn = constantly animating, may lag */
+const THEMES = [
+  ['sakura','Vista Blue','#181c25','#9db4ff','#fff',0],['retro96','Retro 96','#008080','#000080','#fff',0],['cyberpunk','Cyberpunk','linear-gradient(135deg,#0a0a10,#2b0a33)','#fcee0a','#fff',0],
+  ['rgb','RGB','#07070c','linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f)','#fff',1],['wave','Wave','linear-gradient(135deg,#060a1c,#0b2b55)','linear-gradient(90deg,#00e5ff,#ff2d95)','#fff',1],
+  ['voxel','Voxel','linear-gradient(#79b8ff 58%,#5fbf2a 58% 68%,#7a5535 68%)','#5fbf2a','#fff',0],['vapor','Vaporwave','linear-gradient(135deg,#1a0536,#ff3d9a)','#01cdfe','#fff',0],['terminal','Terminal','#000','#33ff66','#33ff66',0],
+  ['blueprint','Blueprint','#0c3a8a','#7fe3ff','#fff',0],['parchment','Parchment','#eadfc3','#8c2f1b','#33241a',0],['pealcd','Pea LCD','#8bac0f','#0f380f','#0f380f',0],
+  ['brutal','Brutalist','#fff7d6','#ff4d8d','#000',0],['frost','Frostglass','linear-gradient(135deg,#2a6f9a,#0b1b2b)','#9be7ff','#fff',0],['noir','Noir','linear-gradient(135deg,#000,#2a2a2a)','#e10600','#fff',0],
+  ['aurora','Aurora','linear-gradient(135deg,#040912,#0c4a45 70%,#3b2a80)','#5effc2','#fff',0],['magma','Magma','linear-gradient(0deg,#6a1a06,#090302 70%)','#ff5a1f','#fff',0],['void','Void','radial-gradient(circle at 70% 50%,#ff9a3c 0 6%,#000 8% 20%,#2a0f55 40%,#000 70%)','#8a5cff','#fff',1],
+  ['photo','Your picture','','#ff9ec7','#fff',0]];   // Your picture is always last
+/* Eight plain colours from coolors.co: one flat colour each, no images or animation, so they are easy on any device */
+const PRESETS = [['pre-rich','Rich Black','#0b132b','#5bc0be','#fff'],['pre-oxford','Oxford Blue','#14213d','#fca311','#fff'],['pre-charcoal','Charcoal','#264653','#e9c46a','#fff'],
+  ['pre-brunswick','Brunswick Green','#1b4332','#95d5b2','#fff'],['pre-violet','Russian Violet','#240046','#c77dff','#fff'],['pre-cosmos','Chocolate Cosmos','#590d22','#ff8fa3','#fff'],
+  ['pre-jet','Jet','#2b2d42','#ef476f','#fff'],['pre-alabaster','Alabaster','#edede9','#3d5a80','#1b1b1f']];;
 const ACCENTS = ['#9db4ff', '#f472b6', '#fb923c', '#fbbf24', '#34d399', '#22d3ee', '#a78bfa', '#f43f5e'];
 
 const ALL_SECTIONS = [
@@ -126,8 +136,17 @@ function ctlHTML(it, s) {
   return '';
 }
 function themesHTML(s) {
-  return `<div class="themes">${THEMES.map(([id, n, b, a]) =>
-    `<button class="theme-opt ${s.theme === id ? 'on' : ''}" data-theme-pick="${id}" style="--tb:${b};--ta:${a}"><i></i><em class="tm-bar"></em>${n}</button>`).join('')}</div>`;
+  const idx = THEMES.findIndex(t => t[0] === s.theme), open = idx >= 9;       // Starts open when the chosen theme is in the hidden part
+  const pic = Photo.get();
+  const tile = ([id, n, b, a, fg, warn]) => {
+    const bg = id === 'photo' ? (pic ? `url('${pic}') center/cover` : 'repeating-linear-gradient(45deg,#1a1a22 0 8px,#22222c 8px 16px)') : b;
+    return `<button class="theme-opt ${s.theme === id ? 'on' : ''}" data-theme-pick="${id}" ${warn ? 'data-warn="1"' : ''} style="--tb:${id === 'photo' ? '#1a1a22' : b};--ta:${a};background:${bg};color:${fg}"><i></i><em class="tm-bar"></em>${n}${warn ? '<b class="th-warn" title="Constantly animating: may make your device lag">\u26A0</b>' : ''}</button>`;
+  };
+  return `<div class="theme-sub">Colour presets<small>Eight plain colours. Nothing animates, so they are friendly to any device.</small></div>
+    <div class="themes preset-grid">${PRESETS.map(tile).join('')}</div>
+    <div class="theme-sub">Unique themes<small>Full looks with their own style. The ones marked \u26A0 are always animating.</small></div>
+    <div class="themes theme-grid ${open ? 'open' : ''}">${THEMES.map(tile).join('')}</div>
+    <div class="themes-more"><button type="button" data-themes-more aria-expanded="${open}"><span>${open ? 'Show less' : 'Show all ' + THEMES.length}</span><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4.5l4 4 4-4"/></svg></button></div>`;
 }
 function accentHTML(s) {
   const cur = (s.accent || '').toLowerCase();
@@ -475,6 +494,31 @@ function paintPrev() {
 /* ---------- Wiring shared by both layouts ---------- */
 const afterChange = () => { paintPrev(); paintStage(); };
 
+/* ---------- Warning pop-up for themes that never stop animating ---------- */
+function warnDialog(name) {
+  return new Promise(done => {
+    const d = document.createElement('dialog');
+    d.className = 'pf-dlg warn-dlg'; d.setAttribute('aria-label', 'Animated theme warning');
+    d.innerHTML = `
+      <div class="warn-ic" aria-hidden="true">\u26A0</div>
+      <h2>${esc(name)} never stops animating</h2>
+      <p class="warn-p">It can make your device lag or drain the battery, especially on phones and older computers. The colour presets do not animate at all if you would rather keep things light.</p>
+      <p class="warn-p warn-sub">You can switch back any time in Settings.</p>
+      <div class="pf-dlg-act"><button type="button" class="btn btn-ghost" data-w="no">Cancel</button><button type="button" class="btn btn-primary" data-w="yes">Use it anyway</button></div>`;
+    document.body.appendChild(d);
+    let res = false;
+    d.addEventListener('click', e => {
+      const b = e.target.closest('button');
+      if (b) { res = b.dataset.w === 'yes'; d.close(); return; }
+      const r = d.getBoundingClientRect();
+      if (e.target === d && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)) d.close();
+    });
+    d.addEventListener('close', () => { d.remove(); done(res); });
+    d.showModal();
+    d.querySelector('[data-w=no]').focus();
+  });
+}
+
 /* ---------- Pop-ups (sync code, password) ---------- */
 function openDlg(html) {
   const d = document.createElement('dialog');
@@ -586,11 +630,47 @@ function wireRows() {
     wrap.style.setProperty('--i', btns.indexOf(b));
     afterChange();
   });
-  $$('[data-theme-pick]').forEach(b => b.onclick = () => {
-    Settings.set('theme', b.dataset.themePick);
-    $$('[data-theme-pick]').forEach(x => x.classList.toggle('on', x === b));
-    afterChange();
+  $$('[data-themes-more]').forEach(b => b.onclick = () => {
+    const g = b.closest('.mrow, .set-row, .stg-insp, .mset, body').querySelector('.theme-grid') || $('.theme-grid');
+    const open = g.classList.toggle('open');
+    b.setAttribute('aria-expanded', String(open));
+    b.firstElementChild.textContent = open ? 'Show less' : 'Show all ' + THEMES.length;
   });
+  const pickTheme = id => {
+    Settings.set('theme', id);
+    $$('[data-theme-pick]').forEach(x => x.classList.toggle('on', x.dataset.themePick === id));
+    afterChange();
+  };
+  const paintPhoto = () => {
+    const pic = Photo.get();
+    $$('[data-theme-pick=photo]').forEach(t => { t.style.background = pic ? `url('${pic}') center/cover` : 'repeating-linear-gradient(45deg,#1a1a22 0 8px,#22222c 8px 16px)'; });
+  };
+  /* The picture pop-up (crop, fit, preview, change or remove) opens from the Your picture tile, like the profile photo one does */
+  const openPicture = file => BgPicker.open({
+    file,
+    onDone: what => {
+      if (what === 'use') { paintPhoto(); pickTheme('photo'); }
+      else if (what === 'remove') { paintPhoto(); if (Settings.get().theme === 'photo') pickTheme('sakura'); }
+    },
+  });
+  $$('[data-theme-pick]').forEach(b => {
+    b.onclick = async () => {
+      const id = b.dataset.themePick;
+      if (id === 'photo') { openPicture(); return; }
+      if (b.dataset.warn && Settings.get().theme !== id) {
+        const name = b.textContent.replace('\u26A0', '').trim();
+        const ok = await warnDialog(name);
+        if (!ok) return;
+      }
+      pickTheme(id);
+    };
+    if (b.dataset.themePick === 'photo') {
+      b.ondragover = e => { e.preventDefault(); b.classList.add('over'); };
+      b.ondragleave = () => b.classList.remove('over');
+      b.ondrop = e => { e.preventDefault(); b.classList.remove('over'); const f = e.dataTransfer.files[0]; if (f) openPicture(f); };
+    }
+  });
+
   const setAccent = c => {
     Settings.set('accent', c);
     $$('.acc-dot').forEach(x => x.classList.toggle('on', x.dataset.accent === c));

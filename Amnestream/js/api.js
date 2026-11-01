@@ -109,16 +109,19 @@ fragment MediaCard on Media {
 }`;
 
 /* Slim fields for the watch page */
+/* Watch page: also carries the per-episode previews and titles for its episode list */
 const MEDIA_PLAYER = `
 fragment MediaPlayer on Media {
   id
   idMal
   title { romaji english native }
-  coverImage { large }
+  coverImage { large extraLarge }
+  bannerImage
   status
   format
   episodes
   nextAiringEpisode { episode airingAt }
+  streamingEpisodes { title thumbnail }
 }`;
 
 /* Slim fields for search suggestions */
@@ -566,7 +569,35 @@ const _playable = list => Array.isArray(list) ? list.filter(hasEpisodes) : list;
 /* Copy of a Page-style result with unreleased titles removed (the cached object is left untouched) */
 const _scrubPage = d => (d && d.Page && Array.isArray(d.Page.media)) ? { ...d, Page: { ...d.Page, media: _playable(d.Page.media) } } : d;
 
+/* Episode previews and titles for shows AniList has none for: ani.zip maps an AniList id to every episode's image and title in one request.
+   Cached on this device for a day (a short while when it has nothing), and any failure just means "no extra art": the pages fall back to the anime's own art. */
+async function _episodeArt(id) {
+  const key = 'as_epart:' + id;
+  try {
+    const c = JSON.parse(localStorage.getItem(key) || 'null');
+    if (c && Date.now() - c.t < c.ttl) return c.v;
+  } catch { /* no cache */ }
+  let out = {};
+  try {
+    const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), 8000);
+    const res = await fetch('https://api.ani.zip/mappings?anilist_id=' + encodeURIComponent(id), { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (res.ok) {
+      const eps = (await res.json()).episodes || {};
+      Object.keys(eps).forEach(k => {
+        const n = +k, e = eps[k];
+        if (!n || !e) return;                                               // Skips specials ("S1") and junk
+        const t = (e.title && (e.title.en || e.title['x-jat'] || e.title.ja)) || '';
+        if (e.image || t) out[n] = { title: t, thumb: e.image || '' };
+      });
+    }
+  } catch { /* offline or blocked */ }
+  try { localStorage.setItem(key, JSON.stringify({ t: Date.now(), ttl: Object.keys(out).length ? 864e5 : 36e5, v: out })); } catch { /* storage full */ }
+  return out;
+}
+
 const Api = {
+  episodeArt: _episodeArt,
   /* Debug helper: live and parked hosts */
   endpoints() {
     const now = Date.now();
@@ -862,6 +893,28 @@ const Api = {
           }
         }
       }`, { id }, { ttl: TTL.long });
+  },
+
+  /* Every season of a show: follows PREQUEL / SEQUEL links outward from this title (a few titles per request) and returns the TV, ONA, OVA and movie entries oldest first */
+  async seasonChain(id) {
+    const F = 'id title { romaji english } coverImage { large } format status isAdult seasonYear startDate { year month day } episodes averageScore relations { edges { relationType node { id } } }';
+    const got = new Map(), tried = new Set();
+    let frontier = [Number(id)];
+    for (let depth = 0; depth < 8 && frontier.length && got.size < 30; depth++) {
+      const ids = [...new Set(frontier)].filter(i => !tried.has(i)).slice(0, 14);
+      if (!ids.length) break;
+      ids.forEach(i => tried.add(i));
+      const d = await gql(`query SeasonChain {\n${ids.map((i, k) => `m${k}: Media(id: ${i}, type: ANIME) { ${F} }`).join('\n')}\n}`, {}, { ttl: TTL.long });
+      frontier = [];
+      ids.forEach((i, k) => {
+        const m = d && d['m' + k]; if (!m) return;
+        got.set(m.id, m);
+        for (const e of (m.relations && m.relations.edges) || []) if (e.node && (e.relationType === 'PREQUEL' || e.relationType === 'SEQUEL') && !tried.has(e.node.id)) frontier.push(e.node.id);
+      });
+    }
+    const KEEP = ['TV', 'TV_SHORT', 'ONA', 'OVA', 'MOVIE'];
+    const when = m => { const d = m.startDate || {}; return d.year ? d.year * 10000 + (d.month || 6) * 100 + (d.day || 15) : 99999999; };
+    return [...got.values()].filter(m => (m.id === Number(id) || KEEP.includes(m.format)) && (!m.isAdult || adultOn())).sort((a, b) => when(a) - when(b));
   },
 
   /* Hover popup data: trailer and banner, fetched lazily and cached */

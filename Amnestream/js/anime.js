@@ -36,6 +36,16 @@ async function initAnime() {
       if (x && !EPS[+x[1]]) EPS[+x[1]] = { title: x[2] || '', thumb: e.thumbnail };
     });
     render();
+    // Episodes AniList has no preview or title for: fill them in from the extra source, then repaint the list
+    Api.episodeArt(ID).then(art => {
+      let changed = false;
+      Object.keys(art).forEach(n => {
+        const cur = EPS[n] || (EPS[n] = { title: '', thumb: '' });
+        if (!cur.thumb && art[n].thumb) { cur.thumb = art[n].thumb; changed = true; }
+        if (!cur.title && art[n].title) { cur.title = art[n].title; changed = true; }
+      });
+      if (changed && $('#ep-wrap')) renderEps();
+    }).catch(() => {});
   } catch (err) {
     $('#dp').innerHTML = `<div style="padding:80px 24px"><h1>Not found</h1><p class="muted">${esc(err.message)}</p></div>`;
   }
@@ -137,6 +147,7 @@ function render() {
           <button class="dp-tool" id="ep-sort"></button>
         </div>
         <div id="ep-wrap"></div>
+        <section class="dp-seasons" id="seasons" hidden></section>
       </div>
 
       ${rel.length ? `<div class="dp-panel" id="p-rel"><div class="grid">${rel.map(e => {
@@ -153,6 +164,11 @@ function render() {
 
       ${chars.length ? `<div class="dp-panel" id="p-ch"><div class="dp-chars">${chars.map(c => `
         <div class="dp-char"><img loading="lazy" src="${esc(c.image?.medium || '')}" alt=""><p>${esc(c.name.full)}</p></div>`).join('')}</div></div>` : ''}
+
+      <section class="dp-comments" id="comments">
+        <h2>Comments <span class="cm-total" id="cm-total"></span></h2>
+        <div id="p-cm"></div>
+      </section>
     </div>
   </div>`;
 
@@ -209,6 +225,28 @@ function render() {
     placeInk(); animatePanel($('#p-' + t.dataset.p));
   });
   placeInk(); document.fonts?.ready.then(placeInk); addEventListener('resize', placeInk);
+
+  /* Comments: always shown below the page and loaded right away */
+  const refreshCommentCount = () => Comments.count(m.id).then(n => { $('#cm-total').textContent = n ? `(${n})` : ''; }).catch(() => {});
+  if (typeof Comments !== 'undefined') { Comments.mount($('#p-cm'), m.id, refreshCommentCount); refreshCommentCount(); }
+  else $('#p-cm').innerHTML = '<p class="empty">Comments failed to load. Refresh the page.</p>';
+
+  /* Seasons: every season, movie and OVA of this show, below the episodes */
+  Api.seasonChain(m.id).then(list => {
+    const box = $('#seasons'); if (!box || list.length < 2) return;
+    let n = 0;
+    box.innerHTML = `<h3 class="dp-lbl">Seasons</h3><div class="ss-row">${list.map(x => {
+      const tv = ['TV', 'TV_SHORT', 'ONA'].includes(x.format);
+      const label = tv ? 'Season ' + (++n) : x.format === 'MOVIE' ? 'Movie' : 'OVA';
+      const yr = x.seasonYear || x.startDate?.year || '';
+      const meta = [yr, x.status === 'NOT_YET_RELEASED' ? 'Upcoming' : x.episodes ? x.episodes + ' eps' : ''].filter(Boolean).join(' \u00b7 ');
+      return `<a class="ss-card${x.id === m.id ? ' on' : ''}" href="anime.html?id=${x.id}" ${x.id === m.id ? 'aria-current="page"' : ''}>
+        <span class="ss-img"><img loading="lazy" src="${esc(x.coverImage?.large || '')}" alt="">${x.id === m.id ? '<em>Current</em>' : ''}</span>
+        <span class="ss-n">${esc(label)}</span><b>${esc(titleOf(x))}</b><i>${esc(meta)}</i></a>`;
+    }).join('')}</div>`;
+    box.hidden = false;
+    $('.ss-card.on', box)?.scrollIntoView({ block: 'nearest', inline: 'center' });
+  }).catch(() => {});
 
   /* Episode tools */
   const q = $('#ep-q');

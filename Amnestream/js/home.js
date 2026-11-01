@@ -122,6 +122,13 @@ function renderHero(items) {
       `<button data-dot="${i}" aria-label="Slide ${i + 1}" class="${i === 0 ? 'on' : ''}"></button>`).join('')}</div>
      <div class="hero-ctrl"><button id="hero-prev" aria-label="Previous">&lsaquo;</button><button id="hero-next" aria-label="Next">&rsaquo;</button></div>`;
 
+  /* Start the entrance animation once the spotlight is actually on screen */
+  hero.classList.remove('play');
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { hero.classList.add('play'); io.disconnect(); } }, { threshold: 0.3 });
+    io.observe(hero);
+  } else hero.classList.add('play');
+
   let cur = 0;
   const show = i => {
     cur = (i + slides.length) % slides.length;

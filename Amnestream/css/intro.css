@@ -2,6 +2,9 @@
 
 html.smooth{scroll-behavior:auto}
 
+/* --ease used to exist only inside .intro, so every .rv transition below was invalid outside it and the scroll-in fade ran for 0s */
+:root{--ease:cubic-bezier(.16,1,.3,1)}
+
 .intro{
   --ease:cubic-bezier(.16,1,.3,1);
   position:relative;isolation:isolate;overflow:hidden;
@@ -84,6 +87,11 @@ html.smooth{scroll-behavior:auto}
 .rv{opacity:0;transform:translate3d(0,46px,0) scale(.985);
   transition:opacity .9s var(--ease),transform 1.1s var(--ease);will-change:opacity,transform}
 .rv.in{opacity:1;transform:none}
+/* Spotlight, then the Top 10 a beat later: each fades and floats up on its own instead of the whole block popping in */
+.bento.rv{opacity:1;transform:none;transition:none}
+.bento.rv>.hero,.bento.rv>.bento-side{opacity:0;transform:translate3d(0,56px,0) scale(.97);transition:opacity 1.1s var(--ease),transform 1.3s var(--ease)}
+.bento.rv.in>.hero,.bento.rv.in>.bento-side{opacity:1;transform:none}
+.bento.rv.in>.bento-side{transition-delay:.22s}
 .rv.in.done{will-change:auto}
 
 @media (max-width:900px){
@@ -94,9 +102,9 @@ html.smooth{scroll-behavior:auto}
   .intro-word{font-size:clamp(34px,10.8vw,76px)}
 }
 @media (prefers-reduced-motion:reduce){
-  .intro *,.rv{animation:none!important;transition:none!important}
+  .intro *,.rv,.bento.rv>*{animation:none!important;transition:none!important}
   .intro-cta,.intro-cols,.intro-cue,.icol-track{opacity:1;transform:none;filter:none}
   .intro-word .ch{visibility:visible}
   .caret{animation:none}
-  .rv{opacity:1;transform:none}
+  .rv,.bento.rv>.hero,.bento.rv>.bento-side{opacity:1;transform:none}
 }
