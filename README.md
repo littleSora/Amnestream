@@ -1,3 +1,4 @@
+
 <div align="center">
 
 # amnestream.
@@ -10,7 +11,7 @@ No backend, no build step: plain HTML, CSS and JavaScript.
 ![PWA](https://img.shields.io/badge/installable-PWA-5a0fc8?style=flat-square)
 ![Themes](https://img.shields.io/badge/themes-18%20%2B%208%20presets-ff71ce?style=flat-square)
 
-<img src="screenshots/home.png" alt="Amnestream home page" width="860">
+<img width="1920" height="927" alt="home" src="https://github.com/user-attachments/assets/af2b2319-6d13-40cd-a5cd-7536bd14fe9c" />
 
 </div>
 
@@ -24,10 +25,11 @@ No backend, no build step: plain HTML, CSS and JavaScript.
 
 |                                          Home                                          |                               Browse                               |
 | :------------------------------------------------------------------------------------: | :----------------------------------------------------------------: |
-| <img src="screenshots/rows.png" alt="Continue watching, trending and latest episodes"> | <img src="screenshots/browse.png" alt="Browse with genre filters"> |
+| <img width="1920" height="929" alt="rows" src="https://github.com/user-attachments/assets/e82b1cac-3557-471a-92c8-20198f84d6d7" /> | <img width="1920" height="929" alt="browse" src="https://github.com/user-attachments/assets/c8290193-6a9e-4e1c-9a35-da2d7c6eb327" />
+
 
 <div align="center">
-<img src="screenshots/watch.png" alt="Watch page with episode previews and seasons" width="860">
+<img width="1920" height="920" alt="watch" src="https://github.com/user-attachments/assets/a773e962-0df7-4f6a-9ed5-07b6df3b1451" />
 </div>
 
 ## Features
@@ -87,7 +89,6 @@ Then open <http://localhost:8080>. There is nothing to install or build.
 | Accounts and sync   | Supabase Auth plus a `user_data` table                          |
 | Install and offline | Service worker and web app manifest                             |
 
-Curious how multi-genre ranking, dub detection, server failover or the episode lists work? See **[docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md)**.
 
 ## Known limits
 
