@@ -5,6 +5,7 @@ let EP = Math.max(1, Number(Q.get('ep')) || 1);
 const HAS_LANG = ['sub', 'dub'].includes(Q.get('lang'));
 let LANG = HAS_LANG ? Q.get('lang') : localStorage.getItem('as_lang') || Settings.get().audio;
 const syncURL = () => history.replaceState(null, '', `watch.html?id=${WID}&ep=${EP}${HAS_LANG ? '&lang=' + LANG : ''}`);
+let PREF_LANG = LANG;                                            // What the person asked for; LANG is what actually plays (falls back to sub when no dub exists)
 let MEDIA = null;
 
 /* Player providers: key says which id is needed; order sets priority; a provider that never signals is benched */
@@ -44,9 +45,10 @@ let SERVER = (() => {
 /* Server health */
 const DEAD_TTL = 30 * 60e3;
 const deadMap = () => { try { return JSON.parse(localStorage.getItem('as_dead_servers')) || {}; } catch { return {}; } };
-const isDead = id => { const d = deadMap()[id]; return !!d && d > Date.now(); };
-function markDead(id) { const d = deadMap(); d[id] = Date.now() + DEAD_TTL; localStorage.setItem('as_dead_servers', JSON.stringify(d)); }
-function markAlive(id) { const d = deadMap(); if (d[id]) { delete d[id]; localStorage.setItem('as_dead_servers', JSON.stringify(d)); } }
+const deadKey = id => id + ':' + LANG;                       // A server can fail for dub and still work for sub
+const isDead = id => { const d = deadMap()[deadKey(id)]; return !!d && d > Date.now(); };
+function markDead(id) { const d = deadMap(); d[deadKey(id)] = Date.now() + DEAD_TTL; localStorage.setItem('as_dead_servers', JSON.stringify(d)); }
+function markAlive(id) { const d = deadMap(); if (d[deadKey(id)]) { delete d[deadKey(id)]; localStorage.setItem('as_dead_servers', JSON.stringify(d)); } }
 
 const currentServer = () => SERVERS.find(s => s.id === SERVER) || SERVERS[0];
 const labelOf = id => (SERVERS.find(s => s.id === id) || {}).label || id;
@@ -89,6 +91,8 @@ async function initWatch() {
 
 function buildPage() {
   const total = epCountOf(MEDIA);
+  LANG = PREF_LANG === 'dub' && Dub.missing(MEDIA.id, EP) ? 'sub' : PREF_LANG;   // No dub for this episode: play sub instead of an error
+  $$('#lang-seg button').forEach(b => b.classList.toggle('on', b.dataset.lang === LANG));
 
   $('#w-title').textContent = titleOf(MEDIA);
   $('#w-sub').innerHTML =
@@ -107,7 +111,7 @@ function buildPage() {
 
   $('#help-lang').onclick = () => setLang(LANG === 'dub' ? 'sub' : 'dub');
   $('#help-server').onclick = () => { const n = nextServerId(SERVER); if (n) setServer(n); };
-  $('#help-reload').onclick = () => mountPlayer();
+  $('#help-reload').onclick = () => { autoTried = 0; mountPlayer(); };
   updateHelp();
 
   $('#prev-ep').disabled = EP <= 1;
@@ -117,6 +121,7 @@ function buildPage() {
 
   renderSideEps(total);
   mountPlayer();
+  checkDub();
   Store.saveProgress(MEDIA, EP);
 
   $('#autonext').checked = Settings.get().autonext;
@@ -141,7 +146,9 @@ function embedURL() {
 }
 
 function setLang(l) {
-  LANG = l;
+  if (l === 'dub' && Dub.missing(MEDIA.id, EP)) { toast('No dub for this episode.'); return; }   // Crossed out: cannot be picked
+  LANG = PREF_LANG = l;
+  autoTried = 0;
   localStorage.setItem('as_lang', LANG);
   if (HAS_LANG) syncURL();
   $$('#lang-seg button').forEach(x => x.classList.toggle('on', x.dataset.lang === LANG));
@@ -160,7 +167,28 @@ function setServer(v) {
 /* Cross out DUB when this episode's dub is known not to play */
 function paintDub() {
   const no = MEDIA && Dub.missing(MEDIA.id, EP), b = $('#lang-seg button[data-lang="dub"]');
-  if (b) { b.classList.toggle('no-dub', no); b.title = no ? 'No dub found for this episode' : ''; }
+  if (b) { b.classList.toggle('no-dub', no); b.setAttribute('aria-disabled', String(no)); b.title = no ? 'No dub found for this episode' : ''; }
+  const h = $('#help-lang'); if (h && no && LANG !== 'dub') h.textContent = 'Dub unavailable', h.disabled = true; else if (h) h.disabled = false;
+}
+
+/* Finds out early whether this episode has a dub so DUB is crossed out before anyone clicks it */
+async function checkDub() {
+  const id = MEDIA.id, ep = EP;
+  const r = await Dub.probe(id, ep);
+  if (!MEDIA || id !== MEDIA.id || ep !== EP) return;
+  if (r === 'no') { Dub.mark(id, ep); if (ep === 1) Dub.markSeries(id); }
+  else if (r === 'yes') { Dub.clear(id, ep); if (ep === 1) Dub.clearSeries(id); }
+  paintDub();
+  if (r === 'no' && LANG === 'dub') dubMissing();
+}
+function dubMissing() {                                              // Nothing to play in dub: say so and fall back to sub
+  clearTimeout(loadTimer); clearTimeout(readyTimer);
+  Dub.mark(MEDIA.id, EP); paintDub();
+  LANG = 'sub';
+  $$('#lang-seg button').forEach(x => x.classList.toggle('on', x.dataset.lang === LANG));
+  updateHelp();
+  toast('No dub for this episode, switched to Sub.');
+  mountPlayer();
 }
 
 /* "Not playing?" bar */
@@ -176,42 +204,72 @@ function updateHelp() {
 }
 function setHelp(alert) { $('#player-help').classList.toggle('alert', !!alert); }
 
+/* In-player message instead of a provider's raw error page */
+function showPlayerError(text = 'Server error. Please swap to another server.') {
+  clearTimeout(loadTimer); clearTimeout(readyTimer);
+  const box = $('#player'); if (!box) return;
+  $('#player-loading')?.remove(); $('.player-error', box)?.remove();
+  const el = document.createElement('div');
+  el.className = 'player-error';
+  el.innerHTML = `<div><p>${esc(text)}</p>
+    <div class="pe-actions"><button class="btn btn-primary" id="pe-swap">Swap server</button><button class="btn btn-ghost" id="pe-reload">Reload</button></div></div>`;
+  box.appendChild(el);
+  $('#pe-swap', el).onclick = () => { const n = nextServerId(SERVER); if (n && n !== SERVER) setServer(n); else mountPlayer(); };
+  $('#pe-reload', el).onclick = () => { autoTried = 0; mountPlayer(); };
+  setHelp(true);
+}
+
+/* A server did not work: bench it and move to the next one right away; when none is left, say so */
+function failServer() {
+  clearTimeout(readyTimer); clearTimeout(loadTimer);
+  const s = currentServer();
+  markDead(s.id);
+  buildServerOptions();
+  const nxt = nextServerId(s.id);
+  const limit = LANG === 'dub' ? 3 : SERVERS.filter(usable).length;      // A dub that three servers cannot start is not coming
+  if (nxt && nxt !== s.id && autoTried < limit - 1) {
+    autoTried++;
+    SERVER = nxt;
+    localStorage.setItem('as_server', SERVER);
+    buildServerOptions(); updateHelp();
+    toast(`Switching to ${labelOf(nxt)}...`);
+    mountPlayer();
+    return;
+  }
+  if (LANG === 'dub') { dubMissing(); return; }
+  showPlayerError();
+}
+
+/* Asks the provider for the page first: an error status (404, 5xx) is known in a moment, long before the player would time out.
+   Providers that block cross-origin reads just give no answer here and the timeout below still covers them. */
+function probeEmbed(url, seq) {
+  const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 6000);
+  fetch(url, { cache: 'no-store', signal: ctrl.signal }).then(res => {
+    clearTimeout(t);
+    try { res.body && res.body.cancel(); } catch { /* ignore */ }
+    if (seq !== mountSeq || playerReady || res.status < 400) return;
+    failServer();
+  }).catch(() => clearTimeout(t));
+}
+
+let mountSeq = 0;
 function mountPlayer() {
   clearTimeout(loadTimer); clearTimeout(readyTimer);
   setHelp(false);
   playerReady = false;
+  const seq = ++mountSeq, url = embedURL();
 
-  const s = currentServer();
+  /* The loading cover stays until the player reports it works, so a provider's raw error page is never shown */
   $('#player').innerHTML = `
-    <iframe src="${embedURL()}"
+    <iframe src="${url}"
             allow="autoplay; fullscreen; picture-in-picture"
             allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
     <div class="player-loading" id="player-loading"><span class="spinner"></span>Loading player...</div>`;
-  $('#player iframe').addEventListener('load', () => {
-    const l = $('#player-loading'); if (l) l.remove();
-  });
+  if (url) probeEmbed(url, seq);
 
   /* An iframe 'load' also fires for a provider's error page, so only a postMessage from the player proves it works */
-  readyTimer = setTimeout(() => {
-    if (playerReady) return;
-    markDead(s.id);
-    buildServerOptions();
-    const nxt = nextServerId(s.id);
-    if (nxt && nxt !== s.id && autoTried < SERVERS.length) {
-      autoTried++;
-      SERVER = nxt;
-      localStorage.setItem('as_server', SERVER);
-      buildServerOptions(); updateHelp();
-      toast(`${s.label} didn't start - trying ${labelOf(nxt)}`);
-      mountPlayer();
-    } else {
-      setHelp(true);
-      if (LANG === 'dub') { Dub.mark(MEDIA.id, EP); paintDub(); toast('No dub found for this episode - try Sub.'); }
-      else toast('No server responded - pick one from the Server list.');
-    }
-  }, 9000);
-
-  loadTimer = setTimeout(() => { if (!playerReady) setHelp(true); }, 12000);
+  readyTimer = setTimeout(() => { if (seq === mountSeq && !playerReady) failServer(); }, 7000);
+  loadTimer = setTimeout(() => { if (seq === mountSeq && !playerReady) setHelp(true); }, 9000);
 }
 
 function renderSideEps(total) {
@@ -250,33 +308,15 @@ function onPlayerMessage(e) {
     return;
   }
 
-  if (/error|fail/.test(ev)) {
-    const s = currentServer();
-    markDead(s.id);
-    buildServerOptions();
-    const nxt = nextServerId(s.id);
-    if (nxt && nxt !== s.id && autoTried < SERVERS.length) {
-      autoTried++;
-      SERVER = nxt;
-      localStorage.setItem('as_server', SERVER);
-      buildServerOptions(); updateHelp();
-      toast('Playback error - switching server');
-      mountPlayer();
-    } else {
-      setHelp(true);
-      if (LANG === 'dub') { Dub.mark(MEDIA.id, EP); paintDub(); toast('No dub found for this episode - try Sub.'); }
-      else toast('Playback error - try another server or reload.');
-    }
-    return;
-  }
+  if (/error|fail/.test(ev)) { failServer(); return; }
 
   if (/ready|playing|play|loaded|canplay/.test(ev)) {
     playerReady = true;
     clearTimeout(readyTimer);
     autoTried = 0;
     markAlive(currentServer().id);
-    if (LANG === 'dub') { Dub.clear(MEDIA.id, EP); paintDub(); }
-    const l = $('#player-loading'); if (l) l.remove();
+    if (LANG === 'dub') { Dub.clear(MEDIA.id, EP); Dub.clearSeries(MEDIA.id); paintDub(); }
+    $('#player-loading')?.remove(); $('.player-error')?.remove(); setHelp(false);
   }
 }
 

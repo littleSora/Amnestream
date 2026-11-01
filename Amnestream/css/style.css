@@ -287,6 +287,8 @@ body:not(.home) main{padding-top:calc(var(--header-h) + 14px)}
 /* DUB with no dub available: crossed out and dimmed, still tappable */
 .seg button.no-dub,.epm-seg button.no-dub{text-decoration:line-through;text-decoration-thickness:2px;opacity:.5}
 .ep-chip.no-dub b{text-decoration:line-through;text-decoration-thickness:2px}.ep-chip.no-dub{opacity:.5}
+.seg button.no-dub,.epm-seg button.no-dub,.ep-chip.no-dub{cursor:not-allowed}
+.seg button.no-dub:hover,.epm-seg button.no-dub:hover{color:inherit}
 .side-panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;max-height:78vh;overflow-y:auto}
 .side-panel h3{font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:12px;font-family:var(--mono)}
 .side-eps{display:grid;gap:6px;grid-template-columns:repeat(auto-fill,minmax(52px,1fr))}
@@ -693,3 +695,9 @@ html::-webkit-scrollbar,*::-webkit-scrollbar{display:none!important;width:0!impo
   html[data-cards=small] .rail-track .card{width:140px;flex-basis:140px}
   html[data-cards=large] .rail-track .card{width:214px;flex-basis:214px}
 }
+
+/* In-player message that replaces a provider's raw error page */
+.player-error{position:absolute;inset:0;z-index:3;display:grid;place-items:center;padding:24px;text-align:center;background:#000;color:var(--text)}
+.player-error p{margin:0 0 14px;font-size:15px;font-weight:600}
+.player-error .pe-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.epm-loading{text-align:center;padding:0 24px}

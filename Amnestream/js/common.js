@@ -385,15 +385,34 @@ const Store = {
    When the player cannot start a dub on any server, that episode's DUB is remembered (7 days) and shown crossed out; it clears itself if a dub ever plays. */
 const Dub = {
   _m: () => jget('as_nodub', {}),
-  missing(id, ep) { const t = Dub._m()[id + ':' + ep]; return !!t && t > Date.now(); },
+  _until: () => Date.now() + 2 * 864e5,                                   // Re-checked after 2 days
+  missing(id, ep) { const m = Dub._m(), now = Date.now(); return (m[id + ':' + ep] || 0) > now || (m[id + ':*'] || 0) > now; },   // This episode, or the whole show
   mark(id, ep) {
     const m = Dub._m(), now = Date.now();
-    m[id + ':' + ep] = now + 7 * 864e5;
+    m[id + ':' + ep] = Dub._until();
     const keys = Object.keys(m);
     if (keys.length > 300) keys.forEach(k => { if (m[k] < now) delete m[k]; });
     jset('as_nodub', m);
   },
   clear(id, ep) { const m = Dub._m(); if (m[id + ':' + ep]) { delete m[id + ':' + ep]; jset('as_nodub', m); } },
+  markSeries(id) { const m = Dub._m(); m[id + ':*'] = Dub._until(); jset('as_nodub', m); },    // Episode 1 has no dub: the show has none
+  clearSeries(id) { const m = Dub._m(); if (m[id + ':*']) { delete m[id + ':*']; jset('as_nodub', m); } },
+  /* Asks the dub servers directly: 'no' when they all answer "not found", 'yes' when one has it, null when nothing could be read */
+  _seen: {},
+  probe(id, ep) {
+    const k = id + ':' + ep;
+    if (Dub._seen[k]) return Dub._seen[k];
+    const one = url => {
+      const c = new AbortController(), t = setTimeout(() => c.abort(), 5000);
+      return fetch(url, { cache: 'no-store', signal: c.signal })
+        .then(r => { clearTimeout(t); try { r.body && r.body.cancel(); } catch { /* ignore */ } return r.ok ? 'yes' : r.status === 404 ? 'no' : null; })
+        .catch(() => { clearTimeout(t); return null; });
+    };
+    return Dub._seen[k] = Promise.all([
+      one(`https://megavid.buzz/stream/ani/${id}/${ep}/dub`),
+      one(`https://megaplay.buzz/stream/ani/${id}/${ep}/dub`),
+    ]).then(r => r.includes('yes') ? 'yes' : r.every(x => x === 'no') ? 'no' : null);
+  },
 };
 
 const Sync = {

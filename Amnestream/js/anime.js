@@ -220,6 +220,15 @@ function render() {
     Settings.set('epStyle', order[(order.indexOf(cur) + 1) % 3]); renderEps(); animatePanel($('#p-ep'));
   };
   renderEps(); animatePanel($('#p-ep'));
+  if (airedCount(m) > 0) {                                  // Find out up front whether the show has a dub at all, so DUB is crossed out before anyone clicks it
+    const had = Dub.missing(m.id, 1);
+    Dub.probe(m.id, 1).then(r => {
+      if (r === 'no') Dub.mark(m.id, 1), Dub.markSeries(m.id);
+      else if (r === 'yes') Dub.clear(m.id, 1), Dub.clearSeries(m.id);
+      else return;
+      if (Dub.missing(m.id, 1) !== had) renderEps();
+    });
+  }
 
   /* Episode click opens the preview modal; ctrl/cmd-click opens the player page */
   $('#ep-wrap').addEventListener('click', e => {
@@ -228,6 +237,7 @@ function render() {
     if (!c) return;
     e.preventDefault();
     const chip = a.classList.contains('ep-chip');
+    if (chip && a.dataset.l === 'dub' && Dub.missing(m.id, +c.dataset.n)) { toast('No dub for this episode.'); return; }   // Crossed out: cannot be picked
     EpModal.open(+c.dataset.n, { lang: chip ? a.dataset.l : undefined, play: chip });
   });
   const tb = $('#trailer-btn');
@@ -282,6 +292,7 @@ const EpModal = {
   open(n, { lang, play = false } = {}) {
     this.n = n;
     this.lang = lang || localStorage.getItem('as_lang') || Settings.get().audio;
+    if (this.lang === 'dub' && Dub.missing(M.id, n)) this.lang = 'sub';
     this.playing = false; this.dirty = false;
     this.ui = openShell('episode', '', () => { this.ui = null; this.playing = false; window.removeEventListener('message', this.onMsg); if (this.dirty) renderEps(); });
     this.ui.el._key = e => {
@@ -320,7 +331,7 @@ const EpModal = {
           </div>
           <div class="epm-seg" role="group" aria-label="Audio">
             <button data-l="sub" class="${this.lang === 'sub' ? 'on' : ''}">SUB</button>
-            <button data-l="dub" class="${this.lang === 'dub' ? 'on' : ''}${Dub.missing(m.id, n) ? ' no-dub' : ''}">DUB</button>
+            <button data-l="dub" class="${this.lang === 'dub' ? 'on' : ''}${Dub.missing(m.id, n) ? ' no-dub' : ''}" ${Dub.missing(m.id, n) ? 'aria-disabled="true" title="No dub found for this episode"' : ''}>DUB</button>
           </div>
         </div>
         <div class="epm-actions">
@@ -341,11 +352,13 @@ const EpModal = {
     if (!this.ui || n < 1 || n > epCountOf(M)) return;
     const was = this.playing;
     this.n = n; this.playing = false;
+    if (this.lang === 'dub' && Dub.missing(M.id, n)) this.lang = 'sub';
     this.paint();
     if (was) this.start();
   },
   setLang(l) {
     if (l === this.lang) return;
+    if (l === 'dub' && Dub.missing(M.id, this.n)) { toast('No dub for this episode.'); return; }
     this.lang = l;
     localStorage.setItem('as_lang', l);
     const was = this.playing;
@@ -359,14 +372,20 @@ const EpModal = {
     st.classList.add('on-air');
     st.innerHTML = `<iframe src="${this.url()}" title="Episode ${this.n}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen referrerpolicy="origin"></iframe>
       <div class="epm-loading"><span class="spinner"></span>Loading player...</div>`;
-    const f = $('iframe', st), hint = $('#epm-hint', this.ui.el);
-    f.addEventListener('load', () => $('.epm-loading', st)?.remove());
+    const hint = $('#epm-hint', this.ui.el), n = this.n, lang = this.lang;
+    if (hint) hint.hidden = true;
+    if (lang === 'dub') Dub.probe(M.id, n).then(r => {            // No dub on the servers: say so and play sub instead of an error page
+      if (r !== 'no' || !this.ui || this.n !== n || this.lang !== 'dub') return;
+      Dub.mark(M.id, n); this.dirty = true; this.lang = 'sub';
+      toast('No dub for this episode, playing Sub.');
+      this.paint(); this.start();
+    });
     clearTimeout(this._slow);
-    this._slow = setTimeout(() => {                                 // Never loaded: suggest what to try
-      if (!hint || !$('.epm-loading', st)) return;
-      hint.hidden = false;
-      hint.textContent = this.lang === 'dub' ? 'Taking a while. Not every episode has a dub yet, try SUB or open the full player.' : 'Taking a while. Try the full player and switch server there.';
-    }, 12000);
+    this._slow = setTimeout(() => {                               // No sign of life: cover the provider's raw error page with a plain message
+      const cover = $('.epm-loading', st); if (!cover) return;
+      cover.style.pointerEvents = 'auto';
+      cover.innerHTML = 'Server error. Please swap to another server (open the full player).';
+    }, 9000);
     Store.saveProgress(M, this.n);
     this.dirty = true;
   },
@@ -375,11 +394,15 @@ const EpModal = {
     let d = e.data; if (typeof d === 'string') { try { d = JSON.parse(d); } catch { return; } }
     if (!d) return;
     if ((d.event === 'complete' || d.event === 'ended') && Settings.get().autonext) EpModal.go(EpModal.n + 1);
-    if (/^(ready|playing|play|loaded|canplay)$/.test(String(d.event || '').toLowerCase()) && EpModal.lang === 'dub') Dub.clear(M.id, EpModal.n);
+    if (/^(ready|playing|play|loaded|canplay)$/.test(String(d.event || '').toLowerCase())) {
+      clearTimeout(EpModal._slow);
+      $('.epm-loading', EpModal.ui.el)?.remove();
+      if (EpModal.lang === 'dub') Dub.clear(M.id, EpModal.n);
+    }
     if (d.event === 'error') {
-      if (EpModal.lang === 'dub') { Dub.mark(M.id, EpModal.n); EpModal.dirty = true; }
-      const h = $('#epm-hint', EpModal.ui.el);
-      if (h) { h.hidden = false; h.textContent = 'Playback error. Try the other audio, or open the full player and switch server.'; }
+      clearTimeout(EpModal._slow);
+      const cover = $('.epm-loading', EpModal.ui.el);
+      if (cover) { cover.style.pointerEvents = 'auto'; cover.innerHTML = 'Server error. Please swap to another server (open the full player).'; }
     }
   },
 };

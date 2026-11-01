@@ -394,6 +394,26 @@ const GENRE_TAGS = {
   'Samurai': ['Samurai'], 'School': ['School'], 'Seinen': ['Seinen'], 'Shoujo': ['Shoujo'], 'Shounen': ['Shounen'],
   'Space': ['Space', 'Space Opera'], 'Vampire': ['Vampire'],
 };
+/* Tags that show a genre is present without being the main genre (an Action title with a romantic tag, a Romance title with fights...); unknown names simply match nothing */
+const SUBTLE_TAGS = {
+  Romance: ['Love Triangle', 'Unrequited Love', 'Matchmaking', 'Heterosexual', 'Age Gap', 'Marriage', 'Arranged Marriage', 'Cohabitation', 'Tsundere', 'Yandere', "Teens' Love"],
+  Action: ['Martial Arts', 'Swordplay', 'Gunfights', 'Battle Royale', 'Super Power', 'War', 'Assassins', 'Guns', 'Tournament', 'Espionage', 'Archery', 'Boxing'],
+  Comedy: ['Parody', 'Slapstick', 'Satire', 'Surreal Comedy', 'Gag Humor', 'Comedic Slice of Life'],
+  Drama: ['Tragedy', 'Coming of Age', 'Family Life', 'Bullying', 'Psychological'],
+  Fantasy: ['Magic', 'Isekai', 'Dragons', 'Witches', 'Wizards', 'Elf', 'Demons', 'Mythology', 'Sword and Sorcery'],
+  Horror: ['Gore', 'Body Horror', 'Ghost', 'Zombie', 'Survival', 'Cosmic Horror'],
+  Mystery: ['Detective', 'Conspiracy', 'Investigation', 'Crime', 'Whodunit', 'Mystery'],
+  'Sci-Fi': ['Cyberpunk', 'Space', 'Time Travel', 'Robots', 'Aliens', 'Post-Apocalyptic', 'Artificial Intelligence', 'Mecha'],
+  Thriller: ['Psychological', 'Conspiracy', 'Survival', 'Espionage', 'Crime'],
+  'Slice of Life': ['Iyashikei', 'School Club', 'Cohabitation', 'Coming of Age', 'Everyday Life'],
+  Sports: ['Tournament', 'Boxing', 'Archery', 'Team Sports', 'Individual Sports'],
+  Adventure: ['Travel', 'Survival', 'Exploration', 'Treasure Hunt', 'Pirates'],
+  Supernatural: ['Ghost', 'Youkai', 'Exorcism', 'Demons', 'Curses', 'Spirit'],
+  Psychological: ['Psychological', 'Mind Games', 'Philosophy'],
+  Music: ['Band', 'Idol', 'Musical', 'Classical Music', 'Rock Music'],
+  Ecchi: ['Nudity', 'Fanservice', 'Harem'],
+};
+
 /* Splits picked names into genres and tags: a title must match any picked genre AND any picked tag; safe to run twice */
 function _gsplit(base) {
   const genres = [], tags = [...(base.tags || [])];
@@ -719,6 +739,73 @@ const Api = {
       return all.slice(sg.cut, sg.cut + sg.take);
     });
     return { Page: { pageInfo, media } };
+  },
+
+  /* Several genres picked: titles are ranked in tiers, each tier ordered by the chosen sort.
+     Tier 1: titles that have ALL the picked genres (e.g. Action + Romance).
+     Tier 2: titles of one picked genre that only lean toward the others through tags (e.g. an Action title with a romantic tag, then a Romance title
+     with an action tag, taking turns). Falls back to plain browseDeep when fewer than two real genres are picked or a tag-style pick (Isekai...) is mixed in. */
+  async browseRanked(vars, page = vars.page, opts = {}) {
+    const picked = vars.genres || [];
+    const real = picked.filter(g => !GENRE_TAGS[g]);
+    if (real.length < 2 || real.length !== picked.length) return Api.browseDeep(vars, page, opts);
+
+    const per = vars.perPage || 30, offset = (page - 1) * per;
+    const sort = [].concat(vars.sort || [])[0] || 'POPULARITY_DESC';
+    const rest = { search: vars.search, format: vars.format, status: vars.status, season: vars.season, year: vars.year };
+    const lists = real.map(g => {
+      const others = real.filter(x => x !== g);
+      return { genres: [g], notGenres: others, tags: [...new Set(others.flatMap(o => SUBTLE_TAGS[o] || [o]))] };
+    });
+    const raw = (l, pg, size) => Api._browseRaw({ ...rest, ...l, sort, page: pg, perPage: size }, opts);
+
+    const [A, ...counts] = await Promise.all([
+      Api.browseDeep({ ...vars, page }, page, opts),
+      ...lists.map(l => raw(l, 1, 1).then(d => d.Page.pageInfo.total || 0).catch(() => 0)),
+    ]);
+    const tA = A.Page.pageInfo.total || 0, tB = counts.reduce((a, b) => a + b, 0), total = tA + tB;
+    const pageInfo = { currentPage: page, lastPage: Math.max(1, Math.ceil(total / per)), hasNextPage: offset + per < total, total, deep: !A.Page.pageInfo.capped };
+
+    let media = offset < tA ? A.Page.media.slice(0, per) : [];
+    const need = Math.min(per - media.length, total - Math.max(offset, tA) - 0);
+    if (need > 0 && tB) {
+      const bStart = Math.max(0, offset - tA);
+      /* Round robin over the tier 2 lists: slot k goes to list (k mod n) until a list runs dry */
+      const order = [], taken = counts.map(() => 0);
+      for (let guard = 0; order.length < bStart + need && guard < 1e6; guard++) {
+        let any = false;
+        for (let i = 0; i < counts.length && order.length < bStart + need; i++) {
+          if (taken[i] < counts[i]) { order.push([i, taken[i]++]); any = true; }
+        }
+        if (!any) break;
+      }
+      const win = order.slice(bStart, bStart + need);
+      const span = lists.map(() => null);
+      win.forEach(([i, k]) => { const c = span[i]; span[i] = c ? [Math.min(c[0], k), Math.max(c[1], k)] : [k, k]; });
+      const got = await Promise.all(span.map(async (sp, i) => {
+        if (!sp) return [];
+        const out = [];
+        for (let pg = Math.floor(sp[0] / per) + 1; pg <= Math.floor(sp[1] / per) + 1; pg++) out.push(...(await raw(lists[i], pg, per)).Page.media);
+        return out.slice(sp[0] - Math.floor(sp[0] / per) * per);
+      }));
+      media = media.concat(win.map(([i, k]) => got[i][k - span[i][0]]).filter(Boolean));
+    }
+    const seen = new Set();
+    return { Page: { pageInfo, media: media.filter(m => m && !seen.has(m.id) && seen.add(m.id)) } };
+  },
+
+  /* One tier 2 query: genre_in / genre_not_in plus the subtle tags above a minimum rank */
+  _browseRaw({ page, perPage, search, genres, notGenres, tags, format, status, season, year, sort }, opts) {
+    return gql(`${MEDIA_CARD}
+      query BrowseTier($page: Int, $perPage: Int, $search: String, $genres: [String], $notGenres: [String], $tags: [String],
+                       $format: MediaFormat, $status: MediaStatus, $season: MediaSeason, $year: Int, $sort: [MediaSort], $adult: Boolean) {
+        Page(page: $page, perPage: $perPage) {
+          pageInfo { currentPage lastPage hasNextPage total }
+          media(type: ANIME, search: $search, genre_in: $genres, genre_not_in: $notGenres, tag_in: $tags, minimumTagRank: 35, format: $format,
+                status: $status, season: $season, seasonYear: $year, sort: $sort, isAdult: $adult) { ...MediaCard }
+        }
+      }`, { page, perPage, search, genres, notGenres, tags, format, status, season, year, sort: [sort], adult: adultVar() }, { ttl: TTL.long, signal: opts && opts.signal, lazy: opts && opts.lazy })
+      .then(d => status === 'NOT_YET_RELEASED' ? d : _scrubPage(d));
   },
 
   /* Exact total and page count for a capped popularity listing; runs after the page is already on screen */

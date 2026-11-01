@@ -26,7 +26,7 @@ async function initHome() {
 
   latestReq.then(renderLatest).catch(() => {
     $('#rail-latest').style.display = 'none';
-    LATEST_ITEMS = []; if (discoverKey === 'latest') setDiscover('latest');
+    LATEST_ITEMS = [];
   });
 
   /* Trending row: paints the first list, then upgrades to the weekly ranking without waiting or re-rendering when the order is unchanged */
@@ -86,7 +86,6 @@ function renderLatest(rows) {
     if (items.length >= 24) break;
   }
   LATEST_ITEMS = items;
-  if (discoverKey === 'latest') setDiscover('latest');
   const el = $('#rail-latest');
   if (!items.length) { el.style.display = 'none'; return; }
   renderRail(el, 'Latest episodes', items.slice(0, 18),
@@ -163,7 +162,6 @@ function wireTabs() {
 /* Discover: popup picker instead of tabs */
 const DISCOVER = [
   { key: 'topAiring', label: 'Top airing',      desc: 'Most popular shows airing now', ic: 'play' },
-  { key: 'latest',    label: 'Latest episodes', desc: 'Newly aired episodes, newest first', ic: 'clock' },
   { key: 'season',    label: 'This season',     desc: 'Popular this season', ic: 'calendar' },
   { key: 'top',       label: 'Top rated',       desc: 'Highest rated of all time', ic: 'star' },
 ];
@@ -183,11 +181,7 @@ function setDiscover(key) {
     o.classList.toggle('on', on); o.setAttribute('aria-selected', on);
   });
   const grid = $('#discover-grid');
-  if (key === 'latest') {
-    if (LATEST_ITEMS === null) grid.innerHTML = skeletonGrid(12);
-    else if (!LATEST_ITEMS.length) grid.innerHTML = '<p class="empty">Couldn\'t load the latest episodes. Try again in a moment.</p>';
-    else grid.innerHTML = `<div class="grid">${discoverCap(LATEST_ITEMS).map(latestCardHTML).join('')}</div>`;
-  } else grid.innerHTML = gridHTML(discoverCap(RAILS[key]));
+  grid.innerHTML = gridHTML(discoverCap(RAILS[key]));
   trimRows();
 }
 /* Hide the leftover cards of an incomplete last row, so Discover never ends with a half-empty row; re-checked when the width changes */

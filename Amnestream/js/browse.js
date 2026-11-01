@@ -16,6 +16,8 @@ if (!location.search) {                                   // Remember filters be
 }
 let page = Math.max(1, Number(P.get('page')) || 1);
 let selectedGenres = P.get('genre') ? P.get('genre').split(',').filter(g => g && visibleGenres().includes(g)) : [];
+const SORTS = ['POPULARITY_DESC', 'TRENDING_DESC', 'SCORE_DESC', 'LATEST_EPISODES', 'START_DATE_DESC', 'TITLE_ROMAJI', 'FAVOURITES_DESC'];
+if (P.get('sort') && !SORTS.includes(P.get('sort'))) P.delete('sort');          // Old links (Latest episodes, Best match) fall back to the automatic order
 let browseCtrl = null, firstLoad = true, userSort = !!P.get('sort');
 
 const defaultSort = () => $('#f-q').value.trim() ? 'SEARCH_MATCH' : DEFAULT_SORT;   // Typing a title ranks by relevance
@@ -25,7 +27,7 @@ const getState = () => ({ q: $('#f-q').value.trim(), format: $('#f-format').valu
 function applyState(st) {
   $('#f-q').value = st.q || ''; $('#f-format').value = st.format || ''; $('#f-status').value = st.status || '';
   $('#f-season').value = st.season || ''; $('#f-year').value = st.year || '';
-  $('#f-sort').value = st.sort || defaultSort(); userSort = !!st.sort && st.sort !== defaultSort();
+  $('#f-sort').value = SORTS.includes(st.sort) ? st.sort : defaultSort(); userSort = SORTS.includes(st.sort) && st.sort !== defaultSort();
   selectedGenres = [...(st.genres || [])]; paintGenres();
   page = 1; load();
 }
@@ -64,7 +66,7 @@ function enhanceSelect(sel) {
     $$('.dd-opt', list).forEach(o => { const on = o.dataset.v === sel.value; o.classList.toggle('on', on); o.setAttribute('aria-selected', on); });
   };
   const build = () => {                                                           // Built on open so late options (years) are included
-    list.innerHTML = [...sel.options].map(o =>
+    list.innerHTML = [...sel.options].filter(o => !o.hidden).map(o =>
       `<button type="button" class="dd-opt" role="option" data-v="${esc(o.value)}"><span>${esc(o.textContent)}</span>${DD_TICK}</button>`).join('');
     sync();
   };
@@ -213,7 +215,9 @@ function initBrowse() {
 
 /* "Latest episodes" is not an AniList sort; it lists recently aired episodes (Api.latestAired) */
 const isLatest = () => $('#f-sort').value === 'LATEST_EPISODES';
-const fetchBrowse = (vars, pg, opts) => [].concat(vars.sort || [])[0] === 'LATEST_EPISODES' ? Api.latestAired(vars, pg, opts) : Api.browseDeep(vars, pg, opts);
+/* Two or more genres rank titles with every genre first, then titles that only lean toward the others (Api.browseRanked); the chosen sort orders each group */
+const fetchBrowse = (vars, pg, opts) => [].concat(vars.sort || [])[0] === 'LATEST_EPISODES' ? Api.latestAired(vars, pg, opts)
+  : (vars.genres || []).length > 1 ? Api.browseRanked(vars, pg, opts) : Api.browseDeep(vars, pg, opts);
 
 function browseVars(pg, genres = selectedGenres) {
   return {
