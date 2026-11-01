@@ -75,7 +75,7 @@ Then open <http://localhost:8080>. There is nothing to install or build.
 | `css/`                                                          | `style.css` base, `atlas.css` and `me.css` page styles, `mobile.css` phone layer, `themes.css` every theme       |
 | `data/catalog.json`                                             | Pre-baked catalog for an instant first paint                                                                     |
 | `sw.js`, `manifest.webmanifest`, `icons/`                       | PWA shell                                                                                                        |
-| `docs/`                                                         | [DMCA policy](docs/DMCA.md)                                                                                      |
+| `docs/`                                                         | [DMCA policy](DMCA.md)                                                                                      |
 
 ## Built with
 
@@ -101,4 +101,4 @@ Then open <http://localhost:8080>. There is nothing to install or build.
 
 Amnestream is not affiliated with AniList, MegaPlay, MegaVid, Anixo or any studio, publisher or streaming service. It does not host, upload or store any video files. Titles, artwork and trademarks belong to their owners.
 
-If you are a copyright owner and want something removed, read the **[DMCA policy](docs/DMCA.md)** (also on the site as [`dmca.html`](dmca.html)) and email **m4cky5467@gmail.com**. Please do not post notices as public issues.
+If you are a copyright owner and want something removed, read the **[DMCA policy](DMCA.md)** (also on the site as [`dmca.html`](dmca.html)) and email **m4cky5467@gmail.com**. Please do not post notices as public issues.
