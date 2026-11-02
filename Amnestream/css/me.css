@@ -162,7 +162,7 @@ kbd{display:inline-block;padding:3px 9px;border-radius:7px;border:1px solid var(
 .mp-poster{flex:none;width:118px;position:relative;border-radius:16px;overflow:hidden;aspect-ratio:3/4;background:var(--card2)}
 .mp-poster img{width:100%;height:100%;object-fit:cover}
 .mp-poster span{position:absolute;inset:auto 0 0;padding:26px 9px 8px;font-size:11px;font-weight:700;line-height:1.25;color:#fff;background:linear-gradient(0deg,rgba(8,9,13,.9),transparent)}
-.pf-dlg{background:var(--card);color:var(--text);border:0;border-radius:24px;padding:26px;width:min(520px,calc(100vw - 32px));box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.pf-dlg{background:var(--card);color:var(--text);border:0;border-radius:24px;padding:26px;width:min(520px,calc(100vw - 32px));max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow-y:auto;overscroll-behavior:contain;box-shadow:0 30px 80px rgba(0,0,0,.6)}
 .pf-dlg::backdrop{background:rgba(0,0,0,.62);backdrop-filter:blur(3px)}
 .pf-dlg h2{font-family:var(--disp-me);font-weight:800;font-size:26px;margin:0 0 16px;letter-spacing:-.035em}
 .pf-dlg-body{display:grid;gap:12px}
@@ -176,7 +176,7 @@ kbd{display:inline-block;padding:3px 9px;border-radius:7px;border:1px solid var(
   #mprev{display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 16px;padding:14px}
   #mprev h3{grid-column:1/-1;margin-bottom:10px}
   .pv-eps{margin:0;align-content:start}.pv-note{display:none}
-  .pv-card{max-width:118px}
+  .pv-card{max-width:168px}
   .mset-find{display:none}
   .mset-bar{top:0}
   .mpanel{padding-top:26px}
@@ -264,12 +264,11 @@ kbd{display:inline-block;padding:3px 9px;border-radius:7px;border:1px solid var(
 .stg-posters{padding:14px 16px;min-height:140px}
 .stg-eps,.stg-player{padding:14px 16px}
 .stg h4{margin:0 0 8px;font-size:12px;font-weight:800;letter-spacing:.02em}
-.stg-rail{display:flex;gap:10px}
-.stg-poster{position:relative;flex:1;min-width:0;aspect-ratio:2/3;border-radius:9px;display:flex;align-items:flex-end;padding:7px;font-size:10px;font-weight:700;line-height:1.15;overflow:hidden;background:linear-gradient(160deg,var(--card2),var(--card));box-shadow:inset 0 0 0 1px var(--line);transition:flex .3s}
+.stg-rail{--per:4;display:flex;gap:10px;overflow:hidden}.stg-rail.s-small{--per:5}.stg-rail.s-large{--per:3}
+.stg-poster{position:relative;flex:0 0 calc((100% - (var(--per) - 1) * 10px) / var(--per));min-width:0;aspect-ratio:2/3;border-radius:9px;display:flex;align-items:flex-end;padding:7px;font-size:10px;font-weight:700;line-height:1.15;overflow:hidden;background:linear-gradient(160deg,var(--card2),var(--card));box-shadow:inset 0 0 0 1px var(--line);transition:flex .3s}
 .stg-poster span{position:relative;z-index:1;text-shadow:0 1px 6px #000}
 .stg-poster::before{content:"";position:absolute;inset:0;background:linear-gradient(0deg,#000a,transparent 60%)}
 .stg-poster.p0{background:linear-gradient(160deg,color-mix(in srgb,var(--accent) 55%,#000),var(--card))}.stg-poster.p1{background:linear-gradient(160deg,color-mix(in srgb,var(--accent2) 50%,#000),var(--card))}.stg-poster.p2{background:linear-gradient(160deg,#334,var(--card))}.stg-poster.p3{background:linear-gradient(160deg,#433,var(--card))}.stg-poster.p4{background:linear-gradient(160deg,#343,var(--card))}
-.stg-rail.s-large .stg-poster{flex:1.25}.stg-rail.s-small .stg-poster{flex:.9}
 .stg-poster .stg-prev{position:absolute;top:6px;left:6px;z-index:2;display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-size:9px;font-weight:800}
 .stg-hidden{height:104px;display:grid;place-items:center;border-radius:10px;border:1px dashed var(--line);color:var(--muted)}
 .stg-nums{display:flex;gap:6px;flex-wrap:wrap}.stg-nums b{width:30px;height:26px;border-radius:7px;display:grid;place-items:center;background:var(--card);box-shadow:inset 0 0 0 1px var(--line)}.stg-nums b.seen,.stg-compact li.seen b{color:var(--accent)}
@@ -301,13 +300,18 @@ kbd{display:inline-block;padding:3px 9px;border-radius:7px;border:1px solid var(
   .stg-tools .mset-find input{padding-top:11px;padding-bottom:11px;border-radius:14px;box-shadow:inset 0 0 0 1px var(--line)}
   .stg-body{grid-template-columns:minmax(0,1fr)}
   .stg-stage{padding:10px;border-radius:16px;min-width:0}
-  .stg-insp{position:fixed;left:8px;right:8px;bottom:calc(var(--m-nav,60px) + 8px + env(safe-area-inset-bottom,0px));top:auto;max-height:58vh;z-index:60;transform:translateY(130%);opacity:0;pointer-events:none;transition:transform .4s cubic-bezier(.22,1,.36,1),opacity .25s;box-shadow:inset 0 0 0 1px var(--line),0 -20px 50px -10px #000c;background:var(--card);overscroll-behavior:contain}
+  /* The sheet is kept short so the preview above it stays in view while you change a setting; the rows scroll inside it and the title stays pinned */
+  .stg-insp{--sheet-h:clamp(180px,34vh,300px);position:fixed;left:8px;right:8px;bottom:calc(var(--m-nav,60px) + 8px + env(safe-area-inset-bottom,0px));top:auto;max-height:var(--sheet-h);overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-top:0;z-index:60;transform:translateY(130%);opacity:0;pointer-events:none;transition:transform .4s cubic-bezier(.22,1,.36,1),opacity .25s;box-shadow:inset 0 0 0 1px var(--line),0 -20px 50px -10px #000c;background:var(--card);overscroll-behavior:contain;scrollbar-width:thin}
+  .stg-insp header{position:sticky;top:0;z-index:5;margin:0 -18px 4px;padding:14px 52px 8px 18px;background:var(--card);box-shadow:0 1px 0 var(--line)}
+  .stg-insp h2{font-size:18px}
+  .stg-insp header p{font-size:12px;margin-top:2px}
+  .stg-insp .stg-x{right:12px;top:10px}
   .stg-insp.open{transform:none;opacity:1;pointer-events:auto}
   .stg-x{display:flex}
-  body.stg-open .stg{padding-bottom:58vh}
+  body.stg-open .stg{padding-bottom:calc(clamp(180px,34vh,300px) + 24px)}
   .stg-tag{display:none}
   /* A smaller preview that fits a phone: three posters, tighter hero */
-  .stg-rail .stg-poster:nth-child(n+4){display:none}
+  .stg-rail{--per:3}.stg-rail.s-small{--per:4}.stg-rail.s-large{--per:2}
   .stg-hero{height:150px}.stg-hero h3{font-size:19px;max-width:85%}
   .stg-nav{padding:12px}.stg-me{margin-right:0}
   .stg-foot{flex-wrap:wrap}

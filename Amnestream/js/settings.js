@@ -26,7 +26,7 @@ const ALL_SECTIONS = [
     { t: 'themes', ic: 'palette', n: 'Theme', d: 'Colour scheme for the whole site', kw: 'color colour scheme dark light', full: 1 },
     { t: 'accent', ic: 'sliders', n: 'Accent colour', d: 'Buttons, highlights and progress. Overrides the theme\'s accent', kw: 'color colour custom highlight', full: 1 },
     { t: 'seg', k: 'titleLang', ic: 'lang', n: 'Title language', d: 'How anime names show across the site', full: 1, opts: [['english', 'English'], ['romaji', 'Romaji']] },
-    { t: 'seg', k: 'cardSize', ic: 'grid', n: 'Poster size', d: 'Size of posters in grids and rows on computers. Phones always show three across', full: 1, opts: [['small', 'Small'], ['normal', 'Normal'], ['large', 'Large']] },
+    { t: 'seg', k: 'cardSize', ic: 'grid', n: 'Poster size', d: 'Size of posters in grids and rows. On phones: Small shows four across, Normal three, Large two', full: 1, opts: [['small', 'Small'], ['normal', 'Normal'], ['large', 'Large']] },
     { t: 'seg', k: 'epOrder', ic: 'sort', n: 'Episode order', d: 'Which end of the episode list comes first', full: 1, opts: [['asc', 'First to latest'], ['desc', 'Latest first']] },
     { t: 'seg', k: 'epStyle', ic: 'grid', n: 'Episode list style', d: 'On details pages', full: 1, opts: [['list', 'Cards'], ['compact', 'Compact'], ['grid', 'Numbers']] },
     { t: 'toggle', k: 'continueRow', ic: 'clock', n: 'Continue watching row', d: 'Show your recent episodes at the top of the homepage' },
@@ -285,7 +285,7 @@ function stageHTML() {
   const tag = id => `<span class="stg-tag">${REGIONS.find(r => r.id === id).name}</span>`;
   const rom = s.titleLang === 'romaji';
   const aud = (localStorage.getItem('as_lang') || s.audio) === 'dub' ? 'Dub' : 'Sub';
-  const per = s.cardSize === 'small' ? 5 : s.cardSize === 'large' ? 3 : 4;
+  const size = ['small', 'large'].includes(s.cardSize) ? s.cardSize : 'normal';
   const hero = SHOW && SHOW.hero, heroImg = hero ? bannerOf(hero) : '';
   const heroChips = hero
     ? [scoreOf(hero) && '★ ' + scoreOf(hero), fmtLabel(hero), hero.episodes ? hero.episodes + ' eps' : statusLabel(hero)].filter(Boolean).map(c => `<span>${esc(c)}</span>`).join('')
@@ -314,7 +314,7 @@ function stageHTML() {
     </div>
     <div ${hot('posters', 'stg-posters')}>${tag('posters')}
       ${s.continueRow
-        ? `<h4>Continue watching</h4><div class="stg-rail s-${s.cardSize}">${posters.slice(0, per).map((p, i) => `<div class="stg-poster p${i}${p.img ? ' has-img' : ''}">${p.img ? `<img src="${esc(p.img)}" alt="" decoding="async">` : ''}${i === 0 && s.hoverTrailer ? `<span class="stg-prev">${icon('play', 9)} Trailer</span>` : ''}<span>${esc(p.name)}</span></div>`).join('')}</div>`
+        ? `<h4>Continue watching</h4><div class="stg-rail s-${size}">${posters.slice(0, 5).map((p, i) => `<div class="stg-poster p${i}${p.img ? ' has-img' : ''}">${p.img ? `<img src="${esc(p.img)}" alt="" decoding="async">` : ''}${i === 0 && s.hoverTrailer ? `<span class="stg-prev">${icon('play', 9)} Trailer</span>` : ''}<span>${esc(p.name)}</span></div>`).join('')}</div>`
         : '<div class="stg-hidden">Continue watching is hidden</div>'}
     </div>
     <div ${hot('episodes', 'stg-eps ' + s.epStyle)}>${tag('episodes')}<h4>Episodes</h4>${epHTML}</div>
@@ -431,11 +431,13 @@ function paintInspector() {
   inspKey = key;
 }
 /* On a phone the sheet covers the lower part of the screen, so bring the chosen part of the preview up into view */
-function revealRegion(id) {
+function revealRegion(id, soft) {
   if (innerWidth > 900) return;
   const t = $('#stg-mock [data-region="' + id + '"]'); if (!t) return;
-  const r = t.getBoundingClientRect(), bar = ($('#stg-tabs') || {}).offsetHeight || 0, room = innerHeight * 0.42;
-  if (r.bottom > room || r.top < bar + 8) scrollBy({ top: r.top - bar - 24, behavior: reduceMotion() ? 'auto' : 'smooth' });
+  const sheet = $('#stg-insp'), nav = parseFloat(getComputedStyle(sheet).bottom) || 0;
+  const r = t.getBoundingClientRect(), bar = ($('#stg-tabs') || {}).offsetHeight || 0;
+  const room = innerHeight - nav - Math.min(sheet.offsetHeight, parseFloat(getComputedStyle(sheet).maxHeight) || sheet.offsetHeight) - 8;   // Where the sheet's top edge will be
+  if (soft ? (r.top > room - 60 || r.bottom < bar + 8) : (r.bottom > room || r.top < bar + 8)) scrollBy({ top: r.top - bar - 24, behavior: reduceMotion() ? 'auto' : 'smooth' });
 }
 function pickRegion(id) {
   REG = id; Q = ''; const qi = $('#set-q'); if (qi) qi.value = '';
@@ -463,12 +465,28 @@ function renderStage() {
   wireSwitch();
   inspKey = null;
   paintStage(); paintInspector(); watchTabs();
+  if (REG && innerWidth <= 900) setTimeout(() => revealRegion(REG), 350);   // Opened with a part already chosen (?s=): bring it above the sheet
   $('#stg-mock').addEventListener('click', e => { const h = e.target.closest('[data-region]'); if (h) pickRegion(h.dataset.region); });
   $('#stg-tabs').addEventListener('click', e => { const b = e.target.closest('button[data-region]'); if (b) pickRegion(b.dataset.region); });
   $('#set-q').oninput = e => { Q = e.target.value; if (Q.trim()) REG = ''; paintStage(); paintInspector(); };
   $('#set-q').onkeydown = e => { if (e.key === 'Escape' && Q) { Q = ''; e.target.value = ''; paintInspector(); } };
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && REG && !$('.auth-bg') && !$('dialog[open]') && innerWidth <= 900 && isModern()) { REG = ''; paintStage(); paintInspector(); } });
 }
+
+/* On a phone the settings sheet is a pop-up, so a tap outside it closes it, same as the X. On a computer it is a side panel and stays put.
+   Taps on the preview's clickable parts, the area tabs, the search box, the header/nav, pop-up dialogs and the login box are not "outside" (they have their own job).
+   Capture phase, so the sheet re-painting itself after a setting changes can never make a tap inside look like one outside. */
+const SHEET_KEEP = '#stg-insp, #stg-mock [data-region], #stg-tabs, .mset-find, .site-header, .search-pop, .user-menu, .toast, dialog, .auth-bg';
+let sheetDownOut = false;
+const sheetOpen = () => { const el = $('#stg-insp'); return !!el && el.classList.contains('open') && innerWidth <= 900 && isModern() && !$('.auth-bg') && !$('dialog[open]'); };
+const sheetOutside = t => !!(t && t.closest) && !t.closest(SHEET_KEEP);
+document.addEventListener('pointerdown', e => { sheetDownOut = sheetOpen() && sheetOutside(e.target); }, true);   // Where the press began, so dragging out of the sheet (or a slider) and letting go outside does not close it
+document.addEventListener('click', e => {
+  const began = sheetDownOut; sheetDownOut = false;
+  if (!began || !sheetOpen() || !sheetOutside(e.target)) return;
+  const qi = $('#set-q'); REG = ''; Q = ''; if (qi) qi.value = '';
+  markStage(); paintInspector();
+}, true);
 
 /* Live preview (Classic layout): a poster, a tag row and a short episode list that follow title language, audio, poster size, spoilers and episode order */
 function paintPrev() {
@@ -478,7 +496,7 @@ function paintPrev() {
   const title = h ? titleOf(h) : s.titleLang === 'romaji' ? 'Sousou no Frieren' : 'Frieren: Beyond Journey\'s End';
   const eps = [[1, 'The Journey\'s End', true], [2, 'It Didn\'t Have to Be Magic', true], [3, 'Killing Magic', false], [4, 'The Land Where Souls Rest', false]];
   if (s.epOrder === 'desc') eps.reverse();
-  const w = s.cardSize === 'small' ? 112 : s.cardSize === 'large' ? 168 : 140;
+  const w = s.cardSize === 'small' ? 112 : s.cardSize === 'large' ? 168 : 140;   // Same three sizes as the site's posters
   box.innerHTML = `
     <h3>Preview</h3>
     <div class="pv-card" style="width:${w}px">
@@ -492,7 +510,7 @@ function paintPrev() {
 }
 
 /* ---------- Wiring shared by both layouts ---------- */
-const afterChange = () => { paintPrev(); paintStage(); };
+const afterChange = () => { paintPrev(); paintStage(); if (REG && innerWidth <= 900) revealRegion(REG, true); };   // On a phone, keep the changed part of the preview above the sheet
 
 /* ---------- Warning pop-up for themes that never stop animating ---------- */
 function warnDialog(name) {
