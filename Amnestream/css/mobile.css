@@ -1,6 +1,7 @@
 /* Mobile polish layer: loaded last, only adds phone-specific fixes. Desktop is untouched. */
 @media (max-width:900px){
-  html{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+  html{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;background:var(--bg);min-height:100%}
+  body{min-height:100vh;min-height:100dvh}   /* Fills the screen when Brave/Chrome hide their bars, so no blank strip shows under the dock */
   body{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
   /* Bottom nav clears the iPhone home bar */
   .site-header,.site-header.scrolled{box-sizing:border-box;height:calc(72px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px)}

@@ -419,6 +419,22 @@ function paintInspector() {
   const wasOpen = el.classList.contains('open'), h0 = el.offsetHeight;
   const idx = k => REGIONS.findIndex(r => r.id === k), dir = idx(key) < idx(inspKey) ? -1 : 1;
   clearTimeout(el._heightT); el.style.height = el.style.transition = el.style.overflow = '';
+  /* Closing the phone sheet: keep what it shows while it slides down (repainting it first made it flash and jump), tidy up once it is out of sight */
+  if (innerWidth <= 900 && wasOpen && !REG && !Q.trim()) {
+    clearTimeout(el._closeT);
+    el.classList.remove('open');
+    $$('#stg-tabs button').forEach(b => { b.classList.remove('on'); b.setAttribute('aria-pressed', 'false'); });
+    syncTabs();
+    inspKey = key;
+    el._closeT = setTimeout(() => {
+      if (REG || Q.trim()) return;                                   // Opened again meanwhile
+      document.body.classList.remove('stg-open');
+      el.innerHTML = inspectorHTML(); el.scrollTop = 0;
+      const x2 = $('#stg-x'); if (x2) x2.onclick = () => { REG = ''; Q = ''; const qi = $('#set-q'); if (qi) qi.value = ''; markStage(); paintInspector(); };
+    }, reduceMotion() ? 0 : 420);
+    return;
+  }
+  clearTimeout(el._closeT);
   el.innerHTML = inspectorHTML();
   if (changed) el.scrollTop = 0;
   el.classList.toggle('open', !!REG || !!Q.trim());

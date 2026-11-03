@@ -35,11 +35,11 @@ function runOf(m) {
 }
 
 async function initTimeline() {
-  enableDragScroll($('#tl-scroll'));                 // No scrollbar, so the mouse drags the timeline
+  if (!initTimeline.wired) { initTimeline.wired = true; enableDragScroll($('#tl-scroll')); }   // No scrollbar, so the mouse drags the timeline (wired once)
 
-  const ids = Object.values(Store.progress()).sort((a, b) => b.ts - a.ts).slice(0, 50).map(x => x.id);
+  const ids = Store.list().slice(0, 50).map(x => x.id);          // Only anime you added to My List
   if (!ids.length) {
-    $('#tl-canvas').innerHTML = `<div class="tl-empty">Nothing here yet. Start watching an airing anime and it will show up on your timeline.<br><br>
+    $('#tl-canvas').innerHTML = `<div class="tl-empty">Nothing here yet. Add an airing anime to My List and it will show up on your timeline.<br><br>
       <a class="btn btn-primary" href="browse.html?status=RELEASING">Browse airing anime</a></div>`;
     return;
   }
@@ -50,7 +50,7 @@ async function initTimeline() {
       .sort((a, b) => a.nextAiringEpisode.airingAt - b.nextAiringEpisode.airingAt)
       .map(m => ({ m, run: runOf(m) }));
     if (!DATA.length) {
-      $('#tl-canvas').innerHTML = `<div class="tl-empty">None of the anime you're watching are airing right now.<br><br>
+      $('#tl-canvas').innerHTML = `<div class="tl-empty">None of the anime on your My List are airing right now.<br><br>
         <a class="btn btn-primary" href="browse.html?status=RELEASING">Browse airing anime</a></div>`;
       return;
     }
@@ -139,3 +139,4 @@ function draw(scrollToNow) {
 }
 
 document.addEventListener('DOMContentLoaded', initTimeline);
+document.addEventListener('as:synced', initTimeline);             // My List changed on another device

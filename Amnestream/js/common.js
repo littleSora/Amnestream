@@ -1032,17 +1032,16 @@ const ADULT_GENRES = ['Hentai', 'Erotica'];                      // Explicit by 
 const visibleGenres = () => Settings.get().includeAdult ? GENRES : GENRES.filter(g => !ADULT_GENRES.includes(g));
 
 /* Header */
-function buildHeader() {
-  const host = $('#site-header');
-  if (!host) return;
-  host.className = 'site-header';
-  const page = location.pathname.split('/').pop() || 'index.html';
+/* The header markup is also cached (without the "on" tab) so every page can paint it instantly from a tiny inline script,
+   before common.js has loaded. That is what stops the bar from vanishing and reappearing between pages. */
+const HDR_KEY = 'as_hdr1';
+function headerHTML(page) {
   const NAV = [
     ['index.html', 'home', 'Home'], ['browse.html', 'compass', 'Browse'],
     ['timeline.html', 'timeline', 'Timeline'], ['mylist.html', 'list', 'My List'],
   ];
   const u = User.get(), signedIn = !!Auth.session();
-  host.innerHTML = `
+  return `
     <div class="container header-inner">
       <div class="nav-pill">
         <button class="nav-burger" aria-label="Menu">&#9776;</button>
@@ -1069,6 +1068,17 @@ function buildHeader() {
       <input id="search-input" type="search" placeholder="Search anime..." autocomplete="off" aria-label="Search anime">
       <div id="search-suggest" class="suggest"></div>
     </div>`;
+}
+function buildHeader() {
+  const host = $('#site-header');
+  if (!host) return;
+  host.className = 'site-header';
+  const page = location.pathname.split('/').pop() || 'index.html';
+  host.innerHTML = headerHTML(page);
+  try {
+    const neutral = headerHTML('');
+    if (neutral.length < 30000) localStorage.setItem(HDR_KEY, neutral); else localStorage.removeItem(HDR_KEY);
+  } catch { /* Storage full or blocked: the header is just built after load instead */ }
   wireHeader();
 }
 

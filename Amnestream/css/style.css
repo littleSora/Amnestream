@@ -8,10 +8,10 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;background:var(--bg)}   /* Painted on the root too, so no white shows if the browser bars collapse and the page is briefly shorter than the screen */
 body{background:var(--bg);color:var(--text);
   font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-  -webkit-font-smoothing:antialiased;overflow-x:hidden}
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;overflow-x:clip;min-height:100vh;min-height:100dvh}
 a{color:inherit;text-decoration:none}
 img{display:block;max-width:100%}
 button,input,select{font:inherit;color:inherit}
@@ -731,3 +731,18 @@ html::-webkit-scrollbar,*::-webkit-scrollbar{display:none!important;width:0!impo
 .side-eps.as-list .se-body b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .se-state{flex:0 0 auto;font-style:normal;font-size:12px;color:var(--ok);min-width:12px}
 .side-eps.as-grid button.done:not(.on){box-shadow:inset 0 -3px 0 var(--accent)}
+
+
+/* ===== Page changes: the bar stays put, the page eases in (cross-page View Transitions; browsers without them use the fade below) ===== */
+@view-transition{navigation:auto}
+.site-header{view-transition-name:site-nav}
+::view-transition-group(site-nav){animation:none}
+::view-transition-old(site-nav){display:none}
+::view-transition-new(site-nav){animation:none}
+::view-transition-old(root){animation:pgOut .16s cubic-bezier(.4,0,1,1) both}
+::view-transition-new(root){animation:pgIn .38s cubic-bezier(.22,1,.36,1) both}
+@keyframes pgOut{to{opacity:0;transform:translateY(-8px)}}
+@keyframes pgIn{from{opacity:0;transform:translateY(16px)}}
+html.pg-anim body>main{animation:pgIn .38s cubic-bezier(.22,1,.36,1) both}
+html.reduce-motion::view-transition-old(root),html.reduce-motion::view-transition-new(root){animation:none}
+@media (prefers-reduced-motion:reduce){::view-transition-old(root),::view-transition-new(root){animation:none}html.pg-anim body>main{animation:none}}

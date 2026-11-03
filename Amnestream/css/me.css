@@ -301,14 +301,14 @@ kbd{display:inline-block;padding:3px 9px;border-radius:7px;border:1px solid var(
   .stg-body{grid-template-columns:minmax(0,1fr)}
   .stg-stage{padding:10px;border-radius:16px;min-width:0}
   /* The sheet is kept short so the preview above it stays in view while you change a setting; the rows scroll inside it and the title stays pinned */
-  .stg-insp{--sheet-h:clamp(180px,34vh,300px);position:fixed;left:8px;right:8px;bottom:calc(var(--m-nav,60px) + 8px + env(safe-area-inset-bottom,0px));top:auto;max-height:var(--sheet-h);overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-top:0;z-index:60;transform:translateY(130%);opacity:0;pointer-events:none;transition:transform .4s cubic-bezier(.22,1,.36,1),opacity .25s;box-shadow:inset 0 0 0 1px var(--line),0 -20px 50px -10px #000c;background:var(--card);overscroll-behavior:contain;scrollbar-width:thin}
+  .stg-insp{--sheet-h:clamp(150px,27vh,240px);position:fixed;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom,0px));top:auto;max-height:var(--sheet-h);overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-top:0;z-index:90;transform:translateY(calc(100% + 40px + env(safe-area-inset-bottom,0px)));opacity:0;pointer-events:none;transition:transform .42s cubic-bezier(.22,1,.36,1),opacity .3s ease .05s;box-shadow:inset 0 0 0 1px var(--line),0 -20px 50px -10px #000c;background:var(--card);overscroll-behavior:contain;scrollbar-width:thin}
   .stg-insp header{position:sticky;top:0;z-index:5;margin:0 -18px 4px;padding:14px 52px 8px 18px;background:var(--card);box-shadow:0 1px 0 var(--line)}
   .stg-insp h2{font-size:18px}
   .stg-insp header p{font-size:12px;margin-top:2px}
   .stg-insp .stg-x{right:12px;top:10px}
-  .stg-insp.open{transform:none;opacity:1;pointer-events:auto}
+  .stg-insp.open{transform:none;opacity:1;pointer-events:auto;transition:transform .42s cubic-bezier(.22,1,.36,1),opacity .2s}
   .stg-x{display:flex}
-  body.stg-open .stg{padding-bottom:calc(clamp(180px,34vh,300px) + 24px)}
+  body.stg-open .stg{padding-bottom:calc(clamp(150px,27vh,240px) + 24px)}
   .stg-tag{display:none}
   /* A smaller preview that fits a phone: three posters, tighter hero */
   .stg-rail{--per:3}.stg-rail.s-small{--per:4}.stg-rail.s-large{--per:2}
