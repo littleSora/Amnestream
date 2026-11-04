@@ -104,7 +104,7 @@ function paintPass() {
       <h2>Edit profile</h2>
       <div class="pf-dlg-body">
         <label class="set-lbl">Display name<input class="set-in" id="pf-name" value="${esc(u.name)}" maxlength="30"></label>
-        <label class="set-lbl">Username<input class="set-in" id="pf-user" value="${esc(u.username)}" maxlength="20"${u.account ? ' readonly aria-readonly="true" title="Your username was set when you registered and cannot be changed"' : ''}>${u.account ? '<small class="set-note">Set when you registered. It can\'t be changed.</small>' : ''}</label>
+        <label class="set-lbl">Username<input class="set-in" id="pf-user" value="${esc(u.username)}" maxlength="20"${u.account ? ' readonly aria-readonly="true" title="Your username was set when you registered and cannot be changed"' : ''}></label>
         ${AvatarPicker.html('pf-avatar', u.avatar, u.name)}
         <label class="set-lbl">Bio<textarea class="set-in bio-in" id="pf-bio" maxlength="${BIO_MAX}" rows="2">${esc(bioFit(u.bio))}</textarea><span class="bio-count">${bioFit(u.bio).length}/${BIO_MAX}</span></label>
       </div>
@@ -192,7 +192,7 @@ function editDialogHTML(u) {
       <h2>Edit profile</h2>
       <div class="pf-dlg-body">
         <label class="set-lbl">Display name<input class="set-in" id="pf-name" value="${esc(u.name)}" maxlength="30"></label>
-        <label class="set-lbl">Username<input class="set-in" id="pf-user" value="${esc(u.username)}" maxlength="20"${u.account ? ' readonly aria-readonly="true" title="Your username was set when you registered and cannot be changed"' : ''}>${u.account ? '<small class="set-note">Set when you registered. It can\'t be changed.</small>' : ''}</label>
+        <label class="set-lbl">Username<input class="set-in" id="pf-user" value="${esc(u.username)}" maxlength="20"${u.account ? ' readonly aria-readonly="true" title="Your username was set when you registered and cannot be changed"' : ''}></label>
         ${AvatarPicker.html('pf-avatar', u.avatar, u.name)}
         <label class="set-lbl">Bio<textarea class="set-in bio-in" id="pf-bio" maxlength="${BIO_MAX}" rows="2">${esc(bioFit(u.bio))}</textarea><span class="bio-count">${bioFit(u.bio).length}/${BIO_MAX}</span></label>
       </div>
