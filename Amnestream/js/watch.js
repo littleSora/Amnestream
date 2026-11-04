@@ -67,6 +67,7 @@ function nextServerId(fromId) {
 
 let autoTried = 0;
 let playerReady = false;
+let _malT = 0;
 
 async function initWatch() {
   if (!WID) { location.href = 'index.html'; return; }
@@ -134,6 +135,8 @@ function buildPage() {
   checkDub();
   mountComments();
   Store.saveProgress(MEDIA, EP);
+  clearTimeout(_malT);                                                   // Players that never say "ended": count the episode as watched after 70% of its length
+  if (typeof Mal !== 'undefined' && Mal.active()) { const m = MEDIA, e = EP; _malT = setTimeout(() => Mal.track(m, e), Math.max(4, (m.duration || 24) * .7) * 60e3); }
 
   $('#autonext').checked = Settings.get().autonext;
   $('#autonext').onchange = e => Settings.set('autonext', e.target.checked);
@@ -145,10 +148,10 @@ function mountComments() {
   const box = $('#p-cm'); if (!box) return;
   const id = MEDIA.id, ep = EP;
   $('#cm-title').firstChild.textContent = `Episode ${ep} comments `;
-  const count = () => Comments.count(id, ep).then(n => { if (ep === EP) $('#cm-total').textContent = n ? `(${n})` : ''; }).catch(() => {});
+  const count = () => Comments.count(id, ep).then(n => { if (ep === EP && Comments.allowed(id)) $('#cm-total').textContent = n ? `(${n})` : ''; }).catch(() => {});
   $('#cm-total').textContent = '';
   if (typeof Comments === 'undefined') { box.innerHTML = '<p class="empty">Comments failed to load. Refresh the page.</p>'; return; }
-  Comments.mount(box, id, count, ep); count();
+  Comments.mountGated(box, id, count, ep, hidden => { if (hidden) $('#cm-total').textContent = ''; else count(); });   // Hidden behind a spoiler alert unless Settings > Show comments is on or this anime was opened
 }
 
 /* Options are built here so watch.html needs no edit */
@@ -353,6 +356,7 @@ function onPlayerMessage(e) {
   const ev = String(d.event || d.type || d.name || '').toLowerCase();
 
   if (ev === 'complete' || ev === 'ended') {
+    if (typeof Mal !== 'undefined') Mal.track(MEDIA, EP);                  // Finished: mark it on MyAnimeList (if connected)
     if ($('#autonext').checked) gotoEp(EP + 1);
     return;
   }

@@ -34,10 +34,15 @@ function runOf(m) {
   return { start, end, total, n };
 }
 
-async function initTimeline() {
-  if (!initTimeline.wired) { initTimeline.wired = true; enableDragScroll($('#tl-scroll')); }   // No scrollbar, so the mouse drags the timeline (wired once)
+function initTimeline() {
+  enableDragScroll($('#tl-scroll'));                 // No scrollbar, so the mouse drags the timeline
+  loadTimeline();
+  document.addEventListener('as:synced', loadTimeline);   // Your list changed on another device
+}
 
-  const ids = Store.list().slice(0, 50).map(x => x.id);          // Only anime you added to My List
+async function loadTimeline() {
+
+  const ids = Store.list().map(x => x.id);                 // Only anime you added to My List
   if (!ids.length) {
     $('#tl-canvas').innerHTML = `<div class="tl-empty">Nothing here yet. Add an airing anime to My List and it will show up on your timeline.<br><br>
       <a class="btn btn-primary" href="browse.html?status=RELEASING">Browse airing anime</a></div>`;
@@ -46,7 +51,7 @@ async function initTimeline() {
   try {
     const data = await Api.timelineFor(ids);
     DATA = data.Page.media
-      .filter(m => m.nextAiringEpisode && ['TV', 'ONA', 'TV_SHORT'].includes(m.format))
+      .filter(m => m.nextAiringEpisode && ['TV', 'ONA', 'TV_SHORT', 'OVA', 'SPECIAL'].includes(m.format))
       .sort((a, b) => a.nextAiringEpisode.airingAt - b.nextAiringEpisode.airingAt)
       .map(m => ({ m, run: runOf(m) }));
     if (!DATA.length) {
@@ -139,4 +144,3 @@ function draw(scrollToNow) {
 }
 
 document.addEventListener('DOMContentLoaded', initTimeline);
-document.addEventListener('as:synced', initTimeline);             // My List changed on another device

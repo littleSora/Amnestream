@@ -120,6 +120,7 @@ fragment MediaPlayer on Media {
   status
   format
   episodes
+  duration
   nextAiringEpisode { episode airingAt }
   streamingEpisodes { title thumbnail }
 }`;
@@ -670,23 +671,38 @@ const Api = {
       .then(d => (d && d.Page && d.Page.airingSchedules) || []);
   },
 
-  /* Browse > Latest episodes: pages the airing schedule (last 7 days) and applies Browse filters client-side; one show per page */
-  async latestAired(vars, page = 1, opts = {}) {
+  /* Browse > Latest episodes: loads the whole last-7-days schedule once (shared by every filter change), applies Browse filters client-side,
+     one card per show, then pages the filtered result so every page is full and the page count is exact */
+  async _latestAll(opts = {}) {
     const until = Math.floor(Date.now() / 300000) * 300;          // 5 min steps keep the cache key stable
-    const d = await gql(`${MEDIA_CARD}
+    if (Api._latestMemo && Api._latestMemo.until === until) return Api._latestMemo.p;
+    const fetchPage = pg => gql(`${MEDIA_CARD}
       query LatestAired($page: Int, $since: Int, $until: Int) {
         Page(page: $page, perPage: 50) {
-          pageInfo { total currentPage lastPage hasNextPage }
+          pageInfo { lastPage hasNextPage }
           airingSchedules(airingAt_greater: $since, airingAt_lesser: $until, sort: TIME_DESC) {
             airingAt episode
             media { ...MediaCard season tags { name } }
           }
         }
-      }`, { page, since: until - 7 * 86400, until },
+      }`, { page: pg, since: until - 7 * 86400, until },
       { ttl: TTL.short, signal: opts.signal, lazy: opts.lazy, valid: x => Array.isArray(x?.Page?.airingSchedules) });
+    const p = (async () => {
+      const first = await fetchPage(1);
+      const last = Math.min(first.Page.pageInfo?.lastPage || 1, 20);
+      const rest = await Promise.all(Array.from({ length: Math.max(0, last - 1) }, (_, i) => fetchPage(i + 2).catch(() => null)));
+      return [first, ...rest].flatMap(d => (d && d.Page.airingSchedules) || []);
+    })();
+    Api._latestMemo = { until, p };
+    p.catch(() => { if (Api._latestMemo && Api._latestMemo.p === p) Api._latestMemo = null; });   // Failed loads are retried next time
+    return p;
+  },
+  async latestAired(vars, page = 1, opts = {}) {
+    const rows = await Api._latestAll(opts);
+    const per = vars.perPage || 32;
     const q = (vars.search || '').toLowerCase(), { genres = [], tags = [] } = _gsplit({ genres: vars.genres });
-    const seen = new Set(), media = [];
-    for (const r of d.Page.airingSchedules) {
+    const seen = new Set(), all = [];
+    for (const r of rows) {
       const m = r && r.media;
       if (!m || seen.has(m.id) || m.countryOfOrigin !== 'JP') continue;
       if (m.isAdult && !adultOn()) continue;
@@ -698,10 +714,12 @@ const Api = {
       if (tags.length && !tags.some(t => (m.tags || []).some(x => x.name === t))) continue;
       if (q && !Object.values(m.title || {}).some(t => t && String(t).toLowerCase().includes(q))) continue;
       seen.add(m.id);
-      media.push({ ...m, __ep: r.episode, __at: r.airingAt });
+      all.push({ ...m, __ep: r.episode, __at: r.airingAt });
     }
-    const pi = d.Page.pageInfo || {};
-    return { Page: { pageInfo: { currentPage: page, lastPage: pi.lastPage || 1, hasNextPage: !!pi.hasNextPage, total: media.length, latest: true }, media } };
+    const lastPage = Math.max(1, Math.ceil(all.length / per));
+    const cur = Math.min(Math.max(1, page), lastPage);              // A page past the end shows the last real page
+    const media = all.slice((cur - 1) * per, cur * per);
+    return { Page: { pageInfo: { currentPage: cur, lastPage, hasNextPage: cur < lastPage, total: all.length, latest: true }, media } };
   },
 
   browse({ page = 1, perPage = 30, search, genres: picked, format, status, season, year, sort }, opts) {
@@ -962,12 +980,16 @@ const Api = {
 
   /* Timeline: airing-now shows from the user's watched titles */
   timelineFor(ids) {
-    return gql(`${MEDIA_CARD}
-      query Timeline($ids: [Int]) {
+    ids = [...new Set((ids || []).map(Number).filter(Boolean))];
+    const chunks = [];
+    for (let i = 0; i < ids.length; i += 50) chunks.push(ids.slice(i, i + 50));      // Whole My List, 50 at a time
+    return Promise.all(chunks.map(c => gql(`${MEDIA_CARD}
+      query Timeline($ids: [Int], $adult: Boolean) {
         Page(page: 1, perPage: 50) {
-          media(id_in: $ids, type: ANIME, status: RELEASING, isAdult: false) { ...MediaCard }
+          media(id_in: $ids, type: ANIME, isAdult: $adult) { ...MediaCard }
         }
-      }`, { ids }, { ttl: TTL.normal });
+      }`, { ids: c, adult: adultVar() }, { ttl: TTL.normal })))                      // No status filter: anything with a next episode counts (airing, or premiering soon)
+      .then(parts => ({ Page: { media: parts.flatMap(d => d.Page.media) } }));
   },
 
   /* Light status check for new-episode alerts on Continue watching */

@@ -1,5 +1,5 @@
 /* Service worker: installable app and offline shell; pages, scripts and styles are network-first, AniList posters and Google Fonts cache-first; change VERSION to make every device drop its old copy */
-const VERSION = 'amnestream-v66', IMG = 'amnestream-img-v1';
+const VERSION = 'amnestream-v72', IMG = 'amnestream-img-v1';
 const SHELL = [
   "index.html",
   "browse.html",
@@ -16,6 +16,10 @@ const SHELL = [
   "css/atlas.css",
   "css/mobile.css",
   "css/themes.css",
+  "css/settings-clean.css",
+  "css/settings-v2.css",
+  "css/sheet-dock.css",
+  "css/extras.css",
   "css/me.css",
   "css/style.css",
   "js/anime.js",
@@ -25,6 +29,7 @@ const SHELL = [
   "js/browse.js",
   "js/comments.js",
   "js/config.js",
+  "js/mal.js",
   "js/common.js",
   "js/home.js",
   "js/leaderboard.js",
@@ -61,6 +66,15 @@ async function networkFirst(req, key) {
   }
 }
 
+/* Pages, scripts and styles open instantly from the cache and are refreshed in the background (the newest copy is used on the next visit) */
+async function staleWhileRevalidate(e, req, key) {
+  const cache = await caches.open(VERSION);
+  const hit = await cache.match(key);
+  const net = fetch(req).then(res => { if (res.ok) cache.put(key, res.clone()); return res; });
+  if (hit) { e.waitUntil(net.catch(() => {})); return hit; }
+  return networkFirst(req, key);
+}
+
 async function cacheFirst(req) {
   const cache = await caches.open(IMG);
   const hit = await cache.match(req);
@@ -77,10 +91,11 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;                       // AniList GraphQL is POST: never touched
   const url = new URL(req.url);
+  if (url.origin === location.origin && /\/api\//.test(url.pathname)) return;   // Serverless functions (MAL client ID etc.) always go to the network
   if (url.origin === location.origin) {
     // ?id=... pages share one cached HTML file
     const key = url.pathname.endsWith('.html') || req.mode === 'navigate' ? url.origin + url.pathname : req;
-    e.respondWith(networkFirst(req, key));
+    e.respondWith(staleWhileRevalidate(e, req, key));
   } else if ((url.hostname.endsWith('anilist.co') && req.destination === 'image') ||
              url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
     e.respondWith(cacheFirst(req));

@@ -8,10 +8,10 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
-html{scroll-behavior:smooth;background:var(--bg)}   /* Painted on the root too, so no white shows if the browser bars collapse and the page is briefly shorter than the screen */
+html{scroll-behavior:smooth}
 body{background:var(--bg);color:var(--text);
   font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-  -webkit-font-smoothing:antialiased;overflow-x:hidden;overflow-x:clip;min-height:100vh;min-height:100dvh}
+  -webkit-font-smoothing:antialiased;overflow-x:hidden}
 a{color:inherit;text-decoration:none}
 img{display:block;max-width:100%}
 button,input,select{font:inherit;color:inherit}
@@ -58,6 +58,8 @@ body:not(.home) main{padding-top:calc(var(--header-h) + 14px)}
 .search-pop{position:fixed;top:calc(var(--header-h) + 4px);right:max(20px,calc((100vw - 1500px)/2 + 20px));width:min(440px,calc(100vw - 40px));
   display:none;z-index:85}
 .search-pop.open{display:block;animation:pop .15s ease-out}
+.search-pop.open.closing{animation:popOut .15s ease-in forwards;pointer-events:none}
+@keyframes popOut{to{opacity:0;transform:translateY(-6px)}}
 .search-pop input{width:100%;padding:13px 18px;border-radius:999px;border:1px solid var(--accent);background:var(--card);outline:none;font-size:14.5px;box-shadow:0 18px 50px rgba(0,0,0,.6)}
 .suggest{display:none;margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.7);max-height:65vh;overflow-y:auto}
 .suggest.open{display:block}
@@ -732,17 +734,10 @@ html::-webkit-scrollbar,*::-webkit-scrollbar{display:none!important;width:0!impo
 .se-state{flex:0 0 auto;font-style:normal;font-size:12px;color:var(--ok);min-width:12px}
 .side-eps.as-grid button.done:not(.on){box-shadow:inset 0 -3px 0 var(--accent)}
 
-
-/* ===== Page changes: the bar stays put, the page eases in (cross-page View Transitions; browsers without them use the fade below) ===== */
-@view-transition{navigation:auto}
-.site-header{view-transition-name:site-nav}
-::view-transition-group(site-nav){animation:none}
-::view-transition-old(site-nav){display:none}
-::view-transition-new(site-nav){animation:none}
-::view-transition-old(root){animation:pgOut .16s cubic-bezier(.4,0,1,1) both}
-::view-transition-new(root){animation:pgIn .38s cubic-bezier(.22,1,.36,1) both}
-@keyframes pgOut{to{opacity:0;transform:translateY(-8px)}}
-@keyframes pgIn{from{opacity:0;transform:translateY(16px)}}
-html.pg-anim body>main{animation:pgIn .38s cubic-bezier(.22,1,.36,1) both}
-html.reduce-motion::view-transition-old(root),html.reduce-motion::view-transition-new(root){animation:none}
-@media (prefers-reduced-motion:reduce){::view-transition-old(root),::view-transition-new(root){animation:none}html.pg-anim body>main{animation:none}}
+/* Page changes: the page fades and rises in; leaving through the nav fades it out. The nav (header) is never animated. */
+@keyframes pageIn{from{opacity:0;transform:translate3d(0,14px,0)}to{opacity:1;transform:none}}
+@keyframes pageFade{from{opacity:0}to{opacity:1}}
+main,.site-footer{animation:pageIn .45s cubic-bezier(.22,1,.36,1) backwards}
+body.home main{animation-name:pageFade}
+body.page-leaving main,body.page-leaving .site-footer{opacity:0;transform:translate3d(0,-8px,0);transition:opacity .17s ease-in,transform .17s ease-in}
+body.home.page-leaving main{transform:none}

@@ -106,6 +106,7 @@ const DEFAULTS = {
   theme: 'sakura', titleLang: 'english', epOrder: 'asc', epStyle: 'list',
   continueRow: true, reduceMotion: false, hoverTrailer: true,
   incognito: false, hideSpoilers: false, includeAdult: false,
+  showComments: false, malAuto: true,                     // Comments are hidden behind a spoiler alert until turned on; MAL updates itself once connected
   uiMode: 'modern', accent: '', cardSize: 'normal',      // Settings and Profile layout, custom accent colour, poster size
 };
 /* The Wave theme's living water is a canvas in js/wave.js, loaded only while that theme is on */
@@ -310,10 +311,9 @@ const User = {
   set(patch) {
     const a = Auth.current();
     if (!a) { jset('as_user', { ...User.get(), ...patch }); return Promise.resolve(); }
-    const { name, bio, avatar, username } = patch;
-    const clean = { name, bio, avatar, username };
+    const { name, bio, avatar } = patch;                     // The username is fixed at sign-up: never sent
+    const clean = { name, bio, avatar };
     Object.keys(clean).forEach(k => clean[k] === undefined && delete clean[k]);
-    if (clean.username !== undefined) clean.username = Auth._norm(clean.username);
     jset('as_me', { ...a, ...clean });
     return Auth.client().then(async sb => {
       const { data: { user } } = await sb.auth.getUser();
@@ -1032,16 +1032,17 @@ const ADULT_GENRES = ['Hentai', 'Erotica'];                      // Explicit by 
 const visibleGenres = () => Settings.get().includeAdult ? GENRES : GENRES.filter(g => !ADULT_GENRES.includes(g));
 
 /* Header */
-/* The header markup is also cached (without the "on" tab) so every page can paint it instantly from a tiny inline script,
-   before common.js has loaded. That is what stops the bar from vanishing and reappearing between pages. */
-const HDR_KEY = 'as_hdr1';
-function headerHTML(page) {
+function buildHeader() {
+  const host = $('#site-header');
+  if (!host) return;
+  host.className = 'site-header';
+  const page = location.pathname.split('/').pop() || 'index.html';
   const NAV = [
     ['index.html', 'home', 'Home'], ['browse.html', 'compass', 'Browse'],
     ['timeline.html', 'timeline', 'Timeline'], ['mylist.html', 'list', 'My List'],
   ];
   const u = User.get(), signedIn = !!Auth.session();
-  return `
+  host.innerHTML = `
     <div class="container header-inner">
       <div class="nav-pill">
         <button class="nav-burger" aria-label="Menu">&#9776;</button>
@@ -1068,17 +1069,7 @@ function headerHTML(page) {
       <input id="search-input" type="search" placeholder="Search anime..." autocomplete="off" aria-label="Search anime">
       <div id="search-suggest" class="suggest"></div>
     </div>`;
-}
-function buildHeader() {
-  const host = $('#site-header');
-  if (!host) return;
-  host.className = 'site-header';
-  const page = location.pathname.split('/').pop() || 'index.html';
-  host.innerHTML = headerHTML(page);
-  try {
-    const neutral = headerHTML('');
-    if (neutral.length < 30000) localStorage.setItem(HDR_KEY, neutral); else localStorage.removeItem(HDR_KEY);
-  } catch { /* Storage full or blocked: the header is just built after load instead */ }
+  try { localStorage.setItem('as_hdr_v1', host.innerHTML.replace(/ class="on"/g, '')); } catch { /* ignore */ }   // Next page paints this at once (see the inline script after <header>)
   wireHeader();
 }
 
@@ -1092,20 +1083,29 @@ function wireHeader() {
 
   const pop = $('#search-pop'), input = $('#search-input'), box = $('#search-suggest');
   const menu = $('#user-menu');
-  const closeAll = () => { pop.classList.remove('open'); box.classList.remove('open'); menu.classList.remove('open'); };
+  /* Closing plays the reverse of the open animation: .closing keeps the bar visible while it fades and slides out */
+  function closeSearch() {
+    const p = $('#search-pop'); if (!p || !p.classList.contains('open')) { $$('.suggest').forEach(x => x.classList.remove('open')); return; }
+    const still = document.documentElement.classList.contains('reduce-motion') || matchMedia('(prefers-reduced-motion:reduce)').matches;
+    if (still) { p.classList.remove('open'); $$('.suggest').forEach(x => x.classList.remove('open')); return; }
+    p.classList.add('closing');
+    clearTimeout(p._ct);
+    p._ct = setTimeout(() => { p.classList.remove('open', 'closing'); $$('.suggest').forEach(x => x.classList.remove('open')); }, 150);
+  }
+  const closeAll = () => { closeSearch(); menu.classList.remove('open'); };
 
   $('#search-btn').onclick = e => {
     e.stopPropagation(); menu.classList.remove('open');
-    pop.classList.toggle('open');
-    if (pop.classList.contains('open')) input.focus();
+    if (pop.classList.contains('open')) closeSearch();
+    else { pop.classList.remove('closing'); pop.classList.add('open'); input.focus(); }
   };
-  $('#user-btn').onclick = e => { e.stopPropagation(); pop.classList.remove('open'); menu.classList.toggle('open'); };
+  $('#user-btn').onclick = e => { e.stopPropagation(); closeSearch(); menu.classList.toggle('open'); };
   if ($('#logout-btn')) $('#logout-btn').onclick = () => { toast('Logging out...'); User.logout().finally(() => { toast('Logged out'); setTimeout(() => location.href = 'index.html', 400); }); };
   if ($('#menu-login-btn')) $('#menu-login-btn').onclick = () => { closeAll(); openAuth('login'); };
   if (first) {
-    document.addEventListener('click', e => { if (!e.target.closest('.search-pop, .user-wrap')) $$('.search-pop,.suggest,.user-menu').forEach(x => x.classList.remove('open')); });
+    document.addEventListener('click', e => { if (!e.target.closest('.search-pop, .user-wrap')) { closeSearch(); $$('.user-menu').forEach(x => x.classList.remove('open')); } });
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') $$('.search-pop,.suggest,.user-menu').forEach(x => x.classList.remove('open'));
+      if (e.key === 'Escape') { closeSearch(); $$('.user-menu').forEach(x => x.classList.remove('open')); }
       if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName) && !$('.auth-bg')) { e.preventDefault(); $('#search-btn').click(); }
     });
   }
@@ -1322,6 +1322,32 @@ function buildBackToTop() {
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 }
+
+/* Page changes from the nav: the page eases out, the next one eases in (CSS in style.css); the nav itself stays put */
+document.addEventListener('click', e => {
+  const a = e.target.closest && e.target.closest('.main-nav a, .logo');
+  if (!a || e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target === '_blank') return;
+  const href = a.getAttribute('href'), cur = location.pathname.split('/').pop() || 'index.html';
+  if (!href || href === cur) return;
+  if (document.documentElement.classList.contains('reduce-motion') || matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+  e.preventDefault();
+  $$('.main-nav a').forEach(x => x.classList.toggle('on', x === a));
+  document.body.classList.add('page-leaving');       // Starts the fade-out now; the next page is requested in the same moment (no waiting)
+  location.href = href;
+});
+/* Warm the next page as soon as the pointer is over a nav link, so the click finds it ready */
+(() => {
+  const done = new Set();
+  const warm = e => {
+    const a = e.target.closest && e.target.closest('.main-nav a, .logo'), h = a && a.getAttribute('href');
+    if (!h || done.has(h) || h === (location.pathname.split('/').pop() || 'index.html')) return;
+    done.add(h);
+    const l = document.createElement('link'); l.rel = 'prefetch'; l.href = h; document.head.appendChild(l);
+  };
+  document.addEventListener('pointerover', warm, { passive: true });
+  document.addEventListener('touchstart', warm, { passive: true });
+})();
+window.addEventListener('pageshow', e => { if (e.persisted) document.body.classList.remove('page-leaving'); });
 
 document.addEventListener('DOMContentLoaded', () => {
   buildHeader(); buildFooter(); buildBackToTop();

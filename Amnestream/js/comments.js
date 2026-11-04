@@ -60,6 +60,43 @@ const Comments = {
     </form>`;
   },
 
+
+  /* ---------- Spoiler gate ----------
+     Comments are hidden by default (Settings > Content and privacy > Show comments). Each anime then shows a spoiler alert, and the person can open the
+     comments for that one anime only (remembered in as_cm_ok). Turning the setting on shows comments on every anime. */
+  OK_KEY: 'as_cm_ok',
+  _oks: () => { const l = jget('as_cm_ok', []); return Array.isArray(l) ? l : []; },
+  allowed: id => !!Settings.get().showComments || Comments._oks().includes(Number(id)),
+  allow(id) { const l = Comments._oks(); if (!l.includes(Number(id))) { l.push(Number(id)); jset('as_cm_ok', l.slice(-400)); } },
+  unallow(id) { jset('as_cm_ok', Comments._oks().filter(x => x !== Number(id))); },
+  /* Same as mount(), but behind the gate. onGate(true|false) tells the page whether the comments are hidden, so it can hide the count. */
+  mountGated(root, animeId, onCount, episode = null, onGate) {
+    const draw = () => {
+      if (Comments.allowed(animeId)) {
+        onGate && onGate(false);
+        Comments.mount(root, animeId, onCount, episode);
+        if (!Settings.get().showComments) {                                  // Opened for this anime only: offer to hide them again
+          const b = document.createElement('div'); b.className = 'cm-regate';
+          b.innerHTML = '<button type="button" class="cm-link">Hide comments for this anime</button>';
+          b.firstChild.onclick = () => { Comments.unallow(animeId); draw(); };
+          root.appendChild(b);
+        }
+        return;
+      }
+      root._tok = {};                                                        // Anything still loading for this box is now stale
+      onGate && onGate(true);
+      root.innerHTML = `<div class="cm-gate" role="group" aria-label="Spoiler alert">
+        <span class="cm-gate-ic">${icon('eye', 22)}</span>
+        <div class="cm-gate-txt"><strong>Spoiler alert</strong><p>Comments are hidden because they can spoil things you haven't watched yet.</p></div>
+        <div class="cm-gate-act">
+          <button type="button" class="dp-btn primary sm" data-gate="show">Show comments for this anime</button>
+          <a class="dp-btn sm" href="settings.html?s=privacy">Turn on for every anime</a>
+        </div></div>`;
+      $('[data-gate="show"]', root).onclick = () => { Comments.allow(animeId); draw(); };
+    };
+    draw();
+  },
+
   async mount(root, animeId, onCount, episode = null) {
     if (!Comments.ready()) { root.innerHTML = '<p class="empty">Comments need the login system. Add your Supabase URL and key in js/config.js.</p>'; return; }
     const st = { offset: 0, total: 0, replies: {} }, tok = root._tok = {};   // A newer mount (next episode) makes older answers stale

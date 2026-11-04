@@ -37,11 +37,16 @@ const ALL_SECTIONS = [
     { t: 'toggle', k: 'includeAdult', ic: 'shield', n: 'Show 18+ titles', d: 'Include adult-rated anime in Browse, search, the home page and the schedule', kw: 'adult 18 nsfw hentai explicit mature all titles' },
     { t: 'toggle', k: 'incognito', ic: 'eye', n: 'Incognito mode', d: 'Pause watch history and activity tracking' },
     { t: 'toggle', k: 'hideSpoilers', ic: 'eye', n: 'Hide spoilers', d: 'Blur thumbnails and titles of episodes you haven\'t watched yet' },
+    { t: 'toggle', k: 'showComments', ic: 'eye', n: 'Show comments', d: 'Off: every anime shows a spoiler alert instead of its comments, and you can open them one anime at a time. On: comments show on every anime', kw: 'comments spoiler discussion replies' },
   ] },
   { id: 'sync', name: 'Sync and devices', sub: 'Keep Continue watching the same everywhere', ic: 'cloud', g: 'blue', items: [
     { t: 'syncstatus', n: 'Cloud sync', d: 'Your list, progress and history follow your account', kw: 'cloud sync devices account continue watching', full: 1 },
     { t: 'btn', ic: 'link', n: 'Sync code', d: 'Copy a code to move your list and history to another device without an account', label: 'Copy code', act: 'synccopy', full: 1 },
     { t: 'btn', ic: 'link', n: 'Use a sync code', d: 'Paste a code from another device. It is merged with what you have here', label: 'Paste code', act: 'syncpaste', full: 1 },
+  ] },
+  { id: 'mal', name: 'MyAnimeList', sub: 'Log in with MAL and track what you watch', ic: 'link', g: 'blue', items: [
+    { t: 'mal', n: 'MyAnimeList', d: 'Connect your MAL account so your MAL list follows what you watch here', kw: 'mal myanimelist tracker track list login connect sync', full: 1 },
+    { t: 'toggle', k: 'malAuto', ic: 'refresh', n: 'Update MAL automatically', d: 'When you finish an episode, it is marked watched on your MAL list (needs a MAL login). Off in Incognito mode', kw: 'mal myanimelist auto track' },
   ] },
   { id: 'account', name: 'Account', sub: 'Your public profile and password', ic: 'user', g: 'gray', items: [
     { t: 'account', n: 'Profile', d: 'Display name, username, avatar and bio', kw: 'account profile name username bio avatar picture', full: 1 },
@@ -99,6 +104,13 @@ function syncStatusHTML() {
   const at = Number(localStorage.getItem('as_sync_at')) || 0;
   return `<div class="sy-line"><span class="sy-dot ${at ? 'ok' : 'wait'}"></span><div><strong>${at ? 'Synced ' + ago(at) : 'Waiting for the first sync'}</strong><span class="d">Signed in as @${esc(me.username)}. Checks when a page opens and saves a moment after you change something.</span></div></div><button class="btn-sm" data-act="syncnow">Sync now</button>`;
 }
+function malStatusHTML() {
+  if (typeof Mal === 'undefined') return `<div class="sy-line"><span class="sy-dot bad"></span><div><strong>MyAnimeList didn't load</strong><span class="d">Refresh the page.</span></div></div>`;
+  if (!Mal.configured()) return `<div class="sy-line"><span class="sy-dot bad"></span><div><strong>MyAnimeList isn't set up on this site yet</strong><span class="d">The site owner needs to set MAL_CLIENT_ID in the Vercel environment variables and deploy the /api folder (steps are in the README).</span></div></div>`;
+  const me = Mal.me();
+  if (!me) return `<div class="sy-line"><span class="sy-dot off"></span><div><strong>Not connected</strong><span class="d">Log in with MyAnimeList, then every episode you finish here is added to your MAL list.</span></div></div><button class="btn-sm" data-act="malconnect">Connect MyAnimeList</button>`;
+  return `<div class="sy-line"><span class="sy-dot ok"></span><div><strong>Connected as ${esc(me.name)}</strong><span class="d">${Settings.get().malAuto ? 'Episodes you finish are marked watched on your MAL list.' : 'Automatic updates are off: use the MAL panel on a details page to update your list.'}</span></div></div><button class="btn-sm btn-danger" data-act="maldisconnect">Disconnect</button>`;
+}
 function storageHTML() {
   const st = storageStats(), max = Math.max(1, ...st.map(x => x[1]));
   return `<div class="st-list">${st.map(([n, b]) => `<div class="st-row"><span>${n}</span><i><b style="width:${Math.max(2, Math.round(b / max * 100))}%"></b></i><em>${kb(b)}</em></div>`).join('')}</div>`;
@@ -111,7 +123,7 @@ function accountFormHTML() {
     <div class="set-col">
       <div class="acct-two">
         <label class="set-lbl">Display name<input class="set-in" id="a-name" value="${esc(u.name)}" maxlength="30"></label>
-        <label class="set-lbl">Username<input class="set-in" id="a-user" value="${esc(u.username)}" maxlength="20"></label>
+        <label class="set-lbl">Username<input class="set-in" id="a-user" value="${esc(u.username)}" maxlength="20" readonly aria-readonly="true" title="Your username was set when you registered and cannot be changed"><small class="set-note">Set when you registered. It can't be changed.</small></label>
       </div>
       ${AvatarPicker.html('a-avatar', u.avatar, u.name)}
       <label class="set-lbl">Bio<textarea class="set-in bio-in" id="a-bio" maxlength="${BIO_MAX}" rows="2">${esc(bioFit(u.bio))}</textarea><span class="bio-count">${bioFit(u.bio).length}/${BIO_MAX}</span></label>
@@ -142,9 +154,9 @@ function themesHTML(s) {
     const bg = id === 'photo' ? (pic ? `url('${pic}') center/cover` : 'repeating-linear-gradient(45deg,#1a1a22 0 8px,#22222c 8px 16px)') : b;
     return `<button class="theme-opt ${s.theme === id ? 'on' : ''}" data-theme-pick="${id}" ${warn ? 'data-warn="1"' : ''} style="--tb:${id === 'photo' ? '#1a1a22' : b};--ta:${a};background:${bg};color:${fg}"><i></i><em class="tm-bar"></em>${n}${warn ? '<b class="th-warn" title="Constantly animating: may make your device lag">\u26A0</b>' : ''}</button>`;
   };
-  return `<div class="theme-sub">Colour presets<small>Eight plain colours. Nothing animates, so they are friendly to any device.</small></div>
+  return `<div class="theme-sub">Plain colours<small>Nothing animates</small></div>
     <div class="themes preset-grid">${PRESETS.map(tile).join('')}</div>
-    <div class="theme-sub">Unique themes<small>Full looks with their own style. The ones marked \u26A0 are always animating.</small></div>
+    <div class="theme-sub">Styled themes<small>\u26A0 never stops animating</small></div>
     <div class="themes theme-grid ${open ? 'open' : ''}">${THEMES.map(tile).join('')}</div>
     <div class="themes-more"><button type="button" data-themes-more aria-expanded="${open}"><span>${open ? 'Show less' : 'Show all ' + THEMES.length}</span><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4.5l4 4 4-4"/></svg></button></div>`;
 }
@@ -164,10 +176,11 @@ function bodyHTML(it, s) {
     case 'keys': return keysHTML();
     case 'info': return aboutHTML();
     case 'account': return `<div class="acct">${accountFormHTML()}</div>`;
+    case 'mal': return `<div class="sy" id="mal-box">${malStatusHTML()}</div>`;
   }
   return '';
 }
-const BODY_TYPES = ['themes', 'accent', 'syncstatus', 'storage', 'keys', 'info', 'account'];
+const BODY_TYPES = ['themes', 'accent', 'syncstatus', 'storage', 'keys', 'info', 'account', 'mal'];
 
 /* ---------- Layout switch (both layouts) ---------- */
 function uiSwitchHTML() {
@@ -252,11 +265,34 @@ const REGIONS = [
   { id: 'posters', name: 'Posters and rows', ic: 'grid', desc: 'Poster size, the Continue watching row and hover previews.', pick: it => ['cardSize', 'continueRow', 'hoverTrailer'].includes(it.k) },
   { id: 'episodes', name: 'Episode lists', ic: 'sort', desc: 'Order, style and spoilers on details pages.', pick: it => ['epOrder', 'epStyle', 'hideSpoilers'].includes(it.k) },
   { id: 'player', name: 'Playback', ic: 'play', desc: 'What happens when you press play and when an episode ends.', pick: it => ['autonext', 'resume', 'audio'].includes(it.k) },
-  { id: 'privacy', name: 'Privacy', ic: 'shield', desc: 'What you see and what gets saved.', pick: it => ['includeAdult', 'incognito'].includes(it.k) },
-  { id: 'you', name: 'Account and sync', ic: 'user', desc: 'Your account, password and keeping devices in step.', pick: it => ['syncstatus', 'account'].includes(it.t) || ['changepw', 'synccopy', 'syncpaste'].includes(it.act) },
+  { id: 'privacy', name: 'Privacy', ic: 'shield', desc: 'What you see and what gets saved.', pick: it => ['includeAdult', 'incognito', 'showComments'].includes(it.k) },
+  { id: 'you', name: 'Account and sync', ic: 'user', desc: 'Your account, password and keeping devices in step.', pick: it => ['syncstatus', 'account', 'mal'].includes(it.t) || it.k === 'malAuto' || ['changepw', 'synccopy', 'syncpaste'].includes(it.act) },
   { id: 'data', name: 'Data and about', ic: 'database', desc: 'Backups, storage, shortcuts and the fine print.', pick: it => ['storage', 'keys', 'info', 'link'].includes(it.t) || ['clearcache', 'export', 'import', 'clearhist', 'reset', 'wipe'].includes(it.act) },
 ];
-const OLD_SECTION = { playback: 'player', appearance: 'look', privacy: 'privacy', sync: 'you', account: 'you', data: 'data', about: 'data' };
+/* Sub-headings inside an area's panel. A second value of true tucks the group away until it is opened. */
+const GROUPS = {
+  you: it => it.t === 'account' || it.act === 'changepw' ? ['Profile and password'] : it.t === 'mal' || it.k === 'malAuto' ? ['MyAnimeList'] : ['Sync'],
+  data: it => it.t === 'storage' || it.act === 'clearcache' ? ['This device']
+    : ['export', 'import'].includes(it.act) ? ['Backup']
+    : ['clearhist', 'reset', 'wipe'].includes(it.act) ? ['Reset and delete', true]
+    : ['Help and about'],
+};
+function groupedRows(r, items) {
+  const g = GROUPS[r.id];
+  if (!g) return items.map(({ it, sec }) => mRowHTML(it, sec)).join('');
+  const out = [];
+  items.forEach(({ it, sec }) => {
+    const [name, fold] = g(it);
+    let b = out.find(o => o.name === name);
+    if (!b) out.push(b = { name, fold: !!fold, rows: [] });
+    b.rows.push(mRowHTML(it, sec));
+  });
+  out.sort((a, b) => a.fold - b.fold);                                  // Folded groups go last
+  return out.map(b => b.fold
+    ? `<details class="igrp fold"><summary>${b.name}<span>${b.rows.length} actions</span></summary><div class="igrp-rows">${b.rows.join('')}</div></details>`
+    : `<section class="igrp"><h3>${b.name}</h3><div class="igrp-rows">${b.rows.join('')}</div></section>`).join('');
+}
+const OLD_SECTION = { playback: 'player', appearance: 'look', privacy: 'privacy', sync: 'you', account: 'you', mal: 'you', data: 'data', about: 'data' };
 let REG = '';
 const regionItems = r => SECTIONS.flatMap(sec => sec.items.filter(r.pick).map(it => ({ it, sec })));
 const STAGE_POSTERS = [['Delicious in Dungeon', 'Dungeon Meshi'], ['Kaiju No. 8', 'Kaijuu 8-gou'], ['Oshi no Ko', 'Oshi no Ko'], ['Solo Leveling', 'Ore dake Level Up na Ken'], ['Spy x Family', 'Spy x Family']];
@@ -336,7 +372,9 @@ const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matche
 
 function inspectorHTML() {
   const q = Q.trim().toLowerCase();
-  const close = `<button class="stg-x" id="stg-x" aria-label="Close panel">${icon('close', 16)}</button>`;
+  const grip = `<div class="stg-grip" id="stg-grip" role="slider" tabindex="0" aria-label="Resize panel. Drag up to make it taller, down to make it shorter. Press and hold, then drag to a side to dock it" aria-orientation="vertical"><i></i><em>Drag to resize &middot; hold to move</em></div>`;
+  const rs = `<i class="stg-rs" id="stg-rs" aria-hidden="true" title="Drag to scale"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 2h4v4M6 14H2v-4M14 2l-5 5M2 14l5-5"/></svg></i>`;   // Phones only (hidden by CSS on a computer)
+  const close = grip + rs + `<button class="stg-x" id="stg-x" aria-label="Close panel">${icon('close', 16)}</button>`;
   if (q) {
     const hits = SECTIONS.flatMap(sec => sec.items.filter(it => hayOf(it, sec).includes(q)).map(it => ({ it, sec })));
     return `<header>${close}<h2>Results</h2><p>${hits.length} setting${hits.length === 1 ? '' : 's'} matching “${esc(Q.trim())}”</p></header>
@@ -345,7 +383,7 @@ function inspectorHTML() {
   const r = REGIONS.find(x => x.id === REG);
   if (!r) return `<header>${close}<h2>Pick something to change</h2><p>Tap any part of the preview, or choose one of the buttons above it.</p></header>`;
   const items = regionItems(r);
-  return `<header>${close}<h2>${r.name}</h2><p>${r.desc}</p></header><div class="mrows">${items.map(({ it, sec }) => mRowHTML(it, sec)).join('')}</div>`;
+  return `<header>${close}<h2>${r.name}</h2><p>${r.desc}</p></header><div class="mrows">${groupedRows(r, items)}</div>`;
 }
 /* Tab bar: one accent pill slides to the active tab, and the bar scrolls the active tab to the middle when it overflows (phones) */
 let tabsRO = null;
@@ -419,25 +457,16 @@ function paintInspector() {
   const wasOpen = el.classList.contains('open'), h0 = el.offsetHeight;
   const idx = k => REGIONS.findIndex(r => r.id === k), dir = idx(key) < idx(inspKey) ? -1 : 1;
   clearTimeout(el._heightT); el.style.height = el.style.transition = el.style.overflow = '';
-  /* Closing the phone sheet: keep what it shows while it slides down (repainting it first made it flash and jump), tidy up once it is out of sight */
-  if (innerWidth <= 900 && wasOpen && !REG && !Q.trim()) {
-    clearTimeout(el._closeT);
-    el.classList.remove('open');
-    $$('#stg-tabs button').forEach(b => { b.classList.remove('on'); b.setAttribute('aria-pressed', 'false'); });
-    syncTabs();
-    inspKey = key;
-    el._closeT = setTimeout(() => {
-      if (REG || Q.trim()) return;                                   // Opened again meanwhile
-      document.body.classList.remove('stg-open');
-      el.innerHTML = inspectorHTML(); el.scrollTop = 0;
-      const x2 = $('#stg-x'); if (x2) x2.onclick = () => { REG = ''; Q = ''; const qi = $('#set-q'); if (qi) qi.value = ''; markStage(); paintInspector(); };
-    }, reduceMotion() ? 0 : 420);
-    return;
+  if (!REG && !Q.trim() && wasOpen && innerWidth <= 900) {          // Closing on a phone: keep the content and let the sheet slide down
+    el.classList.remove('open'); document.body.classList.remove('stg-open');
+    $$('#stg-tabs button').forEach(b => { b.classList.remove('on'); b.setAttribute('aria-pressed', false); });
+    syncTabs(); inspKey = key; return;
   }
-  clearTimeout(el._closeT);
   el.innerHTML = inspectorHTML();
   if (changed) el.scrollTop = 0;
   el.classList.toggle('open', !!REG || !!Q.trim());
+  if (!wasOpen && (REG || Q.trim())) nudgeSheet(el);
+  wireSheetResize(el);
   document.body.classList.toggle('stg-open', !!REG || !!Q.trim());
   $$('#stg-tabs button').forEach(b => { const on = b.dataset.region === REG && !Q.trim(); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
   syncTabs();
@@ -446,9 +475,177 @@ function paintInspector() {
   if (changed && inspKey !== null) swapInspector(el, dir, h0, wasOpen);
   inspKey = key;
 }
+/* Phone sheet: drag the handle on its top edge (or use the arrow keys on it) to make it taller or shorter. The size is remembered.
+   Until the person has resized it once, the handle bobs and says so; after that it only nudges briefly each time the sheet opens. */
+const SHEET_KEY = 'as_sheet_h', SHEET_LEARNED = 'as_sheet_learned';
+const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+const sheetBounds = el => [120, Math.max(200, Math.round(innerHeight - (parseFloat(getComputedStyle(el).bottom) || 0) - 150))];
+function setSheetH(el, px, save) {
+  const [lo, hi] = sheetBounds(el), h = Math.round(Math.min(hi, Math.max(lo, px)));
+  document.documentElement.style.setProperty('--sheet-user', h + 'px');
+  el.classList.add('sized');
+  const g = $('#stg-grip', el); if (g) { g.setAttribute('aria-valuemin', lo); g.setAttribute('aria-valuemax', hi); g.setAttribute('aria-valuenow', h); }
+  if (save) lsSet(SHEET_KEY, h);
+  return h;
+}
+function resetSheetH(el) {
+  document.documentElement.style.removeProperty('--sheet-user'); el.classList.remove('sized');
+  try { localStorage.removeItem(SHEET_KEY); } catch (e) {}
+}
+function learnedSheet(el) { lsSet(SHEET_LEARNED, '1'); el.classList.remove('new'); }
+function nudgeSheet(el) {
+  if (innerWidth > 900) return;
+  el.classList.remove('nudge'); void el.offsetWidth;
+  el.classList.toggle('new', !lsGet(SHEET_LEARNED)); el.classList.add('nudge');
+  clearTimeout(el._nudgeT); if (lsGet(SHEET_LEARNED)) el._nudgeT = setTimeout(() => el.classList.remove('nudge'), 3800);
+}
+/* Dock: press and hold the handle until the sheet lifts, then carry it to the left, right or bottom glow. Docked left/right it hovers as a glass panel where it was dropped
+   (40% bigger than the bottom sheet the first time), keeps whatever size it was scaled to, and can be moved up and down by holding the handle again. */
+const DOCK_KEY = 'as_sheet_dock', DOCK_W = 'as_dock_w', DOCK_H = 'as_dock_h', DOCK_Y = 'as_dock_y', HOLD_MS = 420, DOCK_SCALE = 1.4;
+const baseSheet = () => Math.min(272, Math.max(172, innerHeight * .31));
+const clampN = (v, lo, hi) => Math.round(Math.min(hi, Math.max(lo, v)));
+const dockSide = el => el.classList.contains('dock-l') ? 'l' : el.classList.contains('dock-r') ? 'r' : '';
+const navTop = () => { const h = $('#site-header'); return h ? h.getBoundingClientRect().top : innerHeight - 64; };
+const rootPx = n => parseFloat(document.documentElement.style.getPropertyValue(n));
+function setDock(el, w, h, top, save) {
+  const limit = navTop() - 4;
+  w = clampN(w, 200, Math.max(220, Math.min(innerWidth - 24, 440)));
+  h = clampN(h, 160, Math.max(200, limit - 12));
+  top = clampN(top, 8, Math.max(8, limit - h));
+  const st = document.documentElement.style; st.setProperty('--dock-w', w + 'px'); st.setProperty('--dock-h', h + 'px'); st.setProperty('--dock-top', top + 'px');
+  if (save) { lsSet(DOCK_W, w); lsSet(DOCK_H, h); lsSet(DOCK_Y, top); }
+  return { w, h, top };
+}
+function loadDock(el, top) {   // Saved size (or the 40% bigger default); top is where it was dropped, else where it last hovered, else sitting on the nav
+  const w = parseFloat(lsGet(DOCK_W)) || Math.min(Math.round(190 * DOCK_SCALE), Math.round(innerWidth * .78));
+  const h = parseFloat(lsGet(DOCK_H)) || Math.round(baseSheet() * DOCK_SCALE);
+  const y = top != null ? top : (parseFloat(lsGet(DOCK_Y)) || (navTop() - 4 - h));
+  return setDock(el, w, h, y, top != null);
+}
+function applyDock(el, side, save = true, top) {
+  el.classList.remove('dock-l', 'dock-r'); document.body.classList.remove('stg-dock-l', 'stg-dock-r');
+  if (side && innerWidth <= 900) { loadDock(el, top); el.classList.add('dock-' + side); document.body.classList.add('stg-dock-' + side); }
+  else { side = ''; ['--dock-w', '--dock-h', '--dock-top'].forEach(n => document.documentElement.style.removeProperty(n)); }
+  if (save) lsSet(DOCK_KEY, side);
+}
+/* Soft edge glows (left, right, bottom) and the hint, created once */
+function dockUI() {
+  let z = $('#stg-zones'); if (z) return z;
+  z = document.createElement('div'); z.id = 'stg-zones'; z.setAttribute('aria-hidden', 'true');
+  z.innerHTML = '<div class="stg-glow l"><span>Left</span></div><div class="stg-glow r"><span>Right</span></div><div class="stg-glow b"><span>Bottom</span></div><div class="stg-holdhint"></div>';
+  document.body.appendChild(z); return z;
+}
+function wireSheetResize(el) {
+  if (el._sheetWired) return; el._sheetWired = true;
+  const saved = parseFloat(lsGet(SHEET_KEY)); if (saved > 0 && innerWidth <= 900) setSheetH(el, saved);
+  const savedDock = lsGet(DOCK_KEY); if ((savedDock === 'l' || savedDock === 'r') && innerWidth <= 900) applyDock(el, savedDock, false);
+  addEventListener('resize', () => {
+    if (innerWidth > 900) { applyDock(el, '', false); }
+    else if (dockSide(el)) setDock(el, rootPx('--dock-w'), rootPx('--dock-h'), rootPx('--dock-top'));
+    if (el.classList.contains('sized')) { if (innerWidth > 900) { el.classList.remove('sized'); document.documentElement.style.removeProperty('--sheet-user'); } else setSheetH(el, parseFloat(lsGet(SHEET_KEY)) || el.offsetHeight); }
+  });
+  const zones = () => { const z = dockUI(); return { root: z, l: $('.stg-glow.l', z), r: $('.stg-glow.r', z), b: $('.stg-glow.b', z), hint: $('.stg-holdhint', z) }; };
+  /* The bottom is easy to reach (lower third of the screen); the sides are the outer quarters above it */
+  const zoneAt = (x, y) => y > innerHeight * .62 ? 'b' : x < innerWidth * .27 ? 'l' : x > innerWidth * .73 ? 'r' : '';
+  const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
+  let drag = null;
+  const hold = () => {   // Held long enough without moving: the sheet lifts and can be carried to a side
+    if (!drag || drag.mode !== 'wait') return;
+    drag.mode = 'move'; el.classList.remove('holding'); el.classList.add('lifted'); document.body.classList.add('stg-moving'); learnedSheet(el); buzz(14);
+    const Z = zones(); Z.hint.textContent = dockSide(el) ? 'Move it up or down, or pick another edge' : 'Drag to the left, right or bottom edge to dock';
+    Z.root.classList.add('on');
+    el.style.transition = 'transform .18s cubic-bezier(.22,1,.36,1), box-shadow .2s'; el.style.transform = 'scale(1.04)';
+    setTimeout(() => { if (el.classList.contains('lifted')) el.style.transition = 'none'; }, 190);
+  };
+  const flipTo = (side, from, top) => {   // Slide from where the sheet was dropped to its new home
+    const still = reduceMotion();
+    el.style.transition = 'none'; el.style.transform = '';
+    applyDock(el, side, true, top);
+    if (still) { el.style.transition = el.style.transform = ''; return; }
+    const to = el.getBoundingClientRect();
+    el.style.transformOrigin = '0 0';
+    el.style.transform = `translate(${from.left - to.left}px,${from.top - to.top}px) scale(${from.width / to.width},${from.height / to.height})`;
+    void el.offsetWidth;
+    el.style.transition = 'transform .45s cubic-bezier(.22,1,.36,1)'; el.style.transform = '';
+    clearTimeout(el._flipT); el._flipT = setTimeout(() => { el.style.transition = el.style.transformOrigin = ''; }, 480);
+  };
+  el.addEventListener('pointerdown', e => {
+    if (innerWidth > 900 || !e.target.closest('header') || e.target.closest('.stg-x') || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    const rs = !!e.target.closest('#stg-rs') && !!dockSide(el), r = el.getBoundingClientRect();
+    drag = { x: e.clientX, y: e.clientY, w: el.offsetWidth, h: el.offsetHeight, top: r.top, grab: e.clientY - r.top, id: e.pointerId, moved: false, mode: rs ? 'scale' : 'wait' };
+    el.setPointerCapture && el.setPointerCapture(e.pointerId);
+    if (!rs) { el.classList.add('holding'); clearTimeout(el._holdT); el._holdT = setTimeout(hold, HOLD_MS); }
+  });
+  el.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (drag.mode === 'move') {
+      e.preventDefault();
+      el.style.transform = `translate(${dx}px,${dy}px) scale(1.04)`;
+      const side = zoneAt(e.clientX, e.clientY), Z = zones();
+      Z.l.classList.toggle('hot', side === 'l'); Z.r.classList.toggle('hot', side === 'r'); Z.b.classList.toggle('hot', side === 'b');
+      if (side !== drag.side) { drag.side = side; if (side) buzz(8); }
+      return;
+    }
+    if (drag.mode === 'scale') {   // Corner handle on a docked panel: wider/narrower (towards the screen's middle = wider) and taller/shorter; the bottom edge stays put
+      if (!drag.moved && Math.hypot(dx, dy) < 4) return;
+      if (!drag.moved) { drag.moved = true; el.classList.add('dragging'); learnedSheet(el); }
+      e.preventDefault();
+      const h = drag.h - dy, bottom = drag.top + drag.h;
+      const got = setDock(el, drag.w + (dockSide(el) === 'l' ? dx : -dx), h, bottom - clampN(h, 160, 9999));
+      setDock(el, got.w, got.h, bottom - got.h); return;
+    }
+    if (drag.mode === 'wait' && Math.hypot(dx, dy) > 8) { clearTimeout(el._holdT); el.classList.remove('holding'); drag.mode = 'resize'; }
+    if (drag.mode !== 'resize') return;
+    if (!drag.moved && Math.abs(dy) < 4) return;
+    if (!drag.moved) { drag.moved = true; el.classList.add('dragging'); learnedSheet(el); }
+    e.preventDefault();
+    if (dockSide(el)) { const bottom = drag.top + drag.h, got = setDock(el, drag.w, drag.h - dy, 0); setDock(el, got.w, got.h, bottom - got.h); }
+    else setSheetH(el, drag.h - dy);
+  });
+  const end = (e, cancel) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const d = drag; drag = null; clearTimeout(el._holdT);
+    el.classList.remove('holding', 'dragging');
+    if (d.mode === 'move') {
+      const from = el.getBoundingClientRect(), Z = zones(), cur = dockSide(el);
+      el.classList.remove('lifted'); document.body.classList.remove('stg-moving'); Z.root.classList.remove('on'); ['l', 'r', 'b'].forEach(k => Z[k].classList.remove('hot'));
+      const z = cancel ? '' : zoneAt(e.clientX, e.clientY);
+      const side = z === 'b' ? '' : z || cur;                     // Outside every glow it stays where it was (a side panel just changes height)
+      const top = side && !cancel ? e.clientY - d.grab : side ? d.top : undefined;
+      flipTo(side, from, top); buzz(10);
+      return;
+    }
+    if (d.moved) {
+      if (dockSide(el)) setDock(el, el.offsetWidth, el.offsetHeight, rootPx('--dock-top'), true);
+      else lsSet(SHEET_KEY, parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sheet-user')) || el.offsetHeight);
+      if (REG) revealRegion(REG, true);
+    }
+  };
+  el.addEventListener('pointerup', e => end(e, false)); el.addEventListener('pointercancel', e => end(e, true));
+  el.addEventListener('contextmenu', e => { if (e.target.closest('header')) e.preventDefault(); });   // Long-press must not open the browser's menu
+  el.addEventListener('dblclick', e => {
+    if (!e.target.closest('#stg-grip')) return;
+    if (dockSide(el)) { lsSet(DOCK_W, ''); lsSet(DOCK_H, ''); lsSet(DOCK_Y, ''); loadDock(el); } else resetSheetH(el);
+    learnedSheet(el);
+  });
+  el.addEventListener('keydown', e => {
+    if (!e.target.closest || !e.target.closest('#stg-grip')) return;
+    const step = e.shiftKey ? 80 : 24, docked = dockSide(el);
+    const grow = (dw, dh) => { const w = el.offsetWidth, h = el.offsetHeight, top = rootPx('--dock-top'), bottom = top + h, got = setDock(el, w + dw, h + dh, 0); setDock(el, got.w, got.h, bottom - got.h, true); };
+    if (e.key === 'ArrowUp') { if (docked) grow(0, step); else setSheetH(el, el.offsetHeight + step, true); }
+    else if (e.key === 'ArrowDown') { if (docked) grow(0, -step); else setSheetH(el, el.offsetHeight - step, true); }
+    else if (e.key === 'ArrowLeft') { if (docked === 'r') grow(step, 0); else if (docked === 'l') grow(-step, 0); else applyDock(el, 'l'); }
+    else if (e.key === 'ArrowRight') { if (docked === 'l') grow(step, 0); else if (docked === 'r') grow(-step, 0); else applyDock(el, 'r'); }
+    else if (e.key === 'Home') { if (docked) applyDock(el, ''); resetSheetH(el); } else return;
+    e.preventDefault(); learnedSheet(el);
+  });
+}
 /* On a phone the sheet covers the lower part of the screen, so bring the chosen part of the preview up into view */
 function revealRegion(id, soft) {
   if (innerWidth > 900) return;
+  if (document.body.classList.contains('stg-dock-l') || document.body.classList.contains('stg-dock-r')) return;   // Docked to a side: the preview stays in view
   const t = $('#stg-mock [data-region="' + id + '"]'); if (!t) return;
   const sheet = $('#stg-insp'), nav = parseFloat(getComputedStyle(sheet).bottom) || 0;
   const r = t.getBoundingClientRect(), bar = ($('#stg-tabs') || {}).offsetHeight || 0;
@@ -466,7 +663,7 @@ function renderStage() {
   if (!REG) REG = fromUrl || (innerWidth > 900 ? 'look' : '');
   $('#page').innerHTML = `<div class="stg">
     <header class="stg-top">
-      <div><h1>Settings</h1><p>Click part of the preview to change it. Changes save on this device as you make them.</p></div>
+      <div><h1>Settings</h1><p>Click part of the preview to change it. Everything saves as you go.</p></div>
       ${uiSwitchHTML()}
     </header>
     <div class="stg-tools">
@@ -630,6 +827,12 @@ function openPasswordDialog() {
 }
 const ACT2 = {
   login: () => openAuth('login'),
+  malconnect: () => Mal.connect(),
+  maldisconnect() {
+    if (!confirm('Disconnect MyAnimeList? Your MAL list stays as it is; this site just stops updating it.')) return;
+    Mal.disconnect(); toast('MyAnimeList disconnected');
+    const b = $('#mal-box'); if (b) { b.innerHTML = malStatusHTML(); wireRows(); }
+  },
   syncnow() {
     const btn = $('[data-act="syncnow"]'); if (btn) { btn.disabled = true; btn.textContent = 'Syncing...'; }
     Sync._last = 0;
@@ -718,7 +921,7 @@ function wireRows() {
     const avatar = $('#a-avatar').value.trim();
     if (avatar && !/^(https?:\/\/|data:image\/)/i.test(avatar)) { toast('Avatar link must start with https://'); return; }
     User.set({ name: $('#a-name').value.trim() || 'Guest',
-      username: ($('#a-user').value.trim().replace(/\s+/g, '').toLowerCase().replace(/[^a-z0-9_.-]/g, '')) || 'guest',
+      username: Auth.session() ? undefined : ($('#a-user').value.trim().replace(/\s+/g, '').toLowerCase().replace(/[^a-z0-9_.-]/g, '')) || 'guest',
       avatar, bio: $('#a-bio').value.trim().slice(0, BIO_MAX) });
     toast('Profile saved'); Q = ''; render(); buildHeader();
   };
@@ -805,4 +1008,11 @@ function act(a) {
     if (confirm('Delete ALL local data? This cannot be undone.')) { Auth.logout(); [...KEYS, ...WIPE_ONLY].forEach(k => localStorage.removeItem(k)); toast('All data deleted'); setTimeout(() => location.href = 'index.html', 600); }
   }
 }
-document.addEventListener('DOMContentLoaded', () => { render(); loadShowcase(); });
+document.addEventListener('DOMContentLoaded', async () => {
+  let linked = null, failed = '';
+  if (typeof Mal !== 'undefined' && /[?&](code|error)=/.test(location.search)) { try { linked = await Mal.finishLogin(); } catch (e) { failed = e.message || 'Could not connect to MyAnimeList'; } }   // Back from MAL's login page
+  const hadMal = typeof Mal !== 'undefined' && Mal.configured();
+  render(); loadShowcase();
+  if (typeof Mal !== 'undefined') Mal.ready.then(() => { if (Mal.configured() !== hadMal) render(); });   // First visit: the client ID arrives from /api/config a moment after the page draws
+  if (linked) toast('Connected to MyAnimeList as ' + linked.name); else if (failed) toast(failed);
+});

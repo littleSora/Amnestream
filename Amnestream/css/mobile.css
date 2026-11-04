@@ -1,7 +1,6 @@
 /* Mobile polish layer: loaded last, only adds phone-specific fixes. Desktop is untouched. */
 @media (max-width:900px){
-  html{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;background:var(--bg);min-height:100%}
-  body{min-height:100vh;min-height:100dvh}   /* Fills the screen when Brave/Chrome hide their bars, so no blank strip shows under the dock */
+  html{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
   body{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
   /* Bottom nav clears the iPhone home bar */
   .site-header,.site-header.scrolled{box-sizing:border-box;height:calc(72px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -92,6 +91,8 @@
   /* Search: floats just above the bottom nav (results open upward) so no nav button is covered */
   .search-pop{top:auto;bottom:calc(100% + 10px);left:12px;right:12px;width:auto}
   .search-pop.open{display:flex;flex-direction:column-reverse}
+  .search-pop.open.closing{animation:popOutUp .15s ease-in forwards}
+  @keyframes popOutUp{to{opacity:0;transform:translateY(6px)}}
   .search-pop input{padding:11px 16px;font-size:16px;border-radius:16px}
   .suggest{margin-top:0;margin-bottom:8px;max-height:min(52vh,420px)}
   .suggest-item{padding:7px 10px}
@@ -224,3 +225,20 @@
   html[data-cards=small] .rail-track .card{width:84px;flex-basis:84px}
   html[data-cards=large] .rail-track .card{width:138px;flex-basis:138px}
 }
+
+/* Mobile browsers (Brave, Chrome): when the address bar or tab strip hides on scroll, the page grows. Without a background on <html> the new strip
+   at the bottom showed white. Paint the page colour behind everything and let the body fill the full height. */
+html{background-color:var(--bg);min-height:100%}
+@media (max-width:900px){
+  body{min-height:100vh;min-height:100dvh}
+  .site-header,.site-header.scrolled{bottom:0;transform:translateZ(0);-webkit-backface-visibility:hidden}
+}
+
+/* ===== Bottom nav on phones: Home / Browse / Timeline / My List hug the left, search and the account picture hug the right ===== */
+@media (max-width:900px){
+  .site-header .header-inner{justify-content:space-between;padding:0 max(12px,env(safe-area-inset-right,0px)) 0 max(8px,env(safe-area-inset-left,0px))}
+  .nav-pill{margin-right:auto}
+  .main-nav{gap:0}
+  .header-right{margin-left:auto;gap:10px}
+}
+@media (max-width:360px){.main-nav a{width:50px}.header-right{gap:6px}}

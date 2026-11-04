@@ -96,6 +96,7 @@ function render() {
           ${metaRow('Duration', m.duration ? m.duration + ' min' : '')}
           ${audio ? `<div><dt class="dp-lbl">Audio languages</dt><dd>${chips([audio])}</dd></div>` : ''}
         </dl></section>
+        ${(m.genres || []).length ? `<section><span class="dp-lbl">Genres</span><div class="dp-chips">${m.genres.map(g => `<a href="browse.html?genre=${encodeURIComponent(g)}">${esc(g)}</a>`).join('')}</div></section>` : ''}
         ${tags.length ? `<section><span class="dp-lbl">Themes</span>${chips(tags)}</section>` : ''}
         ${studios.length ? `<section><span class="dp-lbl">Studios</span>${chips(studios)}</section>` : ''}
       </div>
@@ -106,8 +107,7 @@ function render() {
       <h1>${esc(title)}</h1>
 
       <div class="dp-row">
-        <div class="dp-pills">${(m.genres || []).map(g => `<a class="dp-pill" href="browse.html?genre=${encodeURIComponent(g)}">${esc(g)}</a>`).join('')}</div>
-        <button class="dp-btn sm" id="share-btn">${icon('share', 13)} Share</button>
+        <button class="dp-btn sm" id="share-btn" style="margin-left:auto">${icon('share', 13)} Share</button>
       </div>
 
       <div class="dp-row">
@@ -125,11 +125,18 @@ function render() {
         </div>` : ''}
       </div>
 
+      ${m.idMal ? '<div class="dp-mal" id="mal-box" hidden></div>' : ''}
+
       <div class="dp-syn">
         <span class="dp-lbl">Synopsis</span>
         <p class="clamp" id="syn-text">${esc(stripTags(m.description || 'No synopsis yet.'))}</p>
         <button class="dp-more" id="syn-more" hidden>Read More &rarr;</button>
       </div>
+
+      <section class="dp-comments" id="comments">
+        <h2>Comments <span class="cm-total" id="cm-total"></span></h2>
+        <div id="p-cm"></div>
+      </section>
 
       <div class="dp-tabs" role="tablist">
         <span class="dp-ink" aria-hidden="true"></span>
@@ -164,11 +171,6 @@ function render() {
 
       ${chars.length ? `<div class="dp-panel" id="p-ch"><div class="dp-chars">${chars.map(c => `
         <div class="dp-char"><img loading="lazy" src="${esc(c.image?.medium || '')}" alt=""><p>${esc(c.name.full)}</p></div>`).join('')}</div></div>` : ''}
-
-      <section class="dp-comments" id="comments">
-        <h2>Comments <span class="cm-total" id="cm-total"></span></h2>
-        <div id="p-cm"></div>
-      </section>
     </div>
   </div>`;
 
@@ -226,10 +228,13 @@ function render() {
   });
   placeInk(); document.fonts?.ready.then(placeInk); addEventListener('resize', placeInk);
 
-  /* Comments: always shown below the page and loaded right away */
-  const refreshCommentCount = () => Comments.count(m.id).then(n => { $('#cm-total').textContent = n ? `(${n})` : ''; }).catch(() => {});
-  if (typeof Comments !== 'undefined') { Comments.mount($('#p-cm'), m.id, refreshCommentCount); refreshCommentCount(); }
+  /* Comments: below the synopsis, behind a spoiler alert unless Settings > Show comments is on or this anime was opened */
+  const refreshCommentCount = () => Comments.count(m.id).then(n => { if (Comments.allowed(m.id)) $('#cm-total').textContent = n ? `(${n})` : ''; }).catch(() => {});
+  if (typeof Comments !== 'undefined') Comments.mountGated($('#p-cm'), m.id, refreshCommentCount, null, hidden => { if (hidden) $('#cm-total').textContent = ''; else refreshCommentCount(); });
   else $('#p-cm').innerHTML = '<p class="empty">Comments failed to load. Refresh the page.</p>';
+
+  /* MyAnimeList panel: set your MAL status, episodes and score for this anime */
+  if (m.idMal && typeof Mal !== 'undefined') Mal.panel($('#mal-box'), m);
 
   /* Seasons: every season, movie and OVA of this show, below the episodes */
   Api.seasonChain(m.id).then(list => {

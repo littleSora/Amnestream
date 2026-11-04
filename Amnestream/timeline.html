@@ -22,8 +22,15 @@
 <link rel="stylesheet" href="css/themes.css">
 </head>
 <body>
-<header id="site-header"></header>
-<script>(function(){var d=document.documentElement;if(!window.CSSViewTransitionRule)d.classList.add('pg-anim');try{var h=document.getElementById('site-header'),c=localStorage.getItem('as_hdr1');if(!h||!c)return;h.className='site-header';h.innerHTML=c;var p=location.pathname.split('/').pop()||'index.html',a=h.querySelectorAll('.main-nav a');for(var i=0;i<a.length;i++)if(a[i].getAttribute('href')===p)a[i].className='on'}catch(e){}})()</script>
+<header id="site-header" class="site-header"></header>
+<script>/* Paint the last-known nav and theme before the first frame so the sidebar never blinks between pages */
+(function(){try{var d=document.documentElement,s=JSON.parse(localStorage.getItem('as_settings')||'{}'),t=s.theme;
+if(t&&t!=='sakura'&&t!=='photo'&&/^[a-z0-9-]+$/.test(t))d.dataset.theme=t;
+d.dataset.ui=s.uiMode==='classic'?'classic':'modern';d.dataset.cards=(s.cardSize==='small'||s.cardSize==='large')?s.cardSize:'normal';
+if(s.reduceMotion)d.classList.add('reduce-motion');
+var h=document.getElementById('site-header'),c=localStorage.getItem('as_hdr_v1');
+if(h&&c){h.innerHTML=c;var p=location.pathname.split('/').pop()||'index.html';
+[].forEach.call(h.querySelectorAll('.main-nav a'),function(a){a.classList.toggle('on',a.getAttribute('href')===p)})}}catch(e){}})();</script>
 <main class="container">
   <div class="tl-top">
     <div><h1>Timeline</h1><p class="muted">Airing anime from your My List</p></div>

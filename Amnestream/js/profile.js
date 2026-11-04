@@ -104,7 +104,7 @@ function paintPass() {
       <h2>Edit profile</h2>
       <div class="pf-dlg-body">
         <label class="set-lbl">Display name<input class="set-in" id="pf-name" value="${esc(u.name)}" maxlength="30"></label>
-        <label class="set-lbl">Username<input class="set-in" id="pf-user" value="${esc(u.username)}" maxlength="20"></label>
+        <label class="set-lbl">Username<input class="set-in" id="pf-user" value="${esc(u.username)}" maxlength="20"${u.account ? ' readonly aria-readonly="true" title="Your username was set when you registered and cannot be changed"' : ''}>${u.account ? '<small class="set-note">Set when you registered. It can\'t be changed.</small>' : ''}</label>
         ${AvatarPicker.html('pf-avatar', u.avatar, u.name)}
         <label class="set-lbl">Bio<textarea class="set-in bio-in" id="pf-bio" maxlength="${BIO_MAX}" rows="2">${esc(bioFit(u.bio))}</textarea><span class="bio-count">${bioFit(u.bio).length}/${BIO_MAX}</span></label>
       </div>
@@ -192,7 +192,7 @@ function editDialogHTML(u) {
       <h2>Edit profile</h2>
       <div class="pf-dlg-body">
         <label class="set-lbl">Display name<input class="set-in" id="pf-name" value="${esc(u.name)}" maxlength="30"></label>
-        <label class="set-lbl">Username<input class="set-in" id="pf-user" value="${esc(u.username)}" maxlength="20"></label>
+        <label class="set-lbl">Username<input class="set-in" id="pf-user" value="${esc(u.username)}" maxlength="20"${u.account ? ' readonly aria-readonly="true" title="Your username was set when you registered and cannot be changed"' : ''}>${u.account ? '<small class="set-note">Set when you registered. It can\'t be changed.</small>' : ''}</label>
         ${AvatarPicker.html('pf-avatar', u.avatar, u.name)}
         <label class="set-lbl">Bio<textarea class="set-in bio-in" id="pf-bio" maxlength="${BIO_MAX}" rows="2">${esc(bioFit(u.bio))}</textarea><span class="bio-count">${bioFit(u.bio).length}/${BIO_MAX}</span></label>
       </div>
@@ -211,7 +211,7 @@ function wireEdit(p, stubs) {
     const avatar = $('#pf-avatar').value.trim();
     if (avatar && !/^(https?:\/\/|data:image\/)/i.test(avatar)) { toast('Avatar link must start with https://'); return; }
     User.set({ name: $('#pf-name').value.trim() || 'Guest',
-      username: ($('#pf-user').value.trim().replace(/\s+/g, '').toLowerCase().replace(/[^a-z0-9_.-]/g, '')) || 'guest',
+      username: Auth.session() ? undefined : ($('#pf-user').value.trim().replace(/\s+/g, '').toLowerCase().replace(/[^a-z0-9_.-]/g, '')) || 'guest',
       avatar, bio: $('#pf-bio').value.trim().slice(0, BIO_MAX) });
     dlg.close(); toast('Profile saved'); setTimeout(() => { paintProfile(); buildHeader(); }, 50);
   };

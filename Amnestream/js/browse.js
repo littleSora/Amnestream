@@ -338,6 +338,10 @@ async function load() {
     firstLoad = false;
 
     const { media, pageInfo } = data.Page;
+    if (!media.length && page > 1) {                                  // Empty page past the real end (stale link, shrunk filter, uneven page count): step back to the last page with titles
+      page = Math.max(1, Math.min(page - 1, pageInfo.lastPage || page - 1)); return load();
+    }
+    if (pageInfo.currentPage && pageInfo.currentPage !== page && pageInfo.latest) { page = pageInfo.currentPage; syncURL(); }
     if (pageInfo.latest) {
       clearTimeout(countTimer); if (countCtrl) countCtrl.abort(); countToken++;
       $('#result-count').textContent = 'Newest episodes first \u00b7 aired in the last 7 days';
