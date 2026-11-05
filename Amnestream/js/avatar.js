@@ -1,12 +1,8 @@
-/* Profile photo picker.
-   AvatarPicker.html(id, value, name) returns a drop zone. Drop (or choose) a photo, crop it inside a circle with a live preview, confirm,
-   and the result (a small square JPEG, as a data: URL) is put in the hidden input #id, so the existing "Save changes" code reads it like before.
-   Everything is delegated from the document, so the zone keeps working after the page redraws itself. */
 const AvatarPicker = (() => {
-  const OUT = 256;               // Saved size in px. The site shows avatars up to ~132px, so this stays sharp on high-DPI screens
-  const SRC_MAX = 1600;          // Big photos are shrunk once on load so panning and zooming stay smooth
-  const ZMAX = 5;                // Most you can zoom in (times the "just covers the circle" size)
-  const BG = '#20242d';          // Shows through transparent PNGs
+  const OUT = 256;
+  const SRC_MAX = 1600;
+  const ZMAX = 5;
+  const BG = '#20242d';
   const TYPES = /^image\/(jpeg|png|webp|gif|avif|bmp)$/i;
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -22,7 +18,6 @@ const AvatarPicker = (() => {
     upload: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>',
   };
 
-  /* ---------- The drop zone (markup used by the settings page and the edit-profile pop-up) ---------- */
   function html(id, value = '', name = 'G') {
     return `<div class="set-lbl">Profile photo
       <div class="avdz ${value ? 'has' : ''}" tabindex="0" role="button" data-name="${esc(name)}" aria-label="Change profile photo. Drop an image here, or press Enter to choose one.">
@@ -44,7 +39,7 @@ const AvatarPicker = (() => {
     z.querySelector('.avdz-prev').innerHTML = avImg(v, name, 56);
     z.classList.toggle('has', !!v);
     if (changed) z.classList.add('changed');
-    const big = z.closest('.set-col')?.parentElement?.querySelector(':scope > .acct-av');   // The large picture beside the settings form
+    const big = z.closest('.set-col')?.parentElement?.querySelector(':scope > .acct-av');
     if (big) big.innerHTML = avImg(v, name, 78);
   }
   function setValue(z, v) {
@@ -52,10 +47,9 @@ const AvatarPicker = (() => {
     refresh(z, true);
   }
 
-  /* ---------- Reading the photo ---------- */
   async function load(file) {
     let img;
-    if (window.createImageBitmap) { try { img = await createImageBitmap(file); } catch { /* fall back to <img> */ } }
+    if (window.createImageBitmap) { try { img = await createImageBitmap(file); } catch { } }
     if (!img) {
       const url = URL.createObjectURL(file);
       try { img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = url; }); }
@@ -81,7 +75,6 @@ const AvatarPicker = (() => {
     zone = z; openCrop(src);
   }
 
-  /* ---------- The crop pop-up ---------- */
   let zone = null, dlg, stage, cv, g, range, previews = [], dpr = 1, raf = 0;
   const st = { img: null, w: 0, h: 0, rot: 0, zoom: 1, ox: 0, oy: 0, S: 0, D: 0, k: 1, kmin: 1 };
 
@@ -109,7 +102,6 @@ const AvatarPicker = (() => {
     dpr = Math.min(window.devicePixelRatio || 1, 2.5);
     previews = [...dlg.querySelectorAll('.avc-pv canvas')].map(c => { const size = +c.dataset.s; c.width = c.height = Math.round(size * dpr); c.style.width = c.style.height = size + 'px'; return { c, size, x: c.getContext('2d') }; });
 
-    /* Moving and pinching */
     const ptrs = new Map(); let last = 0;
     const dist = () => { const [a, b] = [...ptrs.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
     stage.addEventListener('pointerdown', e => { stage.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (ptrs.size === 2) last = dist(); });
@@ -203,10 +195,9 @@ const AvatarPicker = (() => {
     else note('Photo ready, but the form was closed');
   }
 
-  /* ---------- Events on the drop zone ---------- */
   const hasFiles = e => e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files');
   document.addEventListener('click', e => {
-    if (e.target.matches('.avdz input[type=file]')) return;                       // Our own programmatic click
+    if (e.target.matches('.avdz input[type=file]')) return;
     const z = e.target.closest('.avdz'); if (!z) return;
     if (e.target.closest('[data-av-clear]')) { e.preventDefault(); setValue(z, ''); return; }
     z.querySelector('input[type=file]').click();
@@ -223,7 +214,7 @@ const AvatarPicker = (() => {
   const clearOver = () => { if (overEl) overEl.classList.remove('over'); overEl = null; };
   document.addEventListener('dragover', e => {
     if (!hasFiles(e)) return;
-    e.preventDefault();                                                           // Also stops the browser opening a file dropped outside the zone
+    e.preventDefault();
     const z = e.target.closest?.('.avdz');
     e.dataTransfer.dropEffect = z ? 'copy' : 'none';
     if (z !== overEl) { clearOver(); if (z) { z.classList.add('over'); overEl = z; } }

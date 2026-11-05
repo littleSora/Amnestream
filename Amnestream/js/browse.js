@@ -1,4 +1,3 @@
-/* Browse page: search and filters, abortable requests, next-page prefetch, URL kept in sync */
 const DEFAULT_SORT = 'POPULARITY_DESC';
 const paramsOf = st => {
   const q = new URLSearchParams();
@@ -10,14 +9,14 @@ const paramsOf = st => {
 const hasFilters = st => !!(st && paramsOf(st).toString());
 
 let P = new URLSearchParams(location.search), restored = false;
-if (!location.search) {                                   // Remember filters between visits
+if (!location.search) {
   const last = jget('as_browse_last', null);
   if (hasFilters(last)) { P = paramsOf(last); restored = true; }
 }
 let page = Math.max(1, Number(P.get('page')) || 1);
 let selectedGenres = P.get('genre') ? P.get('genre').split(',').filter(g => g && visibleGenres().includes(g)) : [];
 const SORTS = ['POPULARITY_DESC', 'TRENDING_DESC', 'SCORE_DESC', 'LATEST_EPISODES', 'START_DATE_DESC', 'TITLE_ROMAJI', 'FAVOURITES_DESC'];
-if (P.get('sort') && !SORTS.includes(P.get('sort'))) P.delete('sort');          // Old links (Latest episodes, Best match) fall back to the automatic order
+if (P.get('sort') && !SORTS.includes(P.get('sort'))) P.delete('sort');
 let browseCtrl = null, firstLoad = true, userSort = !!P.get('sort');
 
 const defaultSort = () => $('#f-q').value.trim() ? 'SEARCH_MATCH' : DEFAULT_SORT;   // Typing a title ranks by relevance
@@ -32,11 +31,9 @@ function applyState(st) {
   page = 1; load();
 }
 
-/* Every page shows exactly 32 titles */
 const PAGE_SIZE = 32;
 function fitPerPage() { PER_PAGE = PAGE_SIZE; }
 
-/* Dropdowns: the native select list has an outline CSS cannot remove, so selects are re-skinned as .dd lists; the hidden <select> stays the source of truth */
 const DD_CHEV = '<svg class="dd-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
 const DD_TICK = '<svg class="dd-tick" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>';
 const isSheet = () => innerWidth <= 640;                                         // Phones get a bottom sheet
@@ -48,7 +45,7 @@ function ddSetOpen(root, on) {
   $('#dd-back').classList.toggle('open', !!$('.dd.open'));
   if (!on) return;
   const pop = $('.dd-pop', root);
-  pop.style.left = pop.style.right = '';                                          // Keep the list on screen near the right edge
+  pop.style.left = pop.style.right = '';
   if (!isSheet() && pop.getBoundingClientRect().right > innerWidth - 12) { pop.style.left = 'auto'; pop.style.right = '0'; }
 }
 const ddCloseAll = () => $$('.dd.open').forEach(r => ddSetOpen(r, false));
@@ -70,7 +67,6 @@ function enhanceSelect(sel) {
       `<button type="button" class="dd-opt" role="option" data-v="${esc(o.value)}"><span>${esc(o.textContent)}</span>${DD_TICK}</button>`).join('');
     sync();
   };
-  // Mirror code-set select values into the button text
   const d = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
   Object.defineProperty(sel, 'value', { configurable: true, get() { return d.get.call(sel); }, set(v) { d.set.call(sel, v); sync(); } });
 
@@ -101,8 +97,7 @@ function enhanceSelect(sel) {
   sync();
 }
 
-/* Genre picker: multi-select with search; rebuilt on open because Hentai / Erotica depend on the 18+ setting */
-const reloadGenres = debounce(() => { page = 1; load(); }, 160);                // Several quick picks make one request
+const reloadGenres = debounce(() => { page = 1; load(); }, 160);
 let genreFilter = '';
 function genreLabel() {
   const n = selectedGenres.length;
@@ -130,24 +125,24 @@ function toggleGenre(g) {
   const i = selectedGenres.indexOf(g);
   if (i > -1) selectedGenres.splice(i, 1); else selectedGenres.push(g);
   paintGenres();
-  $('#results').classList.add('is-loading'); $('#result-count').textContent = 'Loading...';   // React instantly, fetch a beat later
+  $('#results').classList.add('is-loading'); $('#result-count').textContent = 'Loading...';
   reloadGenres();
 }
 function initGenrePicker() {
   const root = $('#f-genre'), btn = $('#f-genre-btn'), list = $('#f-genre-list'), q = $('#f-genre-q');
   const open = () => {
     genreFilter = ''; q.value = ''; renderGenreList(); ddSetOpen(root, true);
-    if (!isSheet()) q.focus({ preventScroll: true });                             // No auto-keyboard on phones
+    if (!isSheet()) q.focus({ preventScroll: true });
   };
   const close = refocus => { ddSetOpen(root, false); if (refocus) btn.focus({ preventScroll: true }); };
 
   btn.addEventListener('click', () => root.classList.contains('open') ? close() : open());
   btn.addEventListener('keydown', e => { if (e.key === 'ArrowDown') { e.preventDefault(); open(); } });
-  list.addEventListener('click', e => { const o = e.target.closest('.dd-opt'); if (o) toggleGenre(o.dataset.g); });   // Stays open for multiple picks
+  list.addEventListener('click', e => { const o = e.target.closest('.dd-opt'); if (o) toggleGenre(o.dataset.g); });
   q.addEventListener('input', () => { genreFilter = q.value; renderGenreList(); });
   q.addEventListener('keydown', e => {
     if (e.key === 'ArrowDown') { e.preventDefault(); $('.dd-opt', list)?.focus(); }
-    else if (e.key === 'Enter') { e.preventDefault(); const o = $('.dd-opt', list); if (o) toggleGenre(o.dataset.g); }   // Enter picks the top match
+    else if (e.key === 'Enter') { e.preventDefault(); const o = $('.dd-opt', list); if (o) toggleGenre(o.dataset.g); }
     else if (e.key === 'Escape') { e.preventDefault(); close(true); }
   });
   root.addEventListener('keydown', e => {
@@ -175,7 +170,7 @@ function initBrowse() {
 
   ['f-format', 'f-status', 'f-season', 'f-year', 'f-sort'].forEach(id => enhanceSelect($('#' + id)));
   initGenrePicker();
-  document.addEventListener('click', e => { if (!e.target.closest('.dd')) ddCloseAll(); });   // Click outside or on the backdrop closes
+  document.addEventListener('click', e => { if (!e.target.closest('.dd')) ddCloseAll(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') ddCloseAll(); });
 
   $('#f-q').value = P.get('q') || '';
@@ -193,7 +188,7 @@ function initBrowse() {
   const reload = debounce(() => { page = 1; load(); }, 200);
   $('#f-q').addEventListener('input', () => {
     const sort = $('#f-sort');
-    if (!userSort) sort.value = defaultSort();                                  // Best match while typing a title
+    if (!userSort) sort.value = defaultSort();
     else if (!$('#f-q').value.trim() && sort.value === 'SEARCH_MATCH') { sort.value = DEFAULT_SORT; userSort = false; }
     reload();
   });
@@ -237,10 +232,9 @@ function syncURL() {
   const q = paramsOf(getState());
   if (page > 1) q.set('page', page);
   history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : ''));
-  jset('as_browse_last', getState());                // Remembered for the next visit
+  jset('as_browse_last', getState());
 }
 
-/* Result count: exact under 5000; popularity sorts get the exact total from Api.browseDeep, other sorts wait for Api.browseTotal */
 let PER_PAGE = 32;
 const COUNT_AT = 5000;
 let countCtrl = null, countTimer = 0, countToken = 0;
@@ -250,23 +244,22 @@ function showCount(pageInfo, vars) {
   if (countCtrl) countCtrl.abort();
   const token = ++countToken, el = $('#result-count'), total = pageInfo.total || 0;
   if (!total) { el.textContent = 'No results'; return; }
-  if (pageInfo.deep) { el.textContent = nTitles(total); return; }          // browseDeep already counted the ranges: exact and fully reachable
+  if (pageInfo.deep) { el.textContent = nTitles(total); return; }
   if (total < COUNT_AT) { el.textContent = nTitles(total); return; }
-  el.textContent = 'Loading...';                                          // No "5,000+" guess: wait for the real number
-  countTimer = setTimeout(async () => {                                   // Debounce so typing does not count on every keystroke
+  el.textContent = 'Loading...';
+  countTimer = setTimeout(async () => {
     const ctrl = countCtrl = new AbortController();
     try {
       const { total: exact, approx } = await Api.browseTotal(
         { search: vars.search, genres: vars.genres, format: vars.format, status: vars.status, season: vars.season, year: vars.year },
         { signal: ctrl.signal });
       if (token !== countToken) return;
-      // AniList pages only the first 5000, but a host reporting a larger lastPage has no such limit
       const reachable = (pageInfo.lastPage || 0) * PER_PAGE;
       const reach = Math.min(exact, reachable > COUNT_AT + PER_PAGE ? Infinity : COUNT_AT, reachable);
       el.textContent = (approx ? 'About ' : '') + nTitles(exact) +
         (reach && exact > reach ? ` \u00b7 showing the first ${reach.toLocaleString()}, add filters to narrow it down` : '');
     } catch (err) {
-      if (token === countToken && err?.name !== 'AbortError') el.textContent = `${total.toLocaleString()}+ titles found`;   // Counting failed: show the capped number
+      if (token === countToken && err?.name !== 'AbortError') el.textContent = `${total.toLocaleString()}+ titles found`;
     }
   }, 250);
 }
@@ -317,18 +310,18 @@ function countCapped(ctrl, pageInfo, vars) {
     prefetchNext(ctrl, info);
   }).catch(err => {
     if (err?.name === 'AbortError' || ctrl !== browseCtrl || token !== countToken) return;
-    showCount(pageInfo, vars);                                                  // Counting failed: fall back to the older count
+    showCount(pageInfo, vars);
   });
 }
 
 async function load() {
-  if (browseCtrl) browseCtrl.abort();             // Drop the stale request
+  if (browseCtrl) browseCtrl.abort();
   const ctrl = browseCtrl = new AbortController();
   const box = $('#results');
   syncURL();
 
-  if (firstLoad) box.innerHTML = skeletonGrid(PER_PAGE);  // Later loads keep the old grid, dimmed
-  else { box.style.minHeight = box.offsetHeight + 'px'; box.classList.add('is-loading'); }   // Hold the height so the page does not jump
+  if (firstLoad) box.innerHTML = skeletonGrid(PER_PAGE);
+  else { box.style.minHeight = box.offsetHeight + 'px'; box.classList.add('is-loading'); }
   clearTimeout(countTimer); if (countCtrl) countCtrl.abort(); countToken++;
   $('#result-count').textContent = 'Loading...';
 
@@ -338,7 +331,7 @@ async function load() {
     firstLoad = false;
 
     const { media, pageInfo } = data.Page;
-    if (!media.length && page > 1) {                                  // Empty page past the real end (stale link, shrunk filter, uneven page count): step back to the last page with titles
+    if (!media.length && page > 1) {
       page = Math.max(1, Math.min(page - 1, pageInfo.lastPage || page - 1)); return load();
     }
     if (pageInfo.currentPage && pageInfo.currentPage !== page && pageInfo.latest) { page = pageInfo.currentPage; syncURL(); }
@@ -350,7 +343,7 @@ async function load() {
         ? `<div class="grid">${media.map(m => latestCardHTML({ m, ep: m.__ep, at: m.__at })).join('')}</div>`
         : '<p class="empty">No episodes matched those filters.</p>';
     } else {
-      if (pageInfo.capped) countCapped(ctrl, pageInfo, browseVars(page));            // Exact total arrives a moment later, without holding up the page
+      if (pageInfo.capped) countCapped(ctrl, pageInfo, browseVars(page));
       else showCount(pageInfo, browseVars(page));
       box.innerHTML = gridHTML(media, 'No anime matched those filters.');
     }

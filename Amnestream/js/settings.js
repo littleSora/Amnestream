@@ -1,16 +1,11 @@
-/* Settings: everything saves to this device as you change it.
-   Two layouts share the same settings and controls: Modern (the Stage: click the part of a miniature site you want to change) and Classic (stacked panels with a live preview). */
-
-/* [id, name, tile background, dot colour, label colour, warn]. warn = constantly animating, may lag */
 const THEMES = [
   ['sakura','Vista Blue','#181c25','#9db4ff','#fff',0],['retro96','Retro 96','#008080','#000080','#fff',0],['cyberpunk','Cyberpunk','linear-gradient(135deg,#0a0a10,#2b0a33)','#fcee0a','#fff',0],
   ['rgb','RGB','#07070c','linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f)','#fff',1],['wave','Wave','linear-gradient(135deg,#060a1c,#0b2b55)','linear-gradient(90deg,#00e5ff,#ff2d95)','#fff',1],
-  ['voxel','Voxel','linear-gradient(#79b8ff 58%,#5fbf2a 58% 68%,#7a5535 68%)','#5fbf2a','#fff',0],['vapor','Vaporwave','linear-gradient(135deg,#1a0536,#ff3d9a)','#01cdfe','#fff',0],['terminal','Terminal','#000','#33ff66','#33ff66',0],
-  ['blueprint','Blueprint','#0c3a8a','#7fe3ff','#fff',0],['parchment','Parchment','#eadfc3','#8c2f1b','#33241a',0],['pealcd','Pea LCD','#8bac0f','#0f380f','#0f380f',0],
+  ['voxel','Voxel','linear-gradient(#79b8ff 58%,#5fbf2a 58% 68%,#7a5535 68%)','#5fbf2a','#fff',0],['vapor','Vaporwave','linear-gradient(135deg,#1a0536,#ff3d9a)','#01cdfe','#fff',1],['terminal','Terminal','#000','#33ff66','#33ff66',0],
+  ['blueprint','Blueprint','#0c3a8a','#7fe3ff','#fff',0],['parchment','Parchment','#eadfc3','#8c2f1b','#33241a',0],['blossom','Sakura','linear-gradient(135deg,#ffffff,#ffd3e2)','#d93a72','#3a1b28',1],
   ['brutal','Brutalist','#fff7d6','#ff4d8d','#000',0],['frost','Frostglass','linear-gradient(135deg,#2a6f9a,#0b1b2b)','#9be7ff','#fff',0],['noir','Noir','linear-gradient(135deg,#000,#2a2a2a)','#e10600','#fff',0],
-  ['aurora','Aurora','linear-gradient(135deg,#040912,#0c4a45 70%,#3b2a80)','#5effc2','#fff',0],['magma','Magma','linear-gradient(0deg,#6a1a06,#090302 70%)','#ff5a1f','#fff',0],['void','Void','radial-gradient(circle at 70% 50%,#ff9a3c 0 6%,#000 8% 20%,#2a0f55 40%,#000 70%)','#8a5cff','#fff',1],
-  ['photo','Your picture','','#ff9ec7','#fff',0]];   // Your picture is always last
-/* Eight plain colours from coolors.co: one flat colour each, no images or animation, so they are easy on any device */
+  ['aurora','Aurora','linear-gradient(135deg,#040912,#0c4a45 70%,#3b2a80)','#5effc2','#fff',1],['magma','Magma','linear-gradient(0deg,#6a1a06,#090302 70%)','#ff5a1f','#fff',0],['galaxy','Galaxy','radial-gradient(ellipse at 50% 50%,#3a2a7a 0,#0b0a1f 45%,#02020a 80%)','#9b7bff','#fff',1],
+  ['photo','Your picture','','#ff9ec7','#fff',0]];
 const PRESETS = [['pre-rich','Rich Black','#0b132b','#5bc0be','#fff'],['pre-oxford','Oxford Blue','#14213d','#fca311','#fff'],['pre-charcoal','Charcoal','#264653','#e9c46a','#fff'],
   ['pre-brunswick','Brunswick Green','#1b4332','#95d5b2','#fff'],['pre-violet','Russian Violet','#240046','#c77dff','#fff'],['pre-cosmos','Chocolate Cosmos','#590d22','#ff8fa3','#fff'],
   ['pre-jet','Jet','#2b2d42','#ef476f','#fff'],['pre-alabaster','Alabaster','#edede9','#3d5a80','#1b1b1f']];;
@@ -46,7 +41,7 @@ const ALL_SECTIONS = [
   ] },
   { id: 'mal', name: 'MyAnimeList', sub: 'Log in with MAL and track what you watch', ic: 'link', g: 'blue', items: [
     { t: 'mal', n: 'MyAnimeList', d: 'Connect your MAL account so your MAL list follows what you watch here', kw: 'mal myanimelist tracker track list login connect sync', full: 1 },
-    { t: 'toggle', k: 'malAuto', ic: 'refresh', n: 'Update MAL automatically', d: 'When you finish an episode, it is marked watched on your MAL list (needs a MAL login). Off in Incognito mode', kw: 'mal myanimelist auto track' },
+    { t: 'toggle', k: 'malAuto', needs: () => typeof Mal !== 'undefined' && !!Mal.me(), ic: 'refresh', n: 'Update MAL automatically', d: 'When you finish an episode, it is marked watched on your MAL list (needs a MAL login). Off in Incognito mode', kw: 'mal myanimelist auto track' },
   ] },
   { id: 'account', name: 'Account', sub: 'Your public profile and password', ic: 'user', g: 'gray', items: [
     { t: 'account', n: 'Profile', d: 'Display name, username, avatar and bio', kw: 'account profile name username bio avatar picture', full: 1 },
@@ -67,17 +62,15 @@ const ALL_SECTIONS = [
     { t: 'link', ic: 'info', n: 'DMCA and copyright', d: 'How copyright owners can send a takedown notice', label: 'Read', href: 'dmca.html', kw: 'dmca copyright takedown legal disclaimer', full: 1 },
   ] },
 ];
-/* Account section is for signed-in users only */
 const SECTIONS = ALL_SECTIONS.filter(s => s.id !== 'account' || !!Auth.session());
 let CUR = new URLSearchParams(location.search).get('s') || 'playback';
-let Q = '';   // Text in "Search settings"
+let Q = '';
 const isModern = () => Settings.get().uiMode !== 'classic';
 
 const hayOf = (it, sec) => ((it.n || '') + ' ' + (it.d || '') + ' ' + (it.kw || '') + ' ' + sec.name).toLowerCase();
 /* What a segmented control currently shows (default audio can also change from the player, saved as as_lang) */
 const segValue = (it, s) => it.k === 'audio' ? (localStorage.getItem('as_lang') || s.audio) : s[it.k];
 
-/* ---------- Pieces shared by both layouts ---------- */
 const ago = t => {
   if (!t) return 'never';
   const s = Math.max(1, Math.round((Date.now() - t) / 1000));
@@ -106,7 +99,7 @@ function syncStatusHTML() {
 }
 function malStatusHTML() {
   if (typeof Mal === 'undefined') return `<div class="sy-line"><span class="sy-dot bad"></span><div><strong>MyAnimeList didn't load</strong><span class="d">Refresh the page.</span></div></div>`;
-  if (!Mal.configured()) return `<div class="sy-line"><span class="sy-dot bad"></span><div><strong>MyAnimeList isn't set up on this site yet</strong><span class="d">The site owner needs to set MAL_CLIENT_ID in the Vercel environment variables and deploy the /api folder (steps are in the README).</span></div></div>`;
+  if (!Mal.configured()) return `<div class="sy-line"><span class="sy-dot bad"></span><div><strong>MyAnimeList isn't available here</strong><span class="d">You are probably running this on localhost. MyAnimeList only works on the live site, so visit <a href="https://amnestream.vercel.app/" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:underline">https://amnestream.vercel.app/</a> to connect it.</span></div></div>`;
   const me = Mal.me();
   if (!me) return `<div class="sy-line"><span class="sy-dot off"></span><div><strong>Not connected</strong><span class="d">Log in with MyAnimeList, then every episode you finish here is added to your MAL list.</span></div></div><button class="btn-sm" data-act="malconnect">Connect MyAnimeList</button>`;
   return `<div class="sy-line"><span class="sy-dot ok"></span><div><strong>Connected as ${esc(me.name)}</strong><span class="d">${Settings.get().malAuto ? 'Episodes you finish are marked watched on your MAL list.' : 'Automatic updates are off: use the MAL panel on a details page to update your list.'}</span></div></div><button class="btn-sm btn-danger" data-act="maldisconnect">Disconnect</button>`;
@@ -123,7 +116,7 @@ function accountFormHTML() {
     <div class="set-col">
       <div class="acct-two">
         <label class="set-lbl">Display name<input class="set-in" id="a-name" value="${esc(u.name)}" maxlength="30"></label>
-        <label class="set-lbl">Username<input class="set-in" id="a-user" value="${esc(u.username)}" maxlength="20" readonly aria-readonly="true" title="Your username was set when you registered and cannot be changed"><small class="set-note">Set when you registered. It can't be changed.</small></label>
+        <label class="set-lbl">Username<input class="set-in" id="a-user" value="${esc(u.username)}" maxlength="20" readonly aria-readonly="true" title="Your username was set when you registered and cannot be changed"></label>
       </div>
       ${AvatarPicker.html('a-avatar', u.avatar, u.name)}
       <label class="set-lbl">Bio<textarea class="set-in bio-in" id="a-bio" maxlength="${BIO_MAX}" rows="2">${esc(bioFit(u.bio))}</textarea><span class="bio-count">${bioFit(u.bio).length}/${BIO_MAX}</span></label>
@@ -148,7 +141,7 @@ function ctlHTML(it, s) {
   return '';
 }
 function themesHTML(s) {
-  const idx = THEMES.findIndex(t => t[0] === s.theme), open = idx >= 9;       // Starts open when the chosen theme is in the hidden part
+  const idx = THEMES.findIndex(t => t[0] === s.theme), open = idx >= 9;
   const pic = Photo.get();
   const tile = ([id, n, b, a, fg, warn]) => {
     const bg = id === 'photo' ? (pic ? `url('${pic}') center/cover` : 'repeating-linear-gradient(45deg,#1a1a22 0 8px,#22222c 8px 16px)') : b;
@@ -182,7 +175,6 @@ function bodyHTML(it, s) {
 }
 const BODY_TYPES = ['themes', 'accent', 'syncstatus', 'storage', 'keys', 'info', 'account', 'mal'];
 
-/* ---------- Layout switch (both layouts) ---------- */
 function uiSwitchHTML() {
   const m = isModern();
   return `<div class="uiswitch" role="group" aria-label="Page layout"><span class="uis-l">Layout</span>
@@ -192,7 +184,6 @@ function wireSwitch() {
   $$('[data-ui-pick]').forEach(b => b.onclick = () => { if (Settings.get().uiMode === b.dataset.uiPick) return; Settings.set('uiMode', b.dataset.uiPick); document.body.classList.remove('stg-open'); render(); window.scrollTo({ top: 0 }); });
 }
 
-/* ---------- Classic layout (stacked panels, jump bar, live preview) ---------- */
 function mRowHTML(it, sec) {
   const s = Settings.get();
   const hay = esc(hayOf(it, sec));
@@ -216,7 +207,7 @@ function renderPanels() {
       <div class="mset-main" id="mmain">${SECTIONS.map(sec => `
         <section class="mpanel" id="sec-${sec.id}" data-sec-id="${sec.id}">
           <h2>${sec.name}</h2><p class="msub">${sec.sub}</p>
-          <div class="mrows">${sec.items.map(it => mRowHTML(it, sec)).join('')}</div>
+          <div class="mrows">${visItems(sec).map(it => mRowHTML(it, sec)).join('')}</div>
         </section>`).join('')}
         <p class="mnone" id="mnone" hidden>No settings match that.</p>
       </div>
@@ -234,7 +225,7 @@ function renderPanels() {
     el.scrollIntoView({ behavior: Settings.get().reduceMotion ? 'auto' : 'smooth', block: 'start' });
     history.replaceState(null, '', '?s=' + a.dataset.jump);
   });
-  if ('IntersectionObserver' in window) {                                // Highlight the jump chip of the section being read
+  if ('IntersectionObserver' in window) {
     const io = new IntersectionObserver(es => {
       const vis = es.filter(e => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
       if (vis) $$('[data-jump]').forEach(a => a.classList.toggle('on', a.dataset.jump === vis.target.dataset.secId));
@@ -257,8 +248,6 @@ function filterPanels() {
 }
 
 
-/* ---------- Modern layout: the Stage ----------
-   A miniature of the site that reacts to every setting. Click (or tap) the part you want to change and its controls open in the inspector. */
 const REGIONS = [
   { id: 'look', name: 'Colours and motion', ic: 'palette', desc: 'The theme and accent colour used across the whole site, and whether things animate.', pick: it => ['themes', 'accent'].includes(it.t) || it.k === 'reduceMotion' },
   { id: 'titles', name: 'Titles', ic: 'lang', desc: 'How anime names are written on every page.', pick: it => it.k === 'titleLang' },
@@ -269,7 +258,6 @@ const REGIONS = [
   { id: 'you', name: 'Account and sync', ic: 'user', desc: 'Your account, password and keeping devices in step.', pick: it => ['syncstatus', 'account', 'mal'].includes(it.t) || it.k === 'malAuto' || ['changepw', 'synccopy', 'syncpaste'].includes(it.act) },
   { id: 'data', name: 'Data and about', ic: 'database', desc: 'Backups, storage, shortcuts and the fine print.', pick: it => ['storage', 'keys', 'info', 'link'].includes(it.t) || ['clearcache', 'export', 'import', 'clearhist', 'reset', 'wipe'].includes(it.act) },
 ];
-/* Sub-headings inside an area's panel. A second value of true tucks the group away until it is opened. */
 const GROUPS = {
   you: it => it.t === 'account' || it.act === 'changepw' ? ['Profile and password'] : it.t === 'mal' || it.k === 'malAuto' ? ['MyAnimeList'] : ['Sync'],
   data: it => it.t === 'storage' || it.act === 'clearcache' ? ['This device']
@@ -287,31 +275,31 @@ function groupedRows(r, items) {
     if (!b) out.push(b = { name, fold: !!fold, rows: [] });
     b.rows.push(mRowHTML(it, sec));
   });
-  out.sort((a, b) => a.fold - b.fold);                                  // Folded groups go last
+  out.sort((a, b) => a.fold - b.fold);
   return out.map(b => b.fold
     ? `<details class="igrp fold"><summary>${b.name}<span>${b.rows.length} actions</span></summary><div class="igrp-rows">${b.rows.join('')}</div></details>`
     : `<section class="igrp"><h3>${b.name}</h3><div class="igrp-rows">${b.rows.join('')}</div></section>`).join('');
 }
 const OLD_SECTION = { playback: 'player', appearance: 'look', privacy: 'privacy', sync: 'you', account: 'you', mal: 'you', data: 'data', about: 'data' };
 let REG = '';
-const regionItems = r => SECTIONS.flatMap(sec => sec.items.filter(r.pick).map(it => ({ it, sec })));
+const visItems = sec => sec.items.filter(it => !it.needs || it.needs());   // Rows that depend on something (e.g. a MAL login) only show once it is there
+const regionItems = r => SECTIONS.flatMap(sec => visItems(sec).filter(r.pick).map(it => ({ it, sec })));
 const STAGE_POSTERS = [['Delicious in Dungeon', 'Dungeon Meshi'], ['Kaiju No. 8', 'Kaijuu 8-gou'], ['Oshi no Ko', 'Oshi no Ko'], ['Solo Leveling', 'Ore dake Level Up na Ken'], ['Spy x Family', 'Spy x Family']];
-/* The anime shown in the preview: real covers and a banner, a different set on every visit (Api.showcase). The plain placeholders above stay if it cannot load. */
 let SHOW = null;
 const shuffled = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 function pickShowcase(list) {
-  let seen = []; try { seen = JSON.parse(sessionStorage.getItem('as_stg_seen')) || []; } catch { /* none yet */ }
+  let seen = []; try { seen = JSON.parse(sessionStorage.getItem('as_stg_seen')) || []; } catch { }
   const ok = (list || []).filter(m => m && m.coverImage && m.coverImage.large);
-  let pool = ok.filter(m => !seen.includes(m.id)); if (pool.length < 6) pool = ok;     // Skip what the last visits showed
+  let pool = ok.filter(m => !seen.includes(m.id)); if (pool.length < 6) pool = ok;
   pool = shuffled(pool);
   const hero = pool.find(m => m.bannerImage) || pool[0];
   if (!hero) return null;
   const rail = pool.filter(m => m !== hero).slice(0, 5);
-  try { sessionStorage.setItem('as_stg_seen', JSON.stringify([hero.id, ...rail.map(m => m.id), ...seen].slice(0, 36))); } catch { /* storage full */ }
+  try { sessionStorage.setItem('as_stg_seen', JSON.stringify([hero.id, ...rail.map(m => m.id), ...seen].slice(0, 36))); } catch { }
   return { hero, rail };
 }
 function loadShowcase() {
-  Api.showcase().then(list => { SHOW = pickShowcase(list); if (SHOW) { paintStage(); paintPrev(); } }).catch(() => { /* offline: the plain preview stays */ });
+  Api.showcase().then(list => { SHOW = pickShowcase(list); if (SHOW) { paintStage(); paintPrev(); } }).catch(() => { });
 }
 const STAGE_EPS = [[1, 'The Journey\'s End'], [2, 'It Didn\'t Have to Be Magic'], [3, 'Killing Magic'], [4, 'The Land Where Souls Rest'], [5, 'Phantoms of the Dead'], [6, 'Aura the Guillotine']];
 
@@ -373,10 +361,10 @@ const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matche
 function inspectorHTML() {
   const q = Q.trim().toLowerCase();
   const grip = `<div class="stg-grip" id="stg-grip" role="slider" tabindex="0" aria-label="Resize panel. Drag up to make it taller, down to make it shorter. Press and hold, then drag to a side to dock it" aria-orientation="vertical"><i></i><em>Drag to resize &middot; hold to move</em></div>`;
-  const rs = `<i class="stg-rs" id="stg-rs" aria-hidden="true" title="Drag to scale"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 2h4v4M6 14H2v-4M14 2l-5 5M2 14l5-5"/></svg></i>`;   // Phones only (hidden by CSS on a computer)
+  const rs = `<i class="stg-rs" id="stg-rs" aria-hidden="true" title="Drag to scale"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 2h4v4M6 14H2v-4M14 2l-5 5M2 14l5-5"/></svg></i>`;
   const close = grip + rs + `<button class="stg-x" id="stg-x" aria-label="Close panel">${icon('close', 16)}</button>`;
   if (q) {
-    const hits = SECTIONS.flatMap(sec => sec.items.filter(it => hayOf(it, sec).includes(q)).map(it => ({ it, sec })));
+    const hits = SECTIONS.flatMap(sec => visItems(sec).filter(it => hayOf(it, sec).includes(q)).map(it => ({ it, sec })));
     return `<header>${close}<h2>Results</h2><p>${hits.length} setting${hits.length === 1 ? '' : 's'} matching “${esc(Q.trim())}”</p></header>
       <div class="mrows">${hits.length ? hits.map(({ it, sec }) => mRowHTML(it, sec)).join('') : '<p class="mnone">No settings match that.</p>'}</div>`;
   }
@@ -385,7 +373,6 @@ function inspectorHTML() {
   const items = regionItems(r);
   return `<header>${close}<h2>${r.name}</h2><p>${r.desc}</p></header><div class="mrows">${groupedRows(r, items)}</div>`;
 }
-/* Tab bar: one accent pill slides to the active tab, and the bar scrolls the active tab to the middle when it overflows (phones) */
 let tabsRO = null;
 function syncTabs(instant) {
   const nav = $('#stg-tabs'); if (!nav) return;
@@ -415,7 +402,6 @@ function watchTabs() {
   if (tabsRO) tabsRO.disconnect();
   if (window.ResizeObserver) { tabsRO = new ResizeObserver(() => syncTabs(true)); tabsRO.observe(nav); $$('button', nav).forEach(b => tabsRO.observe(b)); }
   nav.addEventListener('scroll', edgeFade, { passive: true });
-  /* Desktop: the mouse wheel and click-drag scroll the bar sideways (the page still scrolls once the bar reaches an end) */
   nav.addEventListener('wheel', e => {
     const max = nav.scrollWidth - nav.clientWidth;
     if (max < 2 || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
@@ -435,7 +421,6 @@ function watchTabs() {
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => syncTabs(true));
 }
 
-/* The inspector eases between areas: content slides in from the side the tab is on, rows follow one after another, and the panel resizes instead of jumping */
 let inspKey = null;
 function swapInspector(el, dir, h0, resize) {
   if (reduceMotion()) return;
@@ -457,7 +442,7 @@ function paintInspector() {
   const wasOpen = el.classList.contains('open'), h0 = el.offsetHeight;
   const idx = k => REGIONS.findIndex(r => r.id === k), dir = idx(key) < idx(inspKey) ? -1 : 1;
   clearTimeout(el._heightT); el.style.height = el.style.transition = el.style.overflow = '';
-  if (!REG && !Q.trim() && wasOpen && innerWidth <= 900) {          // Closing on a phone: keep the content and let the sheet slide down
+  if (!REG && !Q.trim() && wasOpen && innerWidth <= 900) {
     el.classList.remove('open'); document.body.classList.remove('stg-open');
     $$('#stg-tabs button').forEach(b => { b.classList.remove('on'); b.setAttribute('aria-pressed', false); });
     syncTabs(); inspKey = key; return;
@@ -475,8 +460,6 @@ function paintInspector() {
   if (changed && inspKey !== null) swapInspector(el, dir, h0, wasOpen);
   inspKey = key;
 }
-/* Phone sheet: drag the handle on its top edge (or use the arrow keys on it) to make it taller or shorter. The size is remembered.
-   Until the person has resized it once, the handle bobs and says so; after that it only nudges briefly each time the sheet opens. */
 const SHEET_KEY = 'as_sheet_h', SHEET_LEARNED = 'as_sheet_learned';
 const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
@@ -500,8 +483,6 @@ function nudgeSheet(el) {
   el.classList.toggle('new', !lsGet(SHEET_LEARNED)); el.classList.add('nudge');
   clearTimeout(el._nudgeT); if (lsGet(SHEET_LEARNED)) el._nudgeT = setTimeout(() => el.classList.remove('nudge'), 3800);
 }
-/* Dock: press and hold the handle until the sheet lifts, then carry it to the left, right or bottom glow. Docked left/right it hovers as a glass panel where it was dropped
-   (40% bigger than the bottom sheet the first time), keeps whatever size it was scaled to, and can be moved up and down by holding the handle again. */
 const DOCK_KEY = 'as_sheet_dock', DOCK_W = 'as_dock_w', DOCK_H = 'as_dock_h', DOCK_Y = 'as_dock_y', HOLD_MS = 420, DOCK_SCALE = 1.4;
 const baseSheet = () => Math.min(272, Math.max(172, innerHeight * .31));
 const clampN = (v, lo, hi) => Math.round(Math.min(hi, Math.max(lo, v)));
@@ -588,7 +569,7 @@ function wireSheetResize(el) {
       if (side !== drag.side) { drag.side = side; if (side) buzz(8); }
       return;
     }
-    if (drag.mode === 'scale') {   // Corner handle on a docked panel: wider/narrower (towards the screen's middle = wider) and taller/shorter; the bottom edge stays put
+    if (drag.mode === 'scale') {
       if (!drag.moved && Math.hypot(dx, dy) < 4) return;
       if (!drag.moved) { drag.moved = true; el.classList.add('dragging'); learnedSheet(el); }
       e.preventDefault();
@@ -612,7 +593,7 @@ function wireSheetResize(el) {
       const from = el.getBoundingClientRect(), Z = zones(), cur = dockSide(el);
       el.classList.remove('lifted'); document.body.classList.remove('stg-moving'); Z.root.classList.remove('on'); ['l', 'r', 'b'].forEach(k => Z[k].classList.remove('hot'));
       const z = cancel ? '' : zoneAt(e.clientX, e.clientY);
-      const side = z === 'b' ? '' : z || cur;                     // Outside every glow it stays where it was (a side panel just changes height)
+      const side = z === 'b' ? '' : z || cur;
       const top = side && !cancel ? e.clientY - d.grab : side ? d.top : undefined;
       flipTo(side, from, top); buzz(10);
       return;
@@ -624,7 +605,7 @@ function wireSheetResize(el) {
     }
   };
   el.addEventListener('pointerup', e => end(e, false)); el.addEventListener('pointercancel', e => end(e, true));
-  el.addEventListener('contextmenu', e => { if (e.target.closest('header')) e.preventDefault(); });   // Long-press must not open the browser's menu
+  el.addEventListener('contextmenu', e => { if (e.target.closest('header')) e.preventDefault(); });
   el.addEventListener('dblclick', e => {
     if (!e.target.closest('#stg-grip')) return;
     if (dockSide(el)) { lsSet(DOCK_W, ''); lsSet(DOCK_H, ''); lsSet(DOCK_Y, ''); loadDock(el); } else resetSheetH(el);
@@ -645,11 +626,11 @@ function wireSheetResize(el) {
 /* On a phone the sheet covers the lower part of the screen, so bring the chosen part of the preview up into view */
 function revealRegion(id, soft) {
   if (innerWidth > 900) return;
-  if (document.body.classList.contains('stg-dock-l') || document.body.classList.contains('stg-dock-r')) return;   // Docked to a side: the preview stays in view
+  if (document.body.classList.contains('stg-dock-l') || document.body.classList.contains('stg-dock-r')) return;
   const t = $('#stg-mock [data-region="' + id + '"]'); if (!t) return;
   const sheet = $('#stg-insp'), nav = parseFloat(getComputedStyle(sheet).bottom) || 0;
   const r = t.getBoundingClientRect(), bar = ($('#stg-tabs') || {}).offsetHeight || 0;
-  const room = innerHeight - nav - Math.min(sheet.offsetHeight, parseFloat(getComputedStyle(sheet).maxHeight) || sheet.offsetHeight) - 8;   // Where the sheet's top edge will be
+  const room = innerHeight - nav - Math.min(sheet.offsetHeight, parseFloat(getComputedStyle(sheet).maxHeight) || sheet.offsetHeight) - 8;
   if (soft ? (r.top > room - 60 || r.bottom < bar + 8) : (r.bottom > room || r.top < bar + 8)) scrollBy({ top: r.top - bar - 24, behavior: reduceMotion() ? 'auto' : 'smooth' });
 }
 function pickRegion(id) {
@@ -678,7 +659,7 @@ function renderStage() {
   wireSwitch();
   inspKey = null;
   paintStage(); paintInspector(); watchTabs();
-  if (REG && innerWidth <= 900) setTimeout(() => revealRegion(REG), 350);   // Opened with a part already chosen (?s=): bring it above the sheet
+  if (REG && innerWidth <= 900) setTimeout(() => revealRegion(REG), 350);
   $('#stg-mock').addEventListener('click', e => { const h = e.target.closest('[data-region]'); if (h) pickRegion(h.dataset.region); });
   $('#stg-tabs').addEventListener('click', e => { const b = e.target.closest('button[data-region]'); if (b) pickRegion(b.dataset.region); });
   $('#set-q').oninput = e => { Q = e.target.value; if (Q.trim()) REG = ''; paintStage(); paintInspector(); };
@@ -686,14 +667,11 @@ function renderStage() {
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && REG && !$('.auth-bg') && !$('dialog[open]') && innerWidth <= 900 && isModern()) { REG = ''; paintStage(); paintInspector(); } });
 }
 
-/* On a phone the settings sheet is a pop-up, so a tap outside it closes it, same as the X. On a computer it is a side panel and stays put.
-   Taps on the preview's clickable parts, the area tabs, the search box, the header/nav, pop-up dialogs and the login box are not "outside" (they have their own job).
-   Capture phase, so the sheet re-painting itself after a setting changes can never make a tap inside look like one outside. */
 const SHEET_KEEP = '#stg-insp, #stg-mock [data-region], #stg-tabs, .mset-find, .site-header, .search-pop, .user-menu, .toast, dialog, .auth-bg';
 let sheetDownOut = false;
 const sheetOpen = () => { const el = $('#stg-insp'); return !!el && el.classList.contains('open') && innerWidth <= 900 && isModern() && !$('.auth-bg') && !$('dialog[open]'); };
 const sheetOutside = t => !!(t && t.closest) && !t.closest(SHEET_KEEP);
-document.addEventListener('pointerdown', e => { sheetDownOut = sheetOpen() && sheetOutside(e.target); }, true);   // Where the press began, so dragging out of the sheet (or a slider) and letting go outside does not close it
+document.addEventListener('pointerdown', e => { sheetDownOut = sheetOpen() && sheetOutside(e.target); }, true);
 document.addEventListener('click', e => {
   const began = sheetDownOut; sheetDownOut = false;
   if (!began || !sheetOpen() || !sheetOutside(e.target)) return;
@@ -709,7 +687,7 @@ function paintPrev() {
   const title = h ? titleOf(h) : s.titleLang === 'romaji' ? 'Sousou no Frieren' : 'Frieren: Beyond Journey\'s End';
   const eps = [[1, 'The Journey\'s End', true], [2, 'It Didn\'t Have to Be Magic', true], [3, 'Killing Magic', false], [4, 'The Land Where Souls Rest', false]];
   if (s.epOrder === 'desc') eps.reverse();
-  const w = s.cardSize === 'small' ? 112 : s.cardSize === 'large' ? 168 : 140;   // Same three sizes as the site's posters
+  const w = s.cardSize === 'small' ? 112 : s.cardSize === 'large' ? 168 : 140;
   box.innerHTML = `
     <h3>Preview</h3>
     <div class="pv-card" style="width:${w}px">
@@ -722,10 +700,8 @@ function paintPrev() {
     <p class="pv-note">${s.incognito ? 'Incognito is on: nothing you watch is saved.' : s.autonext ? 'Autonext is on: the next episode starts by itself.' : 'Autonext is off: you pick each episode.'}</p>`;
 }
 
-/* ---------- Wiring shared by both layouts ---------- */
 const afterChange = () => { paintPrev(); paintStage(); if (REG && innerWidth <= 900) revealRegion(REG, true); };   // On a phone, keep the changed part of the preview above the sheet
 
-/* ---------- Warning pop-up for themes that never stop animating ---------- */
 function warnDialog(name) {
   return new Promise(done => {
     const d = document.createElement('dialog');
@@ -750,13 +726,12 @@ function warnDialog(name) {
   });
 }
 
-/* ---------- Pop-ups (sync code, password) ---------- */
 function openDlg(html) {
   const d = document.createElement('dialog');
   d.className = 'pf-dlg stg-dlg'; d.innerHTML = html;
   document.body.appendChild(d);
   d.addEventListener('close', () => d.remove());
-  d.addEventListener('click', e => {                                       // A click on the dimmed area outside the box closes it
+  d.addEventListener('click', e => {
     const r = d.getBoundingClientRect();
     if (e.target === d && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)) d.close();
   });
@@ -766,6 +741,17 @@ function openDlg(html) {
 }
 const dlgFail = (d, id, m) => { const p = d.querySelector('#' + id); p.textContent = m; p.hidden = false; };
 
+function confirmDlg({ title, text, ok = 'Confirm', danger = false }) {
+  return new Promise(resolve => {
+    const d = openDlg(`<h2>${esc(title)}</h2>
+      <p class="dlg-sub">${esc(text)}</p>
+      <div class="pf-dlg-act"><button type="button" class="btn btn-ghost" data-d="back">Cancel</button><button type="button" class="btn ${danger ? 'btn-danger' : 'btn-primary'}" data-d="ok">${esc(ok)}</button></div>`);
+    let yes = false;
+    d.querySelector('[data-d="ok"]').onclick = () => { yes = true; d.close(); };
+    d.addEventListener('close', () => resolve(yes));
+    d.querySelector('[data-d="back"]').focus();
+  });
+}
 function openSyncPaste() {
   const d = openDlg(`<h2>Use a sync code</h2>
     <p class="dlg-sub">Paste a code from another device. It is merged with what you have here, so nothing on this device is lost.</p>
@@ -811,7 +797,7 @@ function openPasswordDialog() {
       const sb = await Auth.client();
       const { data: { user } } = await sb.auth.getUser();
       if (!user || !user.email) throw new Error('Please log in again');
-      const re = await sb.auth.signInWithPassword({ email: user.email, password: cur });   // Proves it is really you
+      const re = await sb.auth.signInWithPassword({ email: user.email, password: cur });
       if (re.error) throw /invalid login|invalid credentials/i.test(re.error.message || '') ? Object.assign(new Error('wrong'), { wrong: true }) : re.error;
       const { error } = await sb.auth.updateUser({ password: a });
       if (error) throw error;
@@ -828,10 +814,11 @@ function openPasswordDialog() {
 const ACT2 = {
   login: () => openAuth('login'),
   malconnect: () => Mal.connect(),
-  maldisconnect() {
-    if (!confirm('Disconnect MyAnimeList? Your MAL list stays as it is; this site just stops updating it.')) return;
+  async maldisconnect() {
+    const yes = await confirmDlg({ title: 'Disconnect MyAnimeList?', text: 'Your MAL list stays as it is. This site just stops updating it.', ok: 'Disconnect', danger: true });
+    if (!yes) return;
     Mal.disconnect(); toast('MyAnimeList disconnected');
-    const b = $('#mal-box'); if (b) { b.innerHTML = malStatusHTML(); wireRows(); }
+    const y = window.scrollY; render(); window.scrollTo(0, y);
   },
   syncnow() {
     const btn = $('[data-act="syncnow"]'); if (btn) { btn.disabled = true; btn.textContent = 'Syncing...'; }
@@ -860,8 +847,8 @@ function wireRows() {
   });
   $$('.segc button[data-k]').forEach(b => b.onclick = () => {
     Settings.set(b.dataset.k, b.dataset.v);
-    if (b.dataset.k === 'audio') localStorage.setItem('as_lang', b.dataset.v);       // The player reads this first
-    if (b.dataset.k === 'epStyle') localStorage.setItem('as_epstyle19', '1');        // So the details page does not move you off "Numbers" once
+    if (b.dataset.k === 'audio') localStorage.setItem('as_lang', b.dataset.v);
+    if (b.dataset.k === 'epStyle') localStorage.setItem('as_epstyle19', '1');
     const wrap = b.parentNode, btns = $$('button', wrap);
     btns.forEach(x => x.classList.toggle('on', x === b));
     wrap.style.setProperty('--i', btns.indexOf(b));
@@ -931,7 +918,7 @@ function wireRows() {
 
 function render() { document.body.classList.toggle('stg-page', isModern()); return isModern() ? renderStage() : renderPanels(); }
 
-const WIPE_ONLY = ['as_epstyle19', 'as_dead_servers', 'as_me', 'as_sync', 'as_sync_at', 'as_nodub'];     // Housekeeping keys: not backed up, but removed by "Delete all local data"
+const WIPE_ONLY = ['as_epstyle19', 'as_dead_servers', 'as_me', 'as_sync', 'as_sync_at', 'as_nodub'];
 const KEYS = ['as_settings', 'as_user', 'as_list', 'as_progress', 'as_seen', 'as_activity', 'as_lang', 'as_server', 'as_browse_last', 'as_browse_presets', 'as_fav'];
 /* Sync code: your data as one pasteable string (gzip + base64) */
 async function packData() {
@@ -1010,9 +997,9 @@ function act(a) {
 }
 document.addEventListener('DOMContentLoaded', async () => {
   let linked = null, failed = '';
-  if (typeof Mal !== 'undefined' && /[?&](code|error)=/.test(location.search)) { try { linked = await Mal.finishLogin(); } catch (e) { failed = e.message || 'Could not connect to MyAnimeList'; } }   // Back from MAL's login page
+  if (typeof Mal !== 'undefined' && /[?&](code|error)=/.test(location.search)) { try { linked = await Mal.finishLogin(); } catch (e) { failed = e.message || 'Could not connect to MyAnimeList'; } }
   const hadMal = typeof Mal !== 'undefined' && Mal.configured();
   render(); loadShowcase();
-  if (typeof Mal !== 'undefined') Mal.ready.then(() => { if (Mal.configured() !== hadMal) render(); });   // First visit: the client ID arrives from /api/config a moment after the page draws
+  if (typeof Mal !== 'undefined') Mal.ready.then(() => { if (Mal.configured() !== hadMal) render(); });
   if (linked) toast('Connected to MyAnimeList as ' + linked.name); else if (failed) toast(failed);
 });

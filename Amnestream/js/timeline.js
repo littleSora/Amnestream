@@ -1,11 +1,10 @@
-/* Timeline: Gantt-style view of airing anime; each bar is a show's run and links to details */
-const DAY = 86400000, WEEK = 7 * DAY, DW = 40;           // Px per day
+const DAY = 86400000, WEEK = 7 * DAY, DW = 40;
 const BACK_DAYS = 8, TOTAL_DAYS = 84;
-const TZ = 'Asia/Manila';                                    // Always GMT+8
+const TZ = 'Asia/Manila';
 let DATA = [], clockT;
 
 function parts(ms, tz, opt) {
-  return new Intl.DateTimeFormat('en-US', { timeZone: tz, hour12: true, ...opt }).format(ms);   // 12-hour clock
+  return new Intl.DateTimeFormat('en-US', { timeZone: tz, hour12: true, ...opt }).format(ms);
 }
 function midnight(ms, tz) {                                  // Epoch of 00:00 in the time zone for the day containing ms
   const o = {};
@@ -35,14 +34,14 @@ function runOf(m) {
 }
 
 function initTimeline() {
-  enableDragScroll($('#tl-scroll'));                 // No scrollbar, so the mouse drags the timeline
+  enableDragScroll($('#tl-scroll'));
   loadTimeline();
-  document.addEventListener('as:synced', loadTimeline);   // Your list changed on another device
+  document.addEventListener('as:synced', loadTimeline);
 }
 
 async function loadTimeline() {
 
-  const ids = Store.list().map(x => x.id);                 // Only anime you added to My List
+  const ids = Store.list().map(x => x.id);
   if (!ids.length) {
     $('#tl-canvas').innerHTML = `<div class="tl-empty">Nothing here yet. Add an airing anime to My List and it will show up on your timeline.<br><br>
       <a class="btn btn-primary" href="browse.html?status=RELEASING">Browse airing anime</a></div>`;
@@ -78,7 +77,7 @@ function enableDragScroll(el) {
     if (moved) { el.scrollLeft = sl - dx; el.scrollTop = st - dy; }
   });
   window.addEventListener('pointerup', () => { down = false; setTimeout(() => el.classList.remove('dragging'), 0); });
-  el.addEventListener('click', e => { if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; } }, true);   // A drag is not a click
+  el.addEventListener('click', e => { if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; } }, true);
 }
 
 function draw(scrollToNow) {
@@ -91,7 +90,6 @@ function draw(scrollToNow) {
   canvas.style.setProperty('--dw', DW + 'px');
   canvas.style.width = W + 'px';
 
-  // Header: months, weekdays, day numbers
   let months = '', days = '', prev = '';
   for (let i = 0; i < TOTAL_DAYS; i++) {
     const t = t0 + i * DAY + 12 * 3600000;
@@ -107,7 +105,6 @@ function draw(scrollToNow) {
   }
   months = months.replace(/%W%/, (W - parseFloat(/left:([\d.]+)px/.exec(months.split('<div').pop())[1])) + 'px');
 
-  // Rows
   const rows = DATA.map(({ m, run }) => {
     const c = colorOf(m), tc = lum(c.startsWith('#') ? c : '#999999') > 150 ? '#14101a' : '#fff';
     const l = Math.max(0, X(run.start)), r = Math.min(W, X(run.end));

@@ -1,4 +1,3 @@
-/* Home page */
 let RAILS = {};
 
 async function initHome() {
@@ -10,16 +9,15 @@ async function initHome() {
 
   const { season, year } = currentSeason();
 
-  // Fire every request at once; each section paints when its data arrives
   const homeReq = Api.homeRails(season, year);
   const latestReq = Api.latestEpisodes();
-  const quickReq = Api.trendingQuick();                        // One slim query so Trending is not stuck behind the big home query
-  const weeklyReq = Api.weeklyTrending().catch(() => null);   // null keeps the live trending list
+  const quickReq = Api.trendingQuick();
+  const weeklyReq = Api.weeklyTrending().catch(() => null);
 
   $('#genre-cloud').innerHTML = visibleGenres().map(g =>
     `<a href="browse.html?genre=${encodeURIComponent(g)}">${g}</a>`).join('');
   renderContinue();
-  document.addEventListener('as:synced', renderContinue);      // Progress arrived from another device
+  document.addEventListener('as:synced', renderContinue);
   placeTop10();
   wireTabs();
   initSchedule();
@@ -29,7 +27,6 @@ async function initHome() {
     LATEST_ITEMS = [];
   });
 
-  /* Trending row: paints the first list, then upgrades to the weekly ranking without waiting or re-rendering when the order is unchanged */
   let trendRank = 0, trendSig = '';
   const paintTrending = (list, rank) => {
     if (!list || !list.length || rank < trendRank) return;
@@ -38,7 +35,7 @@ async function initHome() {
     const sig = list.map(m => m.id).join();
     if (sig !== trendSig) {
       trendSig = sig;
-      const left = $('#rail-trending .rail-track')?.scrollLeft || 0;          // Keep the row where the user scrolled it
+      const left = $('#rail-trending .rail-track')?.scrollLeft || 0;
       renderRail('#rail-trending', 'Trending this week', list, { badge: 'HOT', href: 'browse.html?sort=TRENDING_DESC' });
       if (left) $('#rail-trending .rail-track').scrollTo({ left, behavior: 'instant' });
     }
@@ -65,7 +62,7 @@ async function initHome() {
 
     setDiscover(discoverKey);
     setTop($('#top-tabs .tab.on')?.dataset.tab || 'topAiring');
-    if (!trendRank) paintTrending(RAILS.trending, 1);   // Slim query failed: fall back to the big query's trending list
+    if (!trendRank) paintTrending(RAILS.trending, 1);
   } catch (err) {
     hero.innerHTML = `<div class="container" style="padding-top:120px">
       <h1>Couldn't load AniList</h1><p class="muted">${esc(err.message)}</p></div>`;
@@ -122,7 +119,6 @@ function renderHero(items) {
       `<button data-dot="${i}" aria-label="Slide ${i + 1}" class="${i === 0 ? 'on' : ''}"></button>`).join('')}</div>
      <div class="hero-ctrl"><button id="hero-prev" aria-label="Previous">&lsaquo;</button><button id="hero-next" aria-label="Next">&rsaquo;</button></div>`;
 
-  /* Start the entrance animation once the spotlight is actually on screen */
   hero.classList.remove('play');
   if ('IntersectionObserver' in window) {
     const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { hero.classList.add('play'); io.disconnect(); } }, { threshold: 0.3 });
@@ -144,7 +140,6 @@ function renderHero(items) {
   restart();
 }
 
-/* Phones: the Top 10 card sits at the bottom of the page, right above Genres; larger screens keep it beside the spotlight */
 const topMQ = window.matchMedia('(max-width:900px)');
 function placeTop10() {
   const card = $('.bento-side .side-card') || $('.home-side .side-sticky > #top-card');
@@ -166,14 +161,12 @@ function wireTabs() {
     t.classList.add('on'); setTop(t.dataset.tab);
   });
 }
-/* Discover: popup picker instead of tabs */
 const DISCOVER = [
   { key: 'topAiring', label: 'Top airing',      desc: 'Most popular shows airing now', ic: 'play' },
   { key: 'season',    label: 'This season',     desc: 'Popular this season', ic: 'calendar' },
   { key: 'top',       label: 'Top rated',       desc: 'Highest rated of all time', ic: 'star' },
 ];
-let discoverKey = 'topAiring', LATEST_ITEMS = null;       // null means still loading
-/* Phones (same breakpoint as the bottom nav) show 12 titles in Discover (4 full rows of 3); larger screens show whole rows only */
+let discoverKey = 'topAiring', LATEST_ITEMS = null;
 const DISCOVER_MOBILE_MAX = 12, mobileMQ = window.matchMedia('(max-width:900px)');
 const discoverCap = list => mobileMQ.matches ? (list || []).slice(0, DISCOVER_MOBILE_MAX) : list;
 if (mobileMQ.addEventListener) mobileMQ.addEventListener('change', () => setDiscover(discoverKey));
@@ -246,7 +239,6 @@ function setTop(key) {
     </a>`).join('');
 }
 
-/* Estimated schedule: always GMT+8 (Manila), 12-hour clock */
 const SCHED_TZ = 'Asia/Manila', MNL_OFFSET = 8 * 3600000, DAY_MS = 86400000;
 const SCHED_CACHE = {};
 let schedToken = 0, schedActive = 0;
@@ -287,7 +279,7 @@ function fetchDay(start) {
     SCHED_CACHE[start] = Api.schedule(from, from + 86401).then(rows => {
       const seen = new Set();
       return rows
-        .filter(s => s.media && s.media.countryOfOrigin === 'JP')            // Api.schedule already dropped 18+ rows unless enabled
+        .filter(s => s.media && s.media.countryOfOrigin === 'JP')
         .sort((a, b) => a.airingAt - b.airingAt)
         .filter(s => { const k = s.media.id + ':' + s.episode; if (seen.has(k)) return false; seen.add(k); return true; });
     }).catch(err => { delete SCHED_CACHE[start]; throw err; });
@@ -336,7 +328,7 @@ function paintContinue(items) {
   const el = $('#rail-continue');
   if (!items.length || !Settings.get().continueRow) { el.style.display = 'none'; contSig = ''; return; }
   const sig = items.map(x => `${x.id}:${x.ep}:${x.avail}:${x.fresh}`).join('|');
-  if (sig === contSig) return;                       // Nothing changed since the first paint
+  if (sig === contSig) return;
   contSig = sig;
   el.style.display = '';
   el.innerHTML = `
@@ -346,8 +338,8 @@ function paintContinue(items) {
 }
 function renderContinue() {
   if (!Settings.get().continueRow) { paintContinue([]); return; }
-  paintContinue(Continue.quick());                    // Instant, from storage
-  Continue.load().then(paintContinue).catch(() => {}); // Then add new-episode badges
+  paintContinue(Continue.quick());
+  Continue.load().then(paintContinue).catch(() => {});
 }
 
 document.addEventListener('DOMContentLoaded', initHome);

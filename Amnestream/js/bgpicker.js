@@ -1,13 +1,7 @@
-/* Picture pop-up for the "Your picture" theme.
-   BgPicker.open({ file?, onDone }) shows one pop-up that has three states:
-     empty   no picture saved yet: only an Upload button (or drop a file)
-     manage  a picture is saved: Change picture, Remove picture, Use this picture
-     crop    a new file was chosen: square crop with Fit (whole picture) or Crop (fill and zoom), a live preview of the site, then confirm
-   The result is a square JPEG that Photo.save() stores on this device. onDone('use') or onDone('remove') tells the settings page what happened. */
 const BgPicker = (() => {
-  const OUT = 1600;               // Saved size in px (square). The site covers the screen with it
-  const SRC_MAX = 2400;           // Big photos are shrunk once on load so panning and zooming stay smooth
-  const ZMAX = 4;                 // Most you can zoom in
+  const OUT = 1600;
+  const SRC_MAX = 2400;
+  const ZMAX = 4;
   const BG = '#0b0d12';
   const TYPES = /^image\/(jpeg|png|webp|gif|avif|bmp)$/i;
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -22,10 +16,9 @@ const BgPicker = (() => {
   let dlg, fileIn, stage, cv, g, range, pv, pvx, onDone = () => {}, raf = 0, dpr = 1, view = 'empty';
   const st = { img: null, w: 0, h: 0, rot: 0, zoom: 1, ox: 0, oy: 0, S: 0, D: 0, k: 1, mode: 'crop', bg: null };
 
-  /* ---------- Reading the picture ---------- */
   async function load(file) {
     let img;
-    if (window.createImageBitmap) { try { img = await createImageBitmap(file); } catch { /* fall back to <img> */ } }
+    if (window.createImageBitmap) { try { img = await createImageBitmap(file); } catch { } }
     if (!img) {
       const url = URL.createObjectURL(file);
       try { img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = url; }); }
@@ -119,7 +112,6 @@ const BgPicker = (() => {
     pvx.setTransform(1, 0, 0, 1, 0, 0); draw(pvx, pv.width / 2, pv.height / 2, pv.width / st.D);
   }
 
-  /* ---------- The pop-up ---------- */
   function build() {
     if (dlg) return;
     dlg = document.createElement('dialog');
@@ -160,7 +152,6 @@ const BgPicker = (() => {
     pv = dlg.querySelector('.bgp-pv canvas'); pvx = pv.getContext('2d');
     dpr = Math.min(window.devicePixelRatio || 1, 2.5);
 
-    /* Moving and pinching */
     const ptrs = new Map(); let last = 0;
     const dist = () => { const [a, b] = [...ptrs.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
     stage.addEventListener('pointerdown', e => { stage.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (ptrs.size === 2) last = dist(); });
@@ -214,14 +205,14 @@ const BgPicker = (() => {
     dlg.querySelectorAll('.bgp-view').forEach(s => { s.hidden = s.dataset.view !== v; });
     dlg.querySelector('[data-title]').textContent = v === 'crop' ? 'Crop your picture' : 'Your picture';
     const ok = dlg.querySelector('[data-a=ok]');
-    ok.hidden = v === 'empty';                                                    // Nothing to confirm until there is a picture
+    ok.hidden = v === 'empty';
     ok.textContent = 'Use this picture';
     dlg.classList.toggle('is-crop', v === 'crop');
     if (v === 'crop') { st.S = 0; requestAnimationFrame(() => { layout(); stage.focus({ preventScroll: true }); }); }
   }
 
   async function confirm_() {
-    if (view === 'manage') { dlg.close(); onDone('use'); return; }                // Keep the saved picture and switch to it
+    if (view === 'manage') { dlg.close(); onDone('use'); return; }
     const c = document.createElement('canvas'); c.width = c.height = OUT;
     draw(c.getContext('2d'), OUT / 2, OUT / 2, OUT / st.D);
     const ok = dlg.querySelector('[data-a=ok]'); ok.disabled = true;

@@ -8,10 +8,9 @@
 
   const TAU = Math.PI * 2;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const EPOCH = 1.7e12;                                    // Keeps the shared clock small enough for smooth sines
+  const EPOCH = 1.7e12;
   const now = () => (Date.now() - EPOCH) / 1000;
 
-  /* Back to front. base: waterline as a fraction of the screen height; each wave is [wavelength px, amplitude (fraction of height), speed rad/s, phase] */
   const LAYERS = [
     { base: .64, top: [0, 229, 255, .40], mid: [10, 110, 220, .24], bot: [10, 20, 100, .10], dir: 1, sharp: 1.25,
       w: [[1300, .034, .48, 0], [560, .012, .85, 2.1]], line: [160, 246, 255, .55], rim: .20 },
@@ -22,9 +21,8 @@
   ];
   const rgba = (c, a = c[3]) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
 
-  /* The pour: x as a fraction of the width, width in px, start delay in s */
   const STREAMS = [[.09, 15, .05], [.27, 11, .32], [.50, 22, 0], [.72, 12, .42], [.90, 17, .2]];
-  const POUR_END = 7.2;                                    // Seconds after the theme was picked when the pour is certainly over
+  const POUR_END = 7.2;
 
   let cv, ctx, W = 0, H = 0, dpr = 1, raf = 0, on = false, still = false, pourOn = false;
   let rippleList = [], spray = [], glints = [], streams = [];
@@ -32,7 +30,7 @@
 
   /* Seconds since this theme was picked (the pour and the fill-up only play for the first seconds, never on page changes) */
   function since() {
-    let t0 = 0; try { t0 = +localStorage.getItem('as_theme_t0') || 0; } catch { /* ignore */ }
+    let t0 = 0; try { t0 = +localStorage.getItem('as_theme_t0') || 0; } catch { }
     return t0 ? Math.max(0, (Date.now() - t0) / 1000) : 99;
   }
   const loadedAt = Date.now(), since0 = since();
@@ -72,7 +70,7 @@
       const s = Math.sin(x / len * TAU + t * sp * L.dir + ph + Math.sin(t * .21 + ph) * .7);
       y += (s > 0 ? Math.pow(s, L.sharp) : -Math.pow(-s, .82)) * a * H * amp;
     }
-    y += Math.sin(x / 1900 * TAU + t * .14 + L.base * 9) * H * .012 * amp;               // Slow swell that rolls under everything
+    y += Math.sin(x / 1900 * TAU + t * .14 + L.base * 9) * H * .012 * amp;
     return H * L.base + (1 - rz) * H * .52 - y + rippleAt(x, t) * (.5 + L.base * .6);
   }
 
@@ -121,7 +119,6 @@
       const grow = clamp(age * 2.4, 0, 1) * (endAge > 0 ? clamp(1 - endAge * .7, .3, 1) : 1);
       const hw0 = s.w * .5 * grow;
 
-      /* Centre line and width down the stream: a gentle sway, and a slow pulse travelling downward */
       const cx = [], hw = [], ys = [];
       for (let y = tail; ; y += 10) {
         const yy = Math.min(y, head);
@@ -139,23 +136,21 @@
       };
       const pad = hw0 * 2.6 + 14;
       ctx.save();
-      trace(2.3); ctx.fillStyle = 'rgba(90,215,255,.10)'; ctx.fill();                 // Soft glow around the stream
+      trace(2.3); ctx.fillStyle = 'rgba(90,215,255,.10)'; ctx.fill();
       const g = ctx.createLinearGradient(s.x - pad, 0, s.x + pad, 0);
       g.addColorStop(.12, 'rgba(70,205,245,0)'); g.addColorStop(.3, 'rgba(110,225,252,.55)'); g.addColorStop(.5, 'rgba(235,253,255,.88)');
       g.addColorStop(.7, 'rgba(110,225,252,.55)'); g.addColorStop(.88, 'rgba(70,205,245,0)');
       trace(1); ctx.fillStyle = g; ctx.fill();
-      ctx.beginPath();                                                                   // Light running down the middle
+      ctx.beginPath();
       ctx.moveTo(cx[0], ys[0]); for (let i = 1; i < ys.length; i++) ctx.lineTo(cx[i], ys[i]);
       ctx.setLineDash([22, 46]); ctx.lineDashOffset = -t * 520; ctx.lineCap = 'round';
       ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = Math.max(1, hw0 * .28); ctx.stroke();
       ctx.restore();
 
-      /* Where it leaves the top edge */
       const lip = ctx.createRadialGradient(s.x, 0, 0, s.x, 0, hw0 * 3 + 12);
       lip.addColorStop(0, `rgba(190,245,255,${.5 * grow})`); lip.addColorStop(1, 'rgba(190,245,255,0)');
       ctx.fillStyle = lip; ctx.fillRect(s.x - hw0 * 3 - 12, 0, hw0 * 6 + 24, hw0 * 3 + 12);
 
-      /* Where it lands: glow, droplets, and ripples that move the whole surface */
       if (head >= land - .5 && flowing) {
         const R = 22 + hw0 * 2.2;
         const im = ctx.createRadialGradient(s.x, land - 4, 0, s.x, land - 4, R);
@@ -203,18 +198,17 @@
     energy *= .965;
     ctx.clearRect(0, 0, W, H);
 
-    if (pourOn) drawPour(t, dt, rz, amp);                  // Behind the water, so each stream slips into the sea
+    if (pourOn) drawPour(t, dt, rz, amp);
 
     LAYERS.forEach((L, i) => {
       const yTop = H * L.base + (1 - rz) * H * .52 - H * .04;
       const g = ctx.createLinearGradient(0, yTop, 0, H);
       g.addColorStop(0, rgba(L.top)); g.addColorStop(.35, rgba(L.mid)); g.addColorStop(1, rgba(L.bot));
       path(L, t, rz, amp); ctx.fillStyle = g; ctx.fill();
-      const rim = ctx.createLinearGradient(0, yTop, 0, yTop + H * .2);        // Light caught just under the surface
+      const rim = ctx.createLinearGradient(0, yTop, 0, yTop + H * .2);
       rim.addColorStop(0, `rgba(255,255,255,${L.rim * rz})`); rim.addColorStop(1, 'rgba(255,255,255,0)');
       ctx.fillStyle = rim; ctx.fill();
 
-      /* Crest: a soft wide glow under a thin bright line */
       ctx.beginPath();
       for (let x = -4; x <= W + 8; x += 6) { const y = surface(L, x, t, rz, amp); x === -4 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
       ctx.lineJoin = 'round';
@@ -272,7 +266,7 @@
     on = true;
     mount();
     const reduce = document.documentElement.classList.contains('reduce-motion') || matchMedia('(prefers-reduced-motion: reduce)').matches;
-    still = reduce;                                        // Reduce motion: one calm, finished frame, no animation
+    still = reduce;
     resize();
     cancelAnimationFrame(raf); raf = 0;
     if (still) frame(); else raf = requestAnimationFrame(loop);

@@ -1,12 +1,9 @@
-/* Settings and Profile: shared control upgrades, Modern layout (live preview, watcher pass) and Classic additions. Loaded on settings.html and profile.html only. */
 :root{--disp-me:"Bricolage Grotesque","Sora","Manrope",system-ui,sans-serif}
 
-/* ---------- Layout switch (both layouts) ---------- */
 .uiswitch{display:flex;align-items:center;gap:10px}
 .uis-l{font-size:12px;color:var(--muted);font-weight:600}
 .pf-switch{display:flex;justify-content:flex-end;margin-bottom:14px}
 
-/* ---------- Controls shared by both layouts ---------- */
 .toggle span{display:none}
 .segc{position:relative}
 .segc button{position:relative;z-index:1;white-space:nowrap}
@@ -40,7 +37,6 @@ kbd{display:inline-block;padding:3px 9px;border-radius:7px;border:1px solid var(
 .set-stack-h{display:flex;align-items:center;gap:12px}
 .set-stack .acct{display:flex;gap:18px;align-items:flex-start}
 
-/* ---------- Modern settings ---------- */
 .mset{max-width:1180px;margin:0 auto}
 .mset-top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;padding:4px 0 20px}
 .mset-top h1{font-family:var(--disp-me);font-weight:800;font-size:clamp(38px,6vw,64px);letter-spacing:-.045em;line-height:.95;margin:0}
@@ -68,14 +64,12 @@ kbd{display:inline-block;padding:3px 9px;border-radius:7px;border:1px solid var(
 .mtxt span{display:block;margin-top:3px;font-size:12.5px;line-height:1.45;color:var(--muted);max-width:56ch}
 .mrow.danger .mtxt strong{color:#ff8a8a}
 .mnone{padding:40px 0;color:var(--muted);text-align:center}
-/* Hardware-style switch: square knob, the state written inside */
 .mset .toggle{width:64px;height:30px;border-radius:9px;background:var(--card2);box-shadow:inset 0 0 0 1px var(--line)}
 .mset .toggle::after{top:4px;left:4px;width:22px;height:22px;border-radius:6px;background:var(--muted);transition:left .2s,background .2s}
 .mset .toggle span{display:block;position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:11.5px;font-weight:800;color:var(--muted);pointer-events:none}
 .mset .toggle.on{background:var(--accent);box-shadow:none}
 .mset .toggle.on::after{left:38px;background:var(--accent-ink)}
 .mset .toggle.on span{right:auto;left:10px;color:var(--accent-ink)}
-/* Segmented control with a sliding thumb */
 .mset .segc,.pf-switch .segc{display:inline-grid;grid-template-columns:repeat(var(--n,2),1fr);padding:3px;border-radius:12px;background:var(--card);border:0;box-shadow:inset 0 0 0 1px var(--line)}
 .mset .segc::before,.pf-switch .segc::before{content:"";position:absolute;top:3px;bottom:3px;left:3px;width:calc((100% - 6px) / var(--n,2));border-radius:9px;background:var(--accent);transform:translateX(calc(var(--i,0) * 100%));transition:transform .25s cubic-bezier(.3,.8,.3,1)}
 .mset .segc button,.pf-switch .segc button{padding:7px 14px;border-radius:9px;text-align:center}
@@ -89,7 +83,6 @@ kbd{display:inline-block;padding:3px 9px;border-radius:7px;border:1px solid var(
 .mset .set-in:focus{box-shadow:inset 0 0 0 1.5px var(--accent)}
 .mset .acct{display:flex;gap:20px;align-items:flex-start}
 .mset .btn-sm{border-radius:10px}
-/* Live preview */
 .mset-prev{position:sticky;top:76px}
 #mprev{padding:18px;border-radius:24px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line)}
 #mprev h3{font-family:var(--disp-me);font-size:15px;font-weight:800;margin:0 0 14px;letter-spacing:-.02em}
@@ -110,7 +103,6 @@ kbd{display:inline-block;padding:3px 9px;border-radius:7px;border:1px solid var(
 .pv-eps li.seen svg{color:var(--accent)}
 .pv-note{margin:12px 0 0;font-size:12px;color:var(--muted);line-height:1.45}
 
-/* ---------- Modern profile: the watcher pass ---------- */
 .mpf{max-width:1100px;margin:0 auto}
 .pass-wrap{filter:drop-shadow(0 22px 34px rgba(0,0,0,.45));margin-bottom:8px}
 .pass{--stub-h:104px;position:relative;background:var(--card);border-radius:28px;overflow:hidden;
@@ -169,7 +161,6 @@ kbd{display:inline-block;padding:3px 9px;border-radius:7px;border:1px solid var(
 .pf-dlg-act{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
 .pf-dlg .set-in{max-width:none;background:var(--bg2)}
 
-/* ---------- Phones ---------- */
 @media (max-width:900px){
   .mset-body{grid-template-columns:1fr;gap:0}
   .mset-prev{position:static;order:-1;margin:8px 0 6px}
@@ -200,7 +191,6 @@ kbd{display:inline-block;padding:3px 9px;border-radius:7px;border:1px solid var(
 .mp .heat{grid-auto-columns:13px;justify-content:start}
 
 
-/* ---------- Modern Settings: the stage (a live miniature of the site you click to edit) ---------- */
 .stg{max-width:1240px;margin:0 auto}
 .stg-top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px}
 .stg-top h1{font-family:var(--disp-me);font-weight:800;font-size:clamp(30px,4vw,44px);letter-spacing:-.04em;margin:0}
@@ -208,7 +198,6 @@ kbd{display:inline-block;padding:3px 9px;border-radius:7px;border:1px solid var(
 .stg-tools{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
 @property --fl{syntax:"<length>";inherits:false;initial-value:0px}
 @property --fr{syntax:"<length>";inherits:false;initial-value:0px}
-/* One row that scrolls sideways when the tabs do not fit (soft fade shows which side has more); wheel and drag also scroll it on desktop. The padding leaves room for the active pill's glow, which overflow would otherwise clip */
 .stg-tabs{position:relative;display:flex;flex-wrap:nowrap;gap:6px;flex:1 1 420px;min-width:0;padding:8px 4px;margin:-6px 0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 var(--fl),#000 calc(100% - var(--fr)),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 var(--fl),#000 calc(100% - var(--fr)),transparent 100%);transition:--fl .25s,--fr .25s}
 .stg-tabs.drag{cursor:grabbing;user-select:none}.stg-tabs.drag button{cursor:grabbing}
 .stg-tabs::-webkit-scrollbar{display:none}
@@ -218,7 +207,6 @@ kbd{display:inline-block;padding:3px 9px;border-radius:7px;border:1px solid var(
 .stg-tabs button:active>*{transform:scale(.93)}
 .stg-tabs button.on{color:var(--accent-ink);box-shadow:none}
 .stg-tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-/* The sliding pill: sits over the buttons' backgrounds and under their icon and label */
 .stg-ind{position:absolute;left:0;top:0;z-index:0;width:var(--w,0);height:var(--h,0);transform:translate(var(--x,0),var(--y,0));border-radius:999px;background:var(--accent);box-shadow:0 0 0 .5px var(--accent),0 6px 18px -6px color-mix(in srgb,var(--accent) 70%,transparent);opacity:0;pointer-events:none;transition:transform .5s cubic-bezier(.22,1,.36,1),width .5s cubic-bezier(.22,1,.36,1),height .5s cubic-bezier(.22,1,.36,1),opacity .25s}
 .stg-ind.show{opacity:1}.stg-ind.still{transition:none}
 .stg-body{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(340px,.85fr);gap:24px;align-items:start}
@@ -234,7 +222,6 @@ kbd{display:inline-block;padding:3px 9px;border-radius:7px;border:1px solid var(
 .stg-x{display:none;position:absolute;right:0;top:0;width:30px;height:30px;border-radius:50%;background:var(--card2);align-items:center;justify-content:center}
 .mnone{color:var(--muted);padding:14px 0}
 
-/* The miniature site */
 .stg-frame{position:relative;border-radius:16px;overflow:hidden;background:var(--bg);box-shadow:0 0 0 1px var(--line),0 24px 60px -24px #000;font-size:12px}
 .stg-hot{position:relative;cursor:pointer;outline:2px solid transparent;outline-offset:-2px;transition:outline-color .3s,background .3s}
 .stg-hot:hover{outline-style:dashed;outline-color:color-mix(in srgb,var(--accent) 70%,transparent)}
@@ -285,14 +272,11 @@ kbd{display:inline-block;padding:3px 9px;border-radius:7px;border:1px solid var(
 .stg-chip .stg-tag{display:none}
 @media (prefers-reduced-motion:reduce){.stg-hero-bg.move{animation:none}.stg-tag,.stg-poster,.stg-hot,.stg-tabs,.stg-tabs button,.stg-tabs button>*,.stg-ind{transition:none}.stg-insp.swap header,.stg-insp.swap .mrows>*,.stg-hot.sel::before,.stg-hot.sel::after{animation:none}}
 
-/* Phone: the inspector becomes a bottom sheet above the nav */
 @media (max-width:900px){
-  /* body is a scroll container here (overflow-x:hidden), which stops position:sticky; clip does not */
   body.stg-page{overflow-x:clip;overflow-y:visible;--sheet-h:var(--sheet-user,clamp(172px,31vh,272px))}
   .stg-top{margin-bottom:10px;gap:10px}
   .stg-top h1{font-size:30px}
   .stg-top p{font-size:13px}
-  /* Tabs become a full-width swipeable row that stays pinned under the top of the screen while you scroll the preview */
   .stg-tools{display:contents}
   .stg-tabs{position:sticky;top:0;z-index:40;flex:none;margin:0 -14px 10px;padding:max(8px,env(safe-area-inset-top,0px)) 14px 8px;background:var(--bg);scroll-padding:0 24px}
   .stg-tabs button{padding:10px 15px;min-height:40px}
@@ -300,7 +284,6 @@ kbd{display:inline-block;padding:3px 9px;border-radius:7px;border:1px solid var(
   .stg-tools .mset-find input{padding-top:11px;padding-bottom:11px;border-radius:14px;box-shadow:inset 0 0 0 1px var(--line)}
   .stg-body{grid-template-columns:minmax(0,1fr)}
   .stg-stage{padding:10px;border-radius:16px;min-width:0}
-  /* The sheet is kept short so the preview above it stays in view while you change a setting; the rows scroll inside it and the title stays pinned */
   .stg-insp{position:fixed;left:6px;right:6px;bottom:calc(var(--m-nav,60px) + 4px + env(safe-area-inset-bottom,0px));top:auto;max-height:var(--sheet-h);overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-top:0;z-index:60;transform:translateY(calc(100% + var(--m-nav,60px) + 24px));opacity:0;visibility:hidden;pointer-events:none;transition:transform .34s cubic-bezier(.4,0,.8,.3),opacity .3s ease .05s,visibility 0s .36s;box-shadow:inset 0 0 0 1px var(--line),0 -20px 50px -10px #000c;background:var(--card);overscroll-behavior:contain;scrollbar-width:thin}
   .stg-insp header{position:sticky;top:0;z-index:5;margin:0 -18px 4px;padding:14px 52px 8px 18px;background:var(--card);box-shadow:0 1px 0 var(--line)}
   .stg-insp h2{font-size:18px}
@@ -310,7 +293,6 @@ kbd{display:inline-block;padding:3px 9px;border-radius:7px;border:1px solid var(
   .stg-x{display:flex}
   body.stg-open .stg{padding-bottom:calc(var(--sheet-h) + 16px)}
   .stg-tag{display:none}
-  /* A smaller preview that fits a phone: three posters, tighter hero */
   .stg-rail{--per:3}.stg-rail.s-small{--per:4}.stg-rail.s-large{--per:2}
   .stg-hero{height:150px}.stg-hero h3{font-size:19px;max-width:85%}
   .stg-nav{padding:12px}.stg-me{margin-right:0}
@@ -318,7 +300,6 @@ kbd{display:inline-block;padding:3px 9px;border-radius:7px;border:1px solid var(
 }
 @media (max-width:900px) and (prefers-reduced-motion:reduce){.stg-insp{transition:none}}
 
-/* ---------- Modern Profile: the cinema title card ---------- */
 .cin{max-width:1100px;margin:0 auto}
 .cin-hero{position:relative;overflow:hidden;border-radius:24px;padding:clamp(24px,5vw,52px);display:flex;gap:clamp(18px,4vw,40px);align-items:center;background:#000;box-shadow:inset 0 0 0 1px var(--line);isolation:isolate}
 .cin-hero::before,.cin-hero::after{content:"";position:absolute;left:0;right:0;height:22px;z-index:2;background:repeating-linear-gradient(90deg,transparent 0 14px,#ffffff14 14px 26px);mask:linear-gradient(#000,#000)}
@@ -363,7 +344,6 @@ kbd{display:inline-block;padding:3px 9px;border-radius:7px;border:1px solid var(
 .cin-reel>*{width:100%!important;height:100%!important;min-width:0}.cin-reel img{object-fit:cover}.cin-reel{aspect-ratio:1}
 
 
-/* ---------- Profile photo: drop zone and circular crop pop-up ---------- */
 .avdz{position:relative;display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:16px;border:1.5px dashed color-mix(in srgb,var(--text) 24%,transparent);background:var(--card);cursor:pointer;text-align:left;font-weight:400;color:var(--text);transition:border-color .2s,background .2s,transform .25s cubic-bezier(.22,1,.36,1),box-shadow .2s;-webkit-tap-highlight-color:transparent}
 .pf-dlg .avdz{background:var(--bg2)}
 .avdz:hover{border-color:color-mix(in srgb,var(--accent) 70%,transparent)}
@@ -425,9 +405,6 @@ kbd{display:inline-block;padding:3px 9px;border-radius:7px;border:1px solid var(
 }
 @media (prefers-reduced-motion:reduce){.avc-dlg[open],.avc-dlg[open]::backdrop{animation:none}.avdz,.avdz-prev,.avc-ib{transition:none}}
 
-/* ===== Settings polish: bio box, pop-ups, About list, real covers in the preview ===== */
-
-/* Bio: the drag handle stops at a set height. Past that the text scrolls, with a slim rounded bar */
 textarea.bio-in{min-height:58px;max-height:112px;resize:vertical;overflow-y:auto;line-height:1.45;overscroll-behavior:contain}
 textarea.bio-in::-webkit-scrollbar{width:12px}
 textarea.bio-in::-webkit-scrollbar-track{background:transparent;margin:8px 0}
@@ -438,7 +415,6 @@ textarea.bio-in::-webkit-resizer{background:transparent}
 .bio-count{display:block;margin-top:5px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums;color:var(--muted)}
 .bio-count.full{color:var(--accent)}
 
-/* Pop-ups (sync code, change password) reuse the Edit profile pop-up look */
 .stg-dlg{width:min(440px,calc(100vw - 32px))}
 .stg-dlg[open]{animation:avcin .32s cubic-bezier(.22,1,.36,1)}
 .stg-dlg[open]::backdrop{animation:avcfade .25s ease}
@@ -450,12 +426,10 @@ textarea.sync-in{min-height:112px;resize:none;font-family:ui-monospace,SFMono-Re
 .stg-dlg .pf-dlg-act .btn:disabled{opacity:.6;cursor:default}
 @media (max-width:900px){textarea.sync-in{font-size:16px}}
 
-/* About: one dot per point */
 .about-list{list-style:none;margin:0;padding:0;display:grid;gap:9px}
 .about-list li{position:relative;padding-left:20px;line-height:1.55}
 .about-list li::before{content:"";position:absolute;left:5px;top:.68em;width:6px;height:6px;border-radius:50%;background:var(--accent)}
 
-/* Preview: real covers on the posters, the anime's banner behind the title */
 .stg-poster>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
 .stg-poster.has-img::before{z-index:1;background:linear-gradient(0deg,rgba(0,0,0,.88),transparent 62%)}
 .stg-hero-bg.has-img{background:var(--bg2)}
@@ -469,7 +443,6 @@ textarea.sync-in{min-height:112px;resize:none;font-family:ui-monospace,SFMono-Re
 .pv-poster>img.pv-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
 @media (prefers-reduced-motion:reduce){.stg-dlg[open],.stg-dlg[open]::backdrop,.stg-hero-bg.has-img.move>img{animation:none}}
 
-/* ===== Warning pop-up (animated themes) ===== */
 .warn-dlg{width:min(440px,calc(100vw - 32px));text-align:left}
 .warn-dlg[open]{animation:avcin .32s cubic-bezier(.22,1,.36,1)}
 .warn-dlg::backdrop{background:rgba(0,0,0,.62);backdrop-filter:blur(3px)}
@@ -478,7 +451,6 @@ textarea.sync-in{min-height:112px;resize:none;font-family:ui-monospace,SFMono-Re
 .warn-p{margin:0 0 8px;font-size:14px;line-height:1.55;color:var(--text)}
 .warn-sub{color:var(--muted);font-size:13px}
 
-/* ===== "Your picture" pop-up ===== */
 .bgp-dlg{width:min(700px,calc(100vw - 24px))}
 .bgp-dlg.over{box-shadow:0 0 0 3px var(--accent),0 30px 80px rgba(0,0,0,.6)}
 .bgp-view[hidden]{display:none}

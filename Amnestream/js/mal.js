@@ -1,13 +1,7 @@
-/* MyAnimeList: log in with MAL and keep your MAL list in step with what you watch.
-   Login is OAuth 2 with PKCE (no secret in the browser). MAL's servers do not allow browsers to call them directly (no CORS), so the token exchange and
-   the few API calls we make go through two tiny serverless functions in /api (api/mal-token.js and api/mal.js, made for Vercel).
-   Setup: see "MyAnimeList" in README.md. The client ID comes from the MAL_CLIENT_ID environment variable on Vercel (served by api/config.js);
-   window.AS_CONFIG.malClientId in js/config.js still works as an override. */
 const Mal = (() => {
   const KEY = 'as_mal', PEND = 'as_mal_pending';
   const cfg = () => window.AS_CONFIG || {};
   const api = () => (cfg().malApi || '/api').replace(/\/$/, '');
-  /* The client ID is public, but it is kept in Vercel (MAL_CLIENT_ID) so it stays out of the repo. It is fetched once, remembered in this browser, and refreshed on every visit. */
   const CID = 'as_mal_cid';
   let cid = cfg().malClientId || (() => { try { return localStorage.getItem(CID) || ''; } catch { return ''; } })();
   const ready = (async () => {
@@ -15,19 +9,19 @@ const Mal = (() => {
     try {
       const r = await fetch(api() + '/config', { cache: 'no-store' });
       const d = r.ok ? await r.json() : null;
-      if (d && typeof d.malClientId === 'string') { cid = d.malClientId.trim(); try { cid ? localStorage.setItem(CID, cid) : localStorage.removeItem(CID); } catch { /* storage blocked */ } }
-    } catch { /* offline, or no /api (local preview): keep the remembered ID */ }
+      if (d && typeof d.malClientId === 'string') { cid = d.malClientId.trim(); try { cid ? localStorage.setItem(CID, cid) : localStorage.removeItem(CID); } catch { } }
+    } catch { }
   })();
   const rd = () => jget(KEY, null);
   const redirectUri = () => location.origin + location.pathname.replace(/[^/]*$/, '') + 'settings.html';   // Must match the redirect URL registered at MAL exactly
   const b64u = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   const rand = n => b64u(crypto.getRandomValues(new Uint8Array(n)));
   const STATUS = [['watching', 'Watching'], ['completed', 'Completed'], ['on_hold', 'On hold'], ['dropped', 'Dropped'], ['plan_to_watch', 'Plan to watch']];
-  const done = new Set();                                                   // "id:ep" already sent this visit
+  const done = new Set();
 
   async function post(path, body, headers = {}) {
     const r = await fetch(api() + path, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) });
-    let data = null; try { data = await r.json(); } catch { /* empty body */ }
+    let data = null; try { data = await r.json(); } catch { }
     return { ok: r.ok, status: r.status, data };
   }
   async function tokenCall(body) {
@@ -42,7 +36,7 @@ const Mal = (() => {
     const s = rd(); if (!s) return null;
     if (s.exp - Date.now() > 60e3) return s.access;
     try { const t = await tokenCall({ grant_type: 'refresh_token', refresh_token: s.refresh }); store(t); return t.access_token; }
-    catch { Mal.disconnect(); return null; }                              // Refresh failed: the login expired or was revoked
+    catch { Mal.disconnect(); return null; }
   }
   /* One MAL API call through the proxy. path like /v2/anime/123/my_list_status */
   async function call(method, path, { query, form } = {}) {
@@ -55,7 +49,7 @@ const Mal = (() => {
 
   const Mal = {
     STATUS,
-    ready,                                                                 // Resolves once the client ID has been looked up
+    ready,
     configured: () => !!cid,
     connected: () => !!rd(),
     me: () => { const s = rd(); return s ? { name: s.name || 'your MAL account', picture: s.picture || '' } : null; },
@@ -65,7 +59,7 @@ const Mal = (() => {
     async connect() {
       await ready;
       if (!Mal.configured()) { toast('MyAnimeList is not set up on this site yet'); return; }
-      const verifier = rand(64), state = rand(16);                          // MAL only supports the "plain" PKCE method: the challenge is the verifier
+      const verifier = rand(64), state = rand(16);
       jset(PEND, { verifier, state, at: Date.now() });
       const q = new URLSearchParams({ response_type: 'code', client_id: cid, code_challenge: verifier, code_challenge_method: 'plain', state, redirect_uri: redirectUri() });
       location.href = 'https://myanimelist.net/v1/oauth2/authorize?' + q;
@@ -80,7 +74,7 @@ const Mal = (() => {
       if (!pend || pend.state !== state || Date.now() - pend.at > 15 * 60e3) throw new Error('That MyAnimeList login expired. Try Connect again.');
       const t = await tokenCall({ grant_type: 'authorization_code', code, code_verifier: pend.verifier, redirect_uri: redirectUri() });
       store(t, { name: '', picture: '' });
-      let who = null; try { who = await call('GET', '/v2/users/@me'); } catch { /* the login still worked */ }
+      let who = null; try { who = await call('GET', '/v2/users/@me'); } catch { }
       jset(KEY, { ...rd(), name: (who && who.name) || '', picture: (who && who.picture) || '' });
       return { name: (who && who.name) || 'MyAnimeList' };
     },
@@ -101,7 +95,7 @@ const Mal = (() => {
       try {
         const { list, total: t } = await Mal.entry(media.idMal);
         const total = t || media.episodes || 0;
-        if (list && list.num_watched_episodes >= ep) return;                // Already at or past this episode on MAL
+        if (list && list.num_watched_episodes >= ep) return;
         const status = total && ep >= total ? 'completed' : 'watching';
         await Mal.save(media.idMal, { status, num_watched_episodes: ep });
         toast(status === 'completed' ? 'MyAnimeList: marked as completed' : 'MyAnimeList: episode ' + ep + ' saved');
@@ -112,7 +106,7 @@ const Mal = (() => {
     async panel(box, media) {
       if (!box) return;
       await ready;
-      if (!Mal.configured()) return;                                         // Not set up: nothing to show
+      if (!Mal.configured()) return;
       box.hidden = false;
       if (!Mal.connected()) { box.innerHTML = `<span class="mal-tag">MAL</span><span class="mal-txt">Track this on MyAnimeList</span><a class="dp-btn sm" href="settings.html?s=you">Connect</a>`; return; }
       box.innerHTML = `<span class="mal-tag">MAL</span><span class="mal-txt">Loading your list...</span>`;

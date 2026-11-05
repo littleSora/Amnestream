@@ -1,12 +1,8 @@
-/* Settings pop-up on phones: press and hold the handle until it lifts, drag it to the left or right edge to dock it as a larger side panel.
-   Docked it is 40% bigger than the bottom sheet and scales with the corner handle. Loaded after settings-v2.css. */
 .stg-rs{display:none}
 #stg-zones{display:none}
 @media (max-width:900px){
-  /* No text selection or iOS callout while the handle is held */
   html body .stg-insp header{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 
-  /* 1. Holding: the handle fills with the accent colour over the hold time and the sheet presses in a touch */
   .stg-grip i{position:relative;overflow:hidden}
   .stg-grip i::after{content:"";position:absolute;inset:0;background:var(--accent);transform:scaleX(0);transform-origin:left center}
   html body .stg-insp.holding .stg-grip i{width:72px;height:6px}
@@ -14,7 +10,6 @@
   html body .stg-insp.holding.open{transform:scale(.985);box-shadow:inset 0 0 0 1px var(--accent),0 -20px 50px -10px #000c}
   @keyframes gripFill{to{transform:scaleX(1)}}
 
-  /* 2. Lifted: it floats above everything with an accent ring; the edge drop zones and a hint appear */
   html body .stg-insp.lifted{z-index:90;will-change:transform;box-shadow:0 0 0 2px var(--accent),0 34px 80px -12px #000e,0 0 46px color-mix(in srgb,var(--accent) 38%,transparent)}
   html body .stg-insp.lifted .stg-grip i{width:72px;height:6px;background:var(--accent)}
   html body .stg-insp.lifted .stg-grip i::after{transform:scaleX(1)}
@@ -23,7 +18,6 @@
 
   #stg-zones{display:block;position:fixed;inset:0;z-index:95;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .2s,visibility 0s .2s}
   #stg-zones.on{opacity:1;visibility:visible;transition:opacity .2s}
-  /* Gentle glows on the three docking edges: a soft blurred bar, not a tinted screen half */
   .stg-glow{position:absolute;display:flex;align-items:center;justify-content:center;transition:opacity .2s,transform .2s}
   .stg-glow::before{content:"";position:absolute;inset:-2px;border-radius:99px;background:var(--accent);opacity:.42;filter:blur(10px);transition:opacity .2s,filter .2s}
   .stg-glow.l,.stg-glow.r{top:26%;height:30%;width:14px}
@@ -36,7 +30,6 @@
   .stg-holdhint{position:absolute;top:max(14px,env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);max-width:92vw;padding:8px 14px;border-radius:99px;background:var(--card);
     box-shadow:inset 0 0 0 1px var(--accent),0 10px 30px -8px #000c;font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-  /* 3. Docked: a taller side panel (40% bigger than the sheet), scaled with the corner handle */
   html body .stg-insp.dock-l,html body .stg-insp.dock-r{width:var(--dock-w);height:var(--dock-h);max-height:var(--dock-h);top:var(--dock-top);bottom:auto;border-radius:22px;
     background:color-mix(in srgb,var(--card) 80%,transparent);-webkit-backdrop-filter:blur(16px) saturate(1.2);backdrop-filter:blur(16px) saturate(1.2);box-shadow:inset 0 0 0 1px var(--line),0 18px 50px -12px #000d}
   html body .stg-insp.dock-l header,html body .stg-insp.dock-r header{background:color-mix(in srgb,var(--card) 72%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
@@ -59,7 +52,6 @@
   #stg-zones,#stg-zones.on{transition:none}
 }
 
-/* No extra empty room under the preview or inside the pop-up: the page ends right where its content ends (me.css reserved the sheet's height) */
 @media (max-width:900px){
   html body.stg-open .stg{padding-bottom:0}
 }

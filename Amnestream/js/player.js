@@ -2,14 +2,12 @@
 (function () {
   'use strict';
 
-  const READY_TIMEOUT = 9000;       // No ready signal in 9s: assume dead
-  const DEAD_TTL      = 30 * 60e3;  // Benched providers stay benched for 30 min
+  const READY_TIMEOUT = 9000;
+  const DEAD_TTL      = 30 * 60e3;
   const LAST_KEY      = 'amnestream.player.provider';
   const HEALTH_KEY    = 'amnestream.player.health';
 
-  /* Providers: url(anilistId, malId, episode, lang) returns an embed URL; key says which id it needs; order sets priority; failing providers are auto-benched */
   const PROVIDERS = [
-    /* AniList-keyed providers */
     {
       id: 'anixo', label: 'Anixo', key: 'anilist',
       url: (a, m, ep, lang) => `https://anixo.buzz/embed/ani/${a}/${ep}?track=${lang}`,
@@ -31,7 +29,6 @@
       url: (a, m, ep, lang) => `https://vidnest.fun/animepahe/${a}/${ep}/${lang}`,
     },
 
-    /* MAL-keyed providers (work without AniList) */
     {
       id: 'anixo-mal', label: 'Anixo (MAL)', key: 'mal',
       url: (a, m, ep, lang) => `https://anixo.buzz/embed/mal/${m}/${ep}?track=${lang}`,
@@ -51,7 +48,7 @@
     try { return JSON.parse(localStorage.getItem(HEALTH_KEY)) || {}; } catch { return {}; }
   }
   function writeHealth(h) {
-    try { localStorage.setItem(HEALTH_KEY, JSON.stringify(h)); } catch { /* ignore */ }
+    try { localStorage.setItem(HEALTH_KEY, JSON.stringify(h)); } catch { }
   }
   function isDead(id) {
     const e = readHealth()[id];
@@ -202,7 +199,7 @@
       clearTimeout(watchdog);
 
       frame.src = provider.url(ctx.anilistId, ctx.malId, ctx.episode, ctx.lang);
-      try { localStorage.setItem(LAST_KEY, provider.id); } catch { /* ignore */ }
+      try { localStorage.setItem(LAST_KEY, provider.id); } catch { }
       refreshServerList();
       setStatus(reason || '');
       if (opts.onProviderChange) opts.onProviderChange(provider);

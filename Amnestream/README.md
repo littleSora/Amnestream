@@ -98,22 +98,3 @@ Then open <http://localhost:8080>. There is nothing to install or build.
 Amnestream is not affiliated with AniList, MegaPlay, MegaVid, Anixo or any studio, publisher or streaming service. It does not host, upload or store any video files. Titles, artwork and trademarks belong to their owners.
 
 If you are a copyright owner and want something removed, read the **[DMCA policy](docs/DMCA.md)** (also on the site as [`dmca.html`](dmca.html)) and email **m4cky5467@gmail.com**. Please do not post notices as public issues.
-
-## MyAnimeList tracking
-
-Visitors can log in with MyAnimeList (Settings > MyAnimeList) and their MAL list is kept in step with what they watch: finishing an episode marks it watched (and sets Watching / Completed), and every anime with a MAL id has a MAL panel on its details page for status, episodes and score.
-
-1. On MyAnimeList open **Profile > Account Settings > API > Create ID**. Choose App Type **other** (no secret) or **web**. Set the App Redirect URL to exactly `https://YOUR-SITE/settings.html` (use the same address you serve the site from).
-2. In Vercel > Settings > Environment Variables add `MAL_CLIENT_ID` = your Client ID, then redeploy. The site fetches it from `/api/config`, so the ID is not stored in the repo and `malClientId` in `js/config.js` stays empty.
-3. Deploy on Vercel with the **Amnestream folder as the project root** so the `api/` folder becomes two serverless functions (`/api/mal-token`, `/api/mal` and `/api/config`). MAL does not allow browsers to call it directly, so these forward the calls. If you registered the app as **web**, also add `MAL_CLIENT_SECRET` there.
-4. Without `MAL_CLIENT_ID` the MAL features stay hidden.
-
-Tokens are stored in the visitor's browser only. The functions keep nothing and only forward the few calls listed in `api/mal.js`.
-
-## Usernames
-
-A username is fixed when the account is registered. The site no longer lets it be edited. To enforce it on the server as well, run `supabase/lock-username.sql` once in the Supabase SQL editor.
-
-## Comments
-
-Comments are hidden behind a spoiler alert by default. Each visitor can open them for one anime, or turn on Settings > Content and privacy > Show comments to see them everywhere.

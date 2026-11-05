@@ -1,6 +1,5 @@
-/* Shared helpers: settings, user, header, footer, search, cards, storage */
 const SITE_NAME = 'Amnestream';
-const BIO_MAX = 28;                                   // Longest bio (characters)
+const BIO_MAX = 28;
 /* A saved bio as the edit boxes show it: the old long default becomes the short one, anything else is cut to the limit */
 const bioFit = b => { b = String(b || ''); if (b === "Hello, I'm a new user of " + SITE_NAME + '!') b = 'New to ' + SITE_NAME; return b.slice(0, BIO_MAX); };
 
@@ -11,7 +10,6 @@ const esc = (s = '') => String(s).replace(/[&<>"']/g, c =>
 const jget = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
 const jset = (k, v) => localStorage.setItem(k, JSON.stringify(v));
 
-/* Icons */
 const ICONS = {
   home:'<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
   compass:'<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>',
@@ -65,16 +63,14 @@ Object.assign(ICONS, {
 });
 const icon = (n, s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ''}</svg>`;
 
-/* Settings and user (all local, no backend) */
-const THEME_IDS = ['sakura', 'retro96', 'cyberpunk', 'rgb', 'wave', 'voxel', 'vapor', 'terminal', 'blueprint', 'parchment', 'pealcd', 'brutal', 'frost', 'noir', 'aurora', 'magma', 'void', 'photo', 'pre-rich', 'pre-oxford', 'pre-charcoal', 'pre-brunswick', 'pre-violet', 'pre-cosmos', 'pre-jet', 'pre-alabaster'];   // Keep in step with THEMES and PRESETS in settings.js and the [data-theme] rules in themes.css
-const THEME_FONTS = { cyberpunk: 'Orbitron:wght@600;800', voxel: 'VT323', pealcd: 'VT323', terminal: 'JetBrains+Mono:wght@400;700', blueprint: 'IBM+Plex+Mono:wght@400;600',
-  parchment: 'Playfair+Display:ital,wght@0,700;1,700', noir: 'Playfair+Display:ital,wght@0,700;1,700', brutal: 'Space+Grotesk:wght@400;700' };   // Loaded only while that theme is on
+const THEME_IDS = ['sakura', 'retro96', 'cyberpunk', 'rgb', 'wave', 'voxel', 'vapor', 'terminal', 'blueprint', 'parchment', 'blossom', 'brutal', 'frost', 'noir', 'aurora', 'magma', 'galaxy', 'photo', 'pre-rich', 'pre-oxford', 'pre-charcoal', 'pre-brunswick', 'pre-violet', 'pre-cosmos', 'pre-jet', 'pre-alabaster'];
+const THEME_FONTS = { cyberpunk: 'Orbitron:wght@600;800', voxel: 'VT323', terminal: 'JetBrains+Mono:wght@400;700', blueprint: 'IBM+Plex+Mono:wght@400;600',
+  parchment: 'Playfair+Display:ital,wght@0,700;1,700', noir: 'Playfair+Display:ital,wght@0,700;1,700', brutal: 'Space+Grotesk:wght@400;700' };
 
-/* The Photo theme's picture lives in this device's storage (shrunk first), never in the synced settings */
 const Photo = {
   get() { try { return localStorage.getItem('as_photo') || ''; } catch { return ''; } },
   acc() { try { return localStorage.getItem('as_photo_acc') || ''; } catch { return ''; } },
-  clear() { try { localStorage.removeItem('as_photo'); localStorage.removeItem('as_photo_acc'); } catch { /* ignore */ } },
+  clear() { try { localStorage.removeItem('as_photo'); localStorage.removeItem('as_photo_acc'); } catch { } },
   async save(file) {
     const url = URL.createObjectURL(file);
     try {
@@ -85,7 +81,7 @@ const Photo = {
         c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
         return c.toDataURL('image/jpeg', q);
       };
-      const t = document.createElement('canvas'); t.width = t.height = 24;                      // Average colour of the picture becomes the accent
+      const t = document.createElement('canvas'); t.width = t.height = 24;
       const tx = t.getContext('2d'); tx.drawImage(img, 0, 0, 24, 24);
       const d = tx.getImageData(0, 0, 24, 24).data; let r = 0, g = 0, b = 0, n = 0;
       for (let i = 0; i < d.length; i += 4) { const w = 1 + (Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2])) / 64; r += d[i] * w; g += d[i + 1] * w; b += d[i + 2] * w; n += w; }
@@ -106,8 +102,8 @@ const DEFAULTS = {
   theme: 'sakura', titleLang: 'english', epOrder: 'asc', epStyle: 'list',
   continueRow: true, reduceMotion: false, hoverTrailer: true,
   incognito: false, hideSpoilers: false, includeAdult: false,
-  showComments: false, malAuto: true,                     // Comments are hidden behind a spoiler alert until turned on; MAL updates itself once connected
-  uiMode: 'modern', accent: '', cardSize: 'normal',      // Settings and Profile layout, custom accent colour, poster size
+  showComments: false, malAuto: true,
+  uiMode: 'modern', accent: '', cardSize: 'normal',
 };
 /* The Wave theme's living water is a canvas in js/wave.js, loaded only while that theme is on */
 function waveSync(th) {
@@ -119,28 +115,49 @@ function waveSync(th) {
   sc.onload = () => { if (document.documentElement.dataset.theme === 'wave') AsWave.start(); };
   document.head.appendChild(sc);
 }
+const SCENE_OF = { galaxy: 'galaxy', vapor: 'vapor', blossom: 'sakura', aurora: 'aurora' };
+const LEGACY_THEMES = { void: 'galaxy', pealcd: 'blossom' };
+function sceneSync(th) {
+  const sc = SCENE_OF[th];
+  if (!sc) { if (window.AsScene) AsScene.stop(); return; }
+  if (window.AsScene) { AsScene.start(sc); return; }
+  if (document.getElementById('as-scene-js')) return;
+  const el = document.createElement('script');
+  el.id = 'as-scene-js'; el.src = 'js/scenes.js';
+  el.onload = () => { const now = SCENE_OF[document.documentElement.dataset.theme]; if (now) AsScene.start(now); };
+  document.head.appendChild(el);
+}
+/* The Voxel theme's ground (grass, stone and random ores) is drawn by js/voxel.js, loaded only while that theme is on */
+function voxelSync(th) {
+  if (th !== 'voxel') { if (window.AsVoxel) AsVoxel.stop(); return; }
+  if (window.AsVoxel) { AsVoxel.start(); return; }
+  if (document.getElementById('as-voxel-js')) return;
+  const el = document.createElement('script');
+  el.id = 'as-voxel-js'; el.src = 'js/voxel.js';
+  el.onload = () => { if (document.documentElement.dataset.theme === 'voxel') AsVoxel.start(); };
+  document.head.appendChild(el);
+}
 const Settings = {
   get() {
     const o = jget('as_settings', {});
-    if (o.includeAdult === undefined && o.showAdult !== undefined) o.includeAdult = !!o.showAdult;   // showAdult is the old setting name
+    if (LEGACY_THEMES[o.theme]) o.theme = LEGACY_THEMES[o.theme];
+    if (o.includeAdult === undefined && o.showAdult !== undefined) o.includeAdult = !!o.showAdult;
     delete o.showAdult;
     return { ...DEFAULTS, ...o };
   },
   set(k, v) {
     const s = Settings.get();
-    if (k === 'theme' && s.theme !== v) { try { localStorage.setItem('as_theme_t0', String(Date.now())); } catch { /* ignore */ } }   // When this theme was picked: the Wave's pour only plays for the first seconds after this
+    if (k === 'theme' && s.theme !== v) { try { localStorage.setItem('as_theme_t0', String(Date.now())); } catch { } }
     s[k] = v; jset('as_settings', s); Settings.apply();
   },
   reset() { localStorage.removeItem('as_settings'); Settings.apply(); },
   apply() {
     const s = Settings.get();
-    const th = !THEME_IDS.includes(s.theme) || s.theme === 'sakura' || (s.theme === 'photo' && !Photo.get()) ? '' : s.theme;    // Unknown (removed) themes fall back to the default
+    const th = !THEME_IDS.includes(s.theme) || s.theme === 'sakura' || (s.theme === 'photo' && !Photo.get()) ? '' : s.theme;
     document.documentElement.dataset.theme = th;
-    /* Animated themes read a shared clock (--clk) so a new page carries on from where the last one was instead of starting over,
-       and --since (seconds since the theme was picked) so one-off intros such as the Wave's pour never replay on page changes */
     { const r = document.documentElement, first = Settings._th === undefined;
       if (first || Settings._th !== th) {
-        const now = Date.now(); let t0 = 0; try { t0 = +localStorage.getItem('as_theme_t0') || 0; } catch { /* ignore */ }
+        const now = Date.now(); let t0 = 0; try { t0 = +localStorage.getItem('as_theme_t0') || 0; } catch { }
         r.style.setProperty('--clk', (now / 1000).toFixed(3));
         r.style.setProperty('--since', t0 ? Math.max(0, (now - t0) / 1000).toFixed(2) : '99');
         Settings._th = th;
@@ -157,10 +174,12 @@ const Settings = {
     } else if (ps) ps.remove();
     document.documentElement.classList.toggle('reduce-motion', !!s.reduceMotion);
     waveSync(th);
+    sceneSync(th);
+    voxelSync(th);
     const root = document.documentElement;
     root.dataset.ui = s.uiMode === 'classic' ? 'classic' : 'modern';
     root.dataset.cards = ['small', 'large'].includes(s.cardSize) ? s.cardSize : 'normal';
-    if (th !== 'rgb' && /^#[0-9a-f]{6}$/i.test(s.accent || '')) {                       // Custom accent beats the theme's; ink flips to stay readable
+    if (th !== 'rgb' && /^#[0-9a-f]{6}$/i.test(s.accent || '')) {
       const n = parseInt(s.accent.slice(1), 16), lum = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
       root.style.setProperty('--accent', s.accent);
       root.style.setProperty('--accent-ink', lum > 0.58 ? '#0b0d14' : '#ffffff');
@@ -175,11 +194,8 @@ function setAdult(on) {
   return !!on;
 }
 const scrollMode = () => Settings.get().reduceMotion ? 'auto' : 'smooth';   // Reduce motion also disables smooth scrolling
-window.addEventListener('storage', e => { if (e.key === 'as_settings' || e.key === null) Settings.apply(); });   // Changed in another tab
+window.addEventListener('storage', e => { if (e.key === 'as_settings' || e.key === null) Settings.apply(); });
 
-/* Accounts use Supabase Auth (see supabase/schema.sql and js/config.js). The site asks for a username, so each username maps to a placeholder email.
-   The browser keeps a cached copy of the signed-in profile in as_me so pages can read it instantly; Auth.refresh() re-checks the real session on every page load,
-   so the same account works on PC and phone. The supabase-js library is only downloaded when someone has a session or opens the login popup. */
 const SB_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js';
 const EMAIL_DOMAIN = '@amnestream.app';
 const Auth = {
@@ -273,7 +289,7 @@ const Auth = {
         if (error && [401, 403].includes(error.status)) { await sb.auth.signOut({ scope: 'local' }); localStorage.removeItem('as_me'); }
         else if (!error) jset('as_me', await Auth._profile(sb, data.user.id));
       }
-    } catch { /* Offline or temporary error: keep the cached state */ }
+    } catch { }
     return before !== !!Auth._me();
   },
   /* Saves any last changes to the cloud first, then clears this browser's copy of the account's data */
@@ -286,15 +302,14 @@ const Auth = {
     });
   },
 };
-/* Re-check the session on load; if it flipped (signed out elsewhere, or still signed in on a fresh visit) update the page */
 Auth.refresh().then(flipped => {
-  if (typeof Sync !== 'undefined') Sync.start();                  // Pull this account's list and progress from the cloud
+  if (typeof Sync !== 'undefined') Sync.start();
   if (!flipped) return;
   const page = location.pathname.split('/').pop();
   if (/^(profile|settings|leaderboard)\.html$/.test(page)) location.reload();
   else if (typeof buildHeader === 'function' && document.getElementById('site-header')) buildHeader();
 });
-document.addEventListener('visibilitychange', () => {       // Coming back to the tab/app: pick up changes made on another device
+document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') Auth.refresh().then(f => { if (f && typeof buildHeader === 'function') buildHeader(); });
 });
 
@@ -311,7 +326,7 @@ const User = {
   set(patch) {
     const a = Auth.current();
     if (!a) { jset('as_user', { ...User.get(), ...patch }); return Promise.resolve(); }
-    const { name, bio, avatar } = patch;                     // The username is fixed at sign-up: never sent
+    const { name, bio, avatar } = patch;
     const clean = { name, bio, avatar };
     Object.keys(clean).forEach(k => clean[k] === undefined && delete clean[k]);
     jset('as_me', { ...a, ...clean });
@@ -325,7 +340,7 @@ const User = {
       jset('as_me', a);
       toast(err.offline ? 'Could not save: you are offline' : err.message);
       if (typeof buildHeader === 'function') buildHeader();
-      const pg = location.pathname.split('/').pop();                       // Redraw with the restored values, keeping the toast on screen
+      const pg = location.pathname.split('/').pop();
       if (pg === 'settings.html' && typeof render === 'function') render();
       else if (pg === 'profile.html' && typeof paintProfile === 'function') paintProfile();
     });
@@ -446,13 +461,6 @@ const Store = {
   },
 };
 
-/* Cloud sync: while signed in, your list, favourites, progress and watch history live in the Supabase table user_data (see supabase/sync.sql),
-   so Continue watching is the same on every device. Each device merges with the cloud copy on load, on login, when you come back to the tab,
-   every minute while open, and a moment after each change. Merge rules: progress keeps the newest entry per title, seen episodes and daily
-   activity are combined, the list and favourites follow whichever device changed them last (so removing a title sticks), and "Clear watch
-   history" wins over older data. A guest's local data is combined with the account on first login. */
-/* Dub availability: neither AniList nor the player provider says whether an English dub exists, so the site learns it.
-   When the player cannot start a dub on any server, that episode's DUB is remembered (7 days) and shown crossed out; it clears itself if a dub ever plays. */
 const Dub = {
   _m: () => jget('as_nodub', {}),
   _until: () => Date.now() + 2 * 864e5,                                   // Re-checked after 2 days
@@ -467,7 +475,6 @@ const Dub = {
   clear(id, ep) { const m = Dub._m(); if (m[id + ':' + ep]) { delete m[id + ':' + ep]; jset('as_nodub', m); } },
   markSeries(id) { const m = Dub._m(); m[id + ':*'] = Dub._until(); jset('as_nodub', m); },    // Episode 1 has no dub: the show has none
   clearSeries(id) { const m = Dub._m(); if (m[id + ':*']) { delete m[id + ':*']; jset('as_nodub', m); } },
-  /* Asks the dub servers directly: 'no' when they all answer "not found", 'yes' when one has it, null when nothing could be read */
   _seen: {},
   probe(id, ep) {
     const k = id + ':' + ep;
@@ -475,7 +482,7 @@ const Dub = {
     const one = url => {
       const c = new AbortController(), t = setTimeout(() => c.abort(), 5000);
       return fetch(url, { cache: 'no-store', signal: c.signal })
-        .then(r => { clearTimeout(t); try { r.body && r.body.cancel(); } catch { /* ignore */ } return r.ok ? 'yes' : r.status === 404 ? 'no' : null; })
+        .then(r => { clearTimeout(t); try { r.body && r.body.cancel(); } catch { } return r.ok ? 'yes' : r.status === 404 ? 'no' : null; })
         .catch(() => { clearTimeout(t); return null; });
     };
     return Dub._seen[k] = Promise.all([
@@ -497,7 +504,6 @@ const Sync = {
     Sync.later();
   },
   later(ms = 400) { if (Auth.current() && !Sync.off) { clearTimeout(Sync._t); Sync._t = setTimeout(() => Sync.run(), ms); } },
-  /* Called whenever the user looks at content: syncs unless it already did a few seconds ago */
   _last: 0,
   view() { if (Date.now() - Sync._last > 6000) return Sync.run(); return Sync._p || Promise.resolve(false); },
   /* Resolves when a sync finishes or after ms, whichever is first (never blocks the page for long) */
@@ -544,7 +550,7 @@ const Sync = {
   _wipeLocal() { ['as_list', 'as_fav', 'as_progress', 'as_seen', 'as_activity', 'as_sync'].forEach(k => localStorage.removeItem(k)); },
   run() {
     if (!Auth.current() || !Auth.configured() || Sync.off) return Promise.resolve(false);
-    if (Sync._p) { Sync._again = true; return Sync._p; }       // One at a time; changes made meanwhile get a follow-up pass
+    if (Sync._p) { Sync._again = true; return Sync._p; }
     Sync._p = Sync._do().catch(() => false).finally(() => {
       Sync._p = null;
       if (Sync._again) { Sync._again = false; Sync.run(); }
@@ -559,7 +565,7 @@ const Sync = {
     const uid = session.user.id;
     Sync._tok = session.access_token; Sync._uid = uid;
     let meta = Sync.meta();
-    if (meta.uid && meta.uid !== uid) { Sync._wipeLocal(); meta = {}; }          // Another account used this browser: do not mix the two
+    if (meta.uid && meta.uid !== uid) { Sync._wipeLocal(); meta = {}; }
     const { data: row, error } = await sb.from('user_data').select('data').eq('user_id', uid).maybeSingle();
     if (error) {
       if (error.code === 'PGRST205' || error.code === '42P01' || /does not exist|schema cache/i.test(error.message || '')) {
@@ -578,7 +584,7 @@ const Sync = {
       const { error: e2 } = await sb.from('user_data').upsert({ user_id: uid, data: { v: 1, ...merged }, updated_at: new Date().toISOString() });
       if (e2) return changed;
     }
-    localStorage.setItem('as_sync_at', String(Date.now()));        // Shown in Settings > Sync and devices
+    localStorage.setItem('as_sync_at', String(Date.now()));
     if (changed) document.dispatchEvent(new Event('as:synced'));
     return changed;
   },
@@ -593,18 +599,16 @@ const Sync = {
         headers: { apikey: c.supabaseAnonKey, Authorization: 'Bearer ' + Sync._tok, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
         body: JSON.stringify({ user_id: Sync._uid, data: { v: 1, ...local }, updated_at: new Date().toISOString() }) }).catch(() => {});
       Sync._sig = Sync._stable(local);
-    } catch { /* best effort */ }
+    } catch { }
   },
   /* Called once per page: first sync now, then keep the tab fresh */
   start() {
     Sync.run();
     if (Sync._poll) return;
-    Sync._poll = 1;                                                  // Listeners below are added only once
-    /* Pulls only happen when a page loads (open, refresh, navigate, back/forward); no polling and no tab-focus syncing.
-       Pushes happen shortly after you change something, and when you leave the page. */
+    Sync._poll = 1;
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') Sync.flush(); });
     window.addEventListener('pagehide', () => Sync.flush());
-    window.addEventListener('pageshow', e => { if (e.persisted) Sync.view(); });   // Back/forward cache restores skip a normal load
+    window.addEventListener('pageshow', e => { if (e.persisted) Sync.view(); });
   },
 };
 
@@ -622,7 +626,6 @@ async function randomAnime(btn) {
   catch { toast('Could not pick a random title'); if (btn) btn.disabled = false; }
 }
 
-/* Continue watching with new-episode alerts */
 const Continue = {
   /* Compares last watched with what has aired since (one light, cached query) */
   async load() {
@@ -631,7 +634,7 @@ const Continue = {
     if (all.length) {
       try {
         (await Api.statusOf(all.slice(0, 50).map(x => x.id))).Page.media.forEach(m => { info[m.id] = m; });
-      } catch { /* Offline: fall back to stored totals */ }
+      } catch { }
     }
     return all.map(x => {
       const m = info[x.id];
@@ -652,7 +655,7 @@ const Continue = {
   quick: () => Store.continueList().map(x => ({ ...x, avail: x.total, fresh: 0 })),
 };
 function continueCardHTML(x) {
-  const ep = x.fresh && x.ep >= x.total ? x.ep + 1 : x.ep;     // Caught up with a new episode: open the new one
+  const ep = x.fresh && x.ep >= x.total ? x.ep + 1 : x.ep;
   const details = `anime.html?id=${x.id}`;
   return `
     <article class="card">
@@ -679,7 +682,6 @@ function hoverDescHTML(m) {
   return `<span class="card-data" hidden data-info="${esc(JSON.stringify(info))}"></span>`;
 }
 
-/* Poster and title open Details; only the round play button opens the Player (two sibling links, never nested) */
 let _progMemo = null;
 const progressNow = () => _progMemo || (queueMicrotask(() => { _progMemo = null; }), (_progMemo = Store.progress()));
 
@@ -700,7 +702,7 @@ const playBtnHTML = (href, label) =>
 function cardHTML(m) {
   if (!m) return '';
   const score = scoreOf(m), title = titleOf(m), details = `anime.html?id=${m.id}`;
-  const pt = airedCount(m) === 0 ? null : playTarget(m);      // Nothing to play yet
+  const pt = airedCount(m) === 0 ? null : playTarget(m);
   return `
     <article class="card">
       <div class="card-media">
@@ -733,7 +735,7 @@ function latestCardHTML({ m, ep, at }) {
   const seen = LATEST_CTX.seen[m.id] || [], prog = LATEST_CTX.prog[m.id];
   const watched = seen.includes(ep);
   let target = ep;
-  if (!watched && prog && prog.ep < ep) target = seen.includes(prog.ep) ? prog.ep + 1 : prog.ep;   // Pick up where you left off
+  if (!watched && prog && prog.ep < ep) target = seen.includes(prog.ep) ? prog.ep + 1 : prog.ep;
   const playHref = `watch.html?id=${m.id}&ep=${target}`, details = `anime.html?id=${m.id}`;
   return `
     <article class="card ${watched ? 'is-watched' : ''}">
@@ -750,13 +752,12 @@ function latestCardHTML({ m, ep, at }) {
     </article>`;
 }
 
-/* Hover preview popup (desktop): banner, muted trailer, score, genres, synopsis and buttons; trailer fetched lazily and shown once it is really playing; positions are measured so they stay right under --zoom */
 const HoverPop = (() => {
   const mq = window.matchMedia('(hover:hover) and (pointer:fine) and (min-width:901px)');
   let layer, pop, card = null, showT, hideT, vidT, token = 0, muted = true;
-  let pending = null;            // Card a popup is scheduled for
-  let dismissed = null;          // Card whose popup was closed with Esc (stays closed until the pointer leaves)
-  let lastX = -1, lastY = -1;    // Last pointer position, to re-check what is under it
+  let pending = null;
+  let dismissed = null;
+  let lastX = -1, lastY = -1;
   let probeT, scrollT;
 
   const readInfo = c => { try { return JSON.parse(c.querySelector('.card-data')?.dataset.info || 'null'); } catch { return null; } };
@@ -779,7 +780,6 @@ const HoverPop = (() => {
   function html(c, info) {
     const img = c.querySelector('img'), cover = img?.currentSrc || img?.src || '';
     const title = c.querySelector('.card-title')?.textContent.trim() || '';
-    // The card's play button already knows where to go
     const pb = c.querySelector('a.card-play');
     const fb = playTarget({ id: info.id });
     const play = pb?.getAttribute('href') || fb.href, label = pb?.dataset.label || fb.label;
@@ -813,7 +813,7 @@ const HoverPop = (() => {
     const a = pop.getBoundingClientRect();
     pop.style.left = '100px'; pop.style.top = '100px';
     const b = pop.getBoundingClientRect();
-    const kx = (b.left - a.left) / 100 || 1, ky = (b.top - a.top) / 100 || 1;     // Style px to measured px (zoom)
+    const kx = (b.left - a.left) / 100 || 1, ky = (b.top - a.top) / 100 || 1;
     const w = a.width, h = a.height;
     const right = r.right + GAP + w <= vp.right - M;
     let x = right ? r.right + GAP : r.left - GAP - w;
@@ -826,7 +826,7 @@ const HoverPop = (() => {
 
   function show(c) {
     if (!mq.matches) return;
-    if (!c.isConnected) { probe(); return; }            // Row re-rendered meanwhile: check what is under the pointer now
+    if (!c.isConnected) { probe(); return; }
     const info = readInfo(c);
     if (!info) return;
     ensure();
@@ -837,7 +837,7 @@ const HoverPop = (() => {
     pop.innerHTML = html(c, info);
     place(c);
     requestAnimationFrame(() => { if (tk === token) pop.classList.add('on'); });
-    lazyTrailer(info.id, tk, !Settings.get().hoverTrailer || Settings.get().reduceMotion);   // artOnly: still upgrade the poster to the banner
+    lazyTrailer(info.id, tk, !Settings.get().hoverTrailer || Settings.get().reduceMotion);
   }
 
   async function lazyTrailer(id, tk, artOnly) {
@@ -874,15 +874,15 @@ const HoverPop = (() => {
       heard = true;
       let d = e.data; if (typeof d === 'string') { try { d = JSON.parse(d); } catch { return; } }
       if (!d) return;
-      if (d.event === 'onError') { f.remove(); window.removeEventListener('message', onMsg); return; }     // Embedding disabled etc.: keep the banner
+      if (d.event === 'onError') { f.remove(); window.removeEventListener('message', onMsg); return; }
       const st = d.event === 'onStateChange' ? d.info : d.info?.playerState;
       if (st === 1) reveal();
     };
     window.addEventListener('message', onMsg);
     f._off = () => window.removeEventListener('message', onMsg);
     f.addEventListener('load', () => {
-      if (yt) { try { f.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), '*'); } catch { /* ignore */ } }
-      setTimeout(() => { if (!heard && f.isConnected) reveal(); }, yt ? 3200 : 1500);    // No handshake: assume it is playing
+      if (yt) { try { f.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), '*'); } catch { } }
+      setTimeout(() => { if (!heard && f.isConnected) reveal(); }, yt ? 3200 : 1500);
     });
     f.src = src;
     host.appendChild(f);
@@ -892,7 +892,7 @@ const HoverPop = (() => {
     const f = $('.hp-video iframe', pop); if (!f) return;
     muted = !muted;
     const cmd = (func, args = []) => f.contentWindow.postMessage(JSON.stringify({ event: 'command', func, args }), '*');
-    try { if (muted) cmd('mute'); else { cmd('unMute'); cmd('setVolume', [60]); } } catch { /* ignore */ }
+    try { if (muted) cmd('mute'); else { cmd('unMute'); cmd('setVolume', [60]); } } catch { }
     btn.innerHTML = icon(muted ? 'mute' : 'volume', 15);
     btn.title = muted ? 'Unmute' : 'Mute'; btn.setAttribute('aria-label', btn.title + ' trailer');
   }
@@ -910,7 +910,7 @@ const HoverPop = (() => {
   function killVideo() {
     clearTimeout(vidT);
     const f = pop && $('.hp-video iframe', pop);
-    if (f) { f._off?.(); f.src = 'about:blank'; f.remove(); }                       // Stops the sound immediately
+    if (f) { f._off?.(); f.src = 'about:blank'; f.remove(); }
   }
 
   function cancelShow() { clearTimeout(showT); pending = null; }
@@ -929,8 +929,8 @@ const HoverPop = (() => {
   /* Open the popup after a short hover-intent delay (fly-bys do nothing) */
   function intend(c) {
     clearTimeout(hideT);
-    if (c === card) { cancelShow(); return; }          // Already showing it
-    if (c === pending || c === dismissed) return;      // Already scheduled or closed on purpose
+    if (c === card) { cancelShow(); return; }
+    if (c === pending || c === dismissed) return;
     clearTimeout(showT); pending = c;
     showT = setTimeout(() => { pending = null; show(c); }, card ? 100 : 260);
   }
@@ -960,8 +960,6 @@ const HoverPop = (() => {
     if (dismissed && !e.target.closest?.('.card')?.isSameNode(dismissed)) dismissed = null;
     pointerOver(e.target);
   });
-  // mouseover is not re-sent if the first attempt was cancelled on the same poster,
-  // so a move over a poster with nothing open or pending restarts the intent
   document.addEventListener('mousemove', e => {
     lastX = e.clientX; lastY = e.clientY;
     if (card || pending || !mq.matches) return;
@@ -970,18 +968,16 @@ const HoverPop = (() => {
   }, { passive: true });
   document.addEventListener('mouseout', e => {
     if (e.relatedTarget) return;
-    lastX = lastY = -1; dismissed = null; cancelShow();             // Pointer left the window
+    lastX = lastY = -1; dismissed = null; cancelShow();
     if (card) scheduleHide(250);
   });
 
-  // A scroll moves posters under the pointer: close what is open, re-check when scrolling settles
   window.addEventListener('scroll', e => {
     const t = e.target, rel = t === document || (t instanceof Element && card && t.contains(card));
     if (card && rel) hide(); else if (pending && rel) cancelShow();
     clearTimeout(scrollT); scrollT = setTimeout(probe, 140);
   }, { passive: true, capture: true });
 
-  // Rows re-render as data arrives; a new poster may sit under a resting pointer
   if ('MutationObserver' in window) {
     new MutationObserver(ms => {
       if (lastX < 0 || ms.every(m => m.target instanceof Element && m.target.closest('.hp-layer'))) return;
@@ -1028,7 +1024,7 @@ const GENRES = ['Action','Adventure','Boys Love','Comedy','Drama','Ecchi','Eroti
   'Fantasy','Girls Love','Gourmet','Hentai','Horror','Isekai','Josei','Kids','Magic','Mahou Shoujo','Mecha','Military',
   'Mystery','Music','Psychological','Romance','Samurai','School','Sci-Fi','Seinen','Shoujo','Shounen','Slice of Life',
   'Space','Sports','Supernatural','Thriller','Vampire'];
-const ADULT_GENRES = ['Hentai', 'Erotica'];                      // Explicit by definition: only offered while "Show 18+ titles" is on
+const ADULT_GENRES = ['Hentai', 'Erotica'];
 const visibleGenres = () => Settings.get().includeAdult ? GENRES : GENRES.filter(g => !ADULT_GENRES.includes(g));
 
 /* Header */
@@ -1069,7 +1065,7 @@ function buildHeader() {
       <input id="search-input" type="search" placeholder="Search anime..." autocomplete="off" aria-label="Search anime">
       <div id="search-suggest" class="suggest"></div>
     </div>`;
-  try { localStorage.setItem('as_hdr_v1', host.innerHTML.replace(/ class="on"/g, '')); } catch { /* ignore */ }   // Next page paints this at once (see the inline script after <header>)
+  try { localStorage.setItem('as_hdr_v1', host.innerHTML.replace(/ class="on"/g, '')); } catch { }
   wireHeader();
 }
 
@@ -1135,7 +1131,7 @@ function wireHeader() {
       render((await Api.search(q, 10, { signal: ctrl.signal })).Page.media, q);
     } catch (err) {
       if (err?.name === 'AbortError') return;
-      lastQ = '';                                                                  // Let the same text be searched again
+      lastQ = '';
       box.innerHTML = '<div class="suggest-empty">Search failed. Try again in a moment.</div>'; box.classList.add('open');
     }
   }, 140);
@@ -1199,7 +1195,7 @@ function openAuth(mode = 'login') {
   };
   const onKey = e => {
     if (e.key === 'Escape') { e.stopPropagation(); close(); return; }
-    if (e.key === 'Tab') {                                                  // Keep focus inside the popup
+    if (e.key === 'Tab') {
       const f = $$('button:not([disabled]),input', box).filter(x => x.offsetParent !== null);
       if (!f.length) return;
       const first = f[0], last = f[f.length - 1];
@@ -1237,9 +1233,9 @@ function openAuth(mode = 'login') {
       const acc = m === 'register' ? await Auth.register(name, pw, true) : await Auth.login(name, pw, $('#au-rem', bg).checked);
       close();
       toast(m === 'register' ? `Welcome to ${SITE_NAME}, ${acc.name}!` : `Welcome back, ${acc.name}!`);
-      Sync.start();                                                                                          // Bring this account's list and progress onto this device
+      Sync.start();
       const page = location.pathname.split('/').pop();
-      if (/^(profile|settings|leaderboard)\.html$/.test(page)) setTimeout(() => location.reload(), 400);   // These pages paint your account once
+      if (/^(profile|settings|leaderboard)\.html$/.test(page)) setTimeout(() => location.reload(), 400);
       else buildHeader();
     } catch (ex) {
       err.textContent = ex.message || 'Something went wrong';
@@ -1249,7 +1245,6 @@ function openAuth(mode = 'login') {
   };
 }
 
-/* Fade-in on scroll: Reveal.watch(container, selector) fades items in as they enter view; off with Reduce motion */
 const Reveal = (() => {
   const off = () => !('IntersectionObserver' in window) || Settings.get().reduceMotion || matchMedia('(prefers-reduced-motion:reduce)').matches;
   let io;
@@ -1258,7 +1253,7 @@ const Reveal = (() => {
       if (!en.isIntersecting) return;
       const el = en.target; io.unobserve(el);
       el.classList.add('rv-in');
-      setTimeout(() => el.classList.remove('rv', 'rv-in'), 650);                // Hand the element back to its normal hover styles
+      setTimeout(() => el.classList.remove('rv', 'rv-in'), 650);
     });
   }, { rootMargin: '0px 0px 120px 0px', threshold: 0 }));
   return {
@@ -1267,7 +1262,6 @@ const Reveal = (() => {
       const o = obs();
       const items = $$(sel, root);
       items.forEach((el, i) => { el.style.setProperty('--rv-d', Math.min(i % 8, 7) * 45 + 'ms'); el.classList.add('rv'); o.observe(el); });
-      // Safety net: anything on screen after a moment must be visible
       setTimeout(() => items.forEach(el => {
         if (el.classList.contains('rv') && !el.classList.contains('rv-in') && el.getBoundingClientRect().top < innerHeight + 120) { o.unobserve(el); el.classList.remove('rv'); }
       }), 1500);
@@ -1318,12 +1312,10 @@ function buildBackToTop() {
   onScroll(); window.addEventListener('scroll', onScroll, { passive: true });
 }
 
-/* Installable app and offline shell (needs http/https; skipped on file://) */
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 }
 
-/* Page changes from the nav: the page eases out, the next one eases in (CSS in style.css); the nav itself stays put */
 document.addEventListener('click', e => {
   const a = e.target.closest && e.target.closest('.main-nav a, .logo');
   if (!a || e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target === '_blank') return;
@@ -1332,7 +1324,7 @@ document.addEventListener('click', e => {
   if (document.documentElement.classList.contains('reduce-motion') || matchMedia('(prefers-reduced-motion:reduce)').matches) return;
   e.preventDefault();
   $$('.main-nav a').forEach(x => x.classList.toggle('on', x === a));
-  document.body.classList.add('page-leaving');       // Starts the fade-out now; the next page is requested in the same moment (no waiting)
+  document.body.classList.add('page-leaving');
   location.href = href;
 });
 /* Warm the next page as soon as the pointer is over a nav link, so the click finds it ready */
@@ -1351,10 +1343,8 @@ window.addEventListener('pageshow', e => { if (e.persisted) document.body.classL
 
 document.addEventListener('DOMContentLoaded', () => {
   buildHeader(); buildFooter(); buildBackToTop();
-  // Home sections fade in on scroll through intro.js (a second reveal here made them show up early, with no visible fade)
 });
 
-/* Live "12/28" counter under any bio box (the .bio-count inside the same label) */
 document.addEventListener('input', e => {
   const t = e.target;
   if (!t.matches || !t.matches('textarea.bio-in')) return;

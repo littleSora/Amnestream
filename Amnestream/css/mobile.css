@@ -1,18 +1,13 @@
-/* Mobile polish layer: loaded last, only adds phone-specific fixes. Desktop is untouched. */
 @media (max-width:900px){
   html{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
   body{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
-  /* Bottom nav clears the iPhone home bar */
   .site-header,.site-header.scrolled{box-sizing:border-box;height:calc(72px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px)}
   .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
   .to-top{bottom:calc(92px + env(safe-area-inset-bottom,0px))}
   .search-pop{top:calc(12px + env(safe-area-inset-top,0px))}
-  /* 16px inputs stop iOS Safari zooming in on focus */
   input,select,textarea{font-size:16px}
-  /* Snappier taps, no double-tap zoom delay, comfortable targets */
   a,button,.tab,.card,.icon-btn,.btn{touch-action:manipulation}
   .btn,.tab,.icon-btn{min-height:40px}
-  /* Heroes follow the visible viewport as the browser bars collapse */
   .hero{height:70vh;height:70svh}
   .tl-scroll,.rail-track,.sched-days,.dp-tabs{-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
   img{-webkit-touch-callout:none}
@@ -21,7 +16,6 @@
   .dd .dd-pop,.picker-pop{bottom:calc(12px + env(safe-area-inset-bottom,0px))}
   .container{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 }
-/* Phone held sideways: slimmer nav, player gets the room */
 @media (max-width:900px) and (orientation:landscape) and (max-height:500px){
   body{padding-bottom:calc(60px + env(safe-area-inset-bottom,0px))}
   .site-header,.site-header.scrolled{height:calc(52px + env(safe-area-inset-bottom,0px))}
@@ -31,7 +25,6 @@
   .intro-cols{height:auto;min-height:60svh}
 }
 
-/* Fix: atlas.css re-declared the 2-column home layout after style.css, so it never collapsed on small screens */
 @media (max-width:1180px){
   .home-cols{grid-template-columns:minmax(0,1fr)}
   .home-cols .home-side{min-width:0}
@@ -46,13 +39,11 @@
   .home-cols{gap:20px}
 }
 
-/* Touch screens: no always-on play button over every poster. Tapping the card opens it. */
 @media (hover:none){
   .card-play,.card:hover .card-play{opacity:0;pointer-events:none;transform:translate(-50%,-50%) scale(.7)}
   .card-play:focus-visible{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
 }
 
-/* Watch page on phones: player edge-aligned with the controls below it, controls in tidy equal-width rows */
 @media (max-width:900px){
   .watch-layout{padding:max(12px,env(safe-area-inset-top,0px)) 0 16px;gap:16px;min-width:0}
   .watch-layout>div{min-width:0}
@@ -73,13 +64,11 @@
   .side-eps{grid-template-columns:repeat(auto-fill,minmax(46px,1fr))}
 }
 
-/* ===== Compact phone scale: smaller, tidier type and posters (3 per row), slimmer nav, search bar floats above the nav ===== */
 @media (max-width:900px){
   :root{--m-nav:60px}
   body{font-size:14px;padding-bottom:calc(var(--m-nav) + 22px + env(safe-area-inset-bottom,0px))}
   .container{padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px))}
 
-  /* Bottom nav: slimmer */
   .site-header,.site-header.scrolled{height:calc(var(--m-nav) + env(safe-area-inset-bottom,0px))}
   .main-nav a{width:54px;padding:6px 0;gap:3px;font-size:9.5px;border-radius:16px}
   .main-nav a svg{width:17px;height:17px}
@@ -88,7 +77,6 @@
   .toast{bottom:calc(var(--m-nav) + 14px + env(safe-area-inset-bottom,0px));font-size:13px;padding:10px 16px}
   .to-top{bottom:calc(var(--m-nav) + 16px + env(safe-area-inset-bottom,0px));width:40px;height:40px;border-radius:13px}
 
-  /* Search: floats just above the bottom nav (results open upward) so no nav button is covered */
   .search-pop{top:auto;bottom:calc(100% + 10px);left:12px;right:12px;width:auto}
   .search-pop.open{display:flex;flex-direction:column-reverse}
   .search-pop.open.closing{animation:popOutUp .15s ease-in forwards}
@@ -100,7 +88,6 @@
   .suggest-item strong{font-size:13px}
   .user-menu{bottom:calc(100% + 10px)}
 
-  /* Intro + spotlight */
   .intro{padding-top:60px}
   .intro-word{font-size:clamp(30px,9.4vw,60px)}
   .intro-cols{height:40vh;height:40svh;margin-top:0}
@@ -116,7 +103,6 @@
   .hero-actions .btn{min-height:36px;padding:8px 16px;font-size:13px}
   .btn{font-size:13px}
 
-  /* Section titles */
   .rail-head h2,.sec-title,.section h2{font-size:18px}
   .rail-head{margin-bottom:10px}
   .rail-link{font-size:12px}
@@ -124,7 +110,6 @@
   .picker-btn{padding:7px 12px;font-size:13px}
   #rail-continue,#rail-trending,#rail-latest{margin-top:18px}
 
-  /* Posters: 3 across, smaller type and badges */
   .home-main .grid,.grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
   .rail-track{gap:10px;padding:2px 14px 10px}
   .rail-track .card{width:112px;flex-basis:112px}
@@ -138,7 +123,6 @@
   .badge-air+.badge-18{top:26px}
   .card-play{width:36px;height:36px;border-radius:13px}
 
-  /* Cards on the side: Top 10 and Genres */
   .side-card{padding:14px;border-radius:20px;margin-bottom:16px}
   .side-card h3{font-size:16px;margin-bottom:10px}
   .side-card .tab{font-size:12px;padding:5px 4px;min-height:0}
@@ -150,11 +134,9 @@
   .genre-cloud{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
   .genre-cloud a{padding:7px 6px;font-size:11.5px;text-align:center;border-radius:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-  /* Schedule */
   .sched-days{gap:6px}
   .sched-row{font-size:12.5px;padding:10px 12px}
 
-  /* Browse, details, lists */
   .page-head h1{font-size:26px}
   .filters{gap:8px}
   .dd-btn{padding:8px 10px;font-size:12.5px}
@@ -167,7 +149,6 @@
 }
 @media (max-width:900px){.hero-ctrl{display:none}}
 
-/* Rails on phones: titles and first cards share one left edge, and the rows get breathing room */
 @media (max-width:900px){
   .rail{margin:30px 0}
   .rail-head{padding:0 14px}
@@ -176,15 +157,13 @@
   .block{margin-top:30px}
 }
 
-/* ===== Episode lists on phones and small tablets (all three styles, every theme) ===== */
 @media (max-width:900px){
   .dp-eptools{flex-wrap:wrap}
   .dp-search.open{width:min(170px,44vw)}
-  .ep-cards{max-height:none;overflow:visible}       /* One scroll (the page) instead of a scrolling box inside the page */
-  .ep-chip{height:28px}                               /* Bigger tap targets for SUB / DUB */
+  .ep-cards{max-height:none;overflow:visible}
+  .ep-chip{height:28px}
 }
 @media (max-width:600px){
-  /* Cards: a thumbnail on the left and the details on the right, one episode per row, so titles stay readable */
   .ep-cards:not(.compact):not(.grid){grid-template-columns:minmax(0,1fr);gap:14px}
   .ep-cards:not(.compact):not(.grid) .ep-card{display:grid;grid-template-columns:minmax(0,42%) minmax(0,1fr);grid-template-rows:auto 1fr;column-gap:12px;align-items:start}
   .ep-cards:not(.compact):not(.grid) .ep-thumb{grid-row:1 / span 2}
@@ -194,7 +173,6 @@
   .ep-cards:not(.compact):not(.grid) .ep-dur{left:5px;top:5px;padding:2px 6px;font-size:10.5px}
   .ep-cards:not(.compact):not(.grid) .ep-flag{right:4px;top:4px;font-size:9px}
 
-  /* Compact: episode number above the title (the title gets the whole row), small SUB / DUB on the right */
   .ep-cards.compact .ep-card{gap:10px;padding:9px 12px}
   .ep-cards.compact .ep-body{flex-direction:column;align-items:stretch;gap:2px;min-width:0}
   .ep-cards.compact .ep-n{width:auto}
@@ -203,7 +181,6 @@
   .ep-cards.compact .ep-chip i{display:none}
   .ep-cards.compact .ep-chip b{padding:0 9px}
 
-  /* Numbers: five to a row, big enough to tap */
   .ep-cards.grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
   .ep-cards.grid .ep-num{padding:13px 2px}
 }
@@ -212,7 +189,6 @@
   .ep-cards.grid{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
 
-/* Poster size on phones and tablets (Settings > Appearance): Small shows 4 across, Normal 3, Large 2. Computers are handled in style.css */
 @media (max-width:900px){
   html[data-cards=small] .home-main .grid,html[data-cards=small] .grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
   html[data-cards=large] .home-main .grid,html[data-cards=large] .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
@@ -226,15 +202,12 @@
   html[data-cards=large] .rail-track .card{width:138px;flex-basis:138px}
 }
 
-/* Mobile browsers (Brave, Chrome): when the address bar or tab strip hides on scroll, the page grows. Without a background on <html> the new strip
-   at the bottom showed white. Paint the page colour behind everything and let the body fill the full height. */
 html{background-color:var(--bg);min-height:100%}
 @media (max-width:900px){
   body{min-height:100vh;min-height:100dvh}
   .site-header,.site-header.scrolled{bottom:0;transform:translateZ(0);-webkit-backface-visibility:hidden}
 }
 
-/* ===== Bottom nav on phones: Home / Browse / Timeline / My List hug the left, search and the account picture hug the right ===== */
 @media (max-width:900px){
   .site-header .header-inner{justify-content:space-between;padding:0 max(12px,env(safe-area-inset-right,0px)) 0 max(8px,env(safe-area-inset-left,0px))}
   .nav-pill{margin-right:auto}

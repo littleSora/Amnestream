@@ -1,9 +1,8 @@
 /* Intro hero and page-wide motion: poster columns, parallax, eased scrolling, scroll reveals */
 (() => {
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches || (typeof Settings !== 'undefined' && !!Settings.get().reduceMotion);   // OS setting or Settings > Reduce motion
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches || (typeof Settings !== 'undefined' && !!Settings.get().reduceMotion);
   const $ = (s, r = document) => r.querySelector(s);
 
-  /* Wordmark: typed in with a blinking caret */
   const wordEl = $('.intro-word');
   const caret = document.createElement('span');
   caret.className = 'caret'; caret.textContent = '|'; caret.setAttribute('aria-hidden', 'true');
@@ -14,8 +13,8 @@
     el.innerHTML = [...text].map((c, i) => `<span class="ch${cls(i)}" aria-hidden="true">${c}</span>`).join('');
     return [...el.children];
   }
-  const wordSpans = wordEl ? split(wordEl, i => (i >= 4 ? ' st' : '')) : [];   // "stream" is tinted by the theme
-  let caretAt = null;                                  // [span, afterIt]
+  const wordSpans = wordEl ? split(wordEl, i => (i >= 4 ? ' st' : '')) : [];
+  let caretAt = null;
   function place(span, after = true) {
     if (!span) return;
     caretAt = [span, after];
@@ -33,14 +32,13 @@
     place(wordSpans[0], false);
     await sleep(450);
     await typeLine(wordSpans);
-    caret.classList.remove('typing');                  // Idle: blink after the last letter (the Japanese line is static)
+    caret.classList.remove('typing');
   }
   runTyping();
   const replace = () => caretAt && place(...caretAt);
   addEventListener('resize', replace);
   if (document.fonts?.ready) document.fonts.ready.then(replace);
 
-  /* Poster columns */
   const RATIOS = ['3/4', '2/3', '1/1', '3/4', '4/5', '2/3'];
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -64,7 +62,7 @@
   const halves = tracks.map(() => 1);
   const ro = 'ResizeObserver' in window ? new ResizeObserver(es => es.forEach(e => {
     const i = tracks.indexOf(e.target); if (i >= 0) halves[i] = Math.max(1, e.target.offsetHeight / 2);
-    moveCols(true);                      // Re-wrap against the new column height
+    moveCols(true);
   })) : null;
   tracks.forEach(t => ro && ro.observe(t));
 
@@ -75,9 +73,9 @@
       let mine = list.filter((_, i) => i % tracks.length === c);
       if (mine.length > 1 && mine.length % 2) mine = mine.slice(0, -1);
       const half = mine.map((m, i) => cardHTML(m, i + c * 2)).join('');
-      track.innerHTML = half + half;                 // Duplicated so the scroll offset can wrap seamlessly
+      track.innerHTML = half + half;
       track.setAttribute('aria-hidden', 'true');
-      track.classList.add('ready');                  // Fade in once everything has loaded
+      track.classList.add('ready');
       halves[c] = Math.max(1, track.offsetHeight / 2);
     });
   }
@@ -105,7 +103,6 @@
       .then(() => fillColumns(items))).catch(() => {});
   }
 
-  /* Eased (inertial) scrolling */
   const doc = document.documentElement;
   const isCoarse = matchMedia('(pointer: coarse)').matches;
   let cur = scrollY, target = scrollY, raf = 0, selfScroll = false;
@@ -134,14 +131,13 @@
   if (!reduce && !isCoarse) {
     doc.classList.add('smooth');
     addEventListener('wheel', e => {
-      if (e.ctrlKey || e.defaultPrevented) return;          // Pinch-zoom or handled elsewhere
-      if (insideScroller(e.target, e.deltaY)) return;        // Let inner panels scroll natively
+      if (e.ctrlKey || e.defaultPrevented) return;
+      if (insideScroller(e.target, e.deltaY)) return;
       e.preventDefault();
       const unit = e.deltaMode === 1 ? 34 : e.deltaMode === 2 ? innerHeight : 1;
       target = clamp(target + e.deltaY * unit * 0.9);
       kick();
     }, { passive: false });
-    // Keyboard, scrollbar drag and anchor jumps adopt the native position
     addEventListener('scroll', () => {
       if (selfScroll) { selfScroll = false; return; }
       cur = target = scrollY; update();
@@ -149,19 +145,18 @@
     addEventListener('resize', () => { target = clamp(target); });
   }
 
-  /* Parallax and scroll-driven poster columns */
   const bg = $('.intro-bg'), copy = $('.intro-copy'), cols = $('.intro-cols'), intro = $('.intro');
   const bgSpans = [...document.querySelectorAll('.intro-bg span')];
-  const COL_SPEED = 0.6;                 // Px the columns travel per px scrolled
+  const COL_SPEED = 0.6;
   let mx = 0, my = 0, smx = 0, smy = 0, colCur = scrollY * COL_SPEED;
 
   function moveCols(force) {
     const t = scrollY * COL_SPEED;
-    colCur += (t - colCur) * 0.14;       // Slight lag so columns settle softly
+    colCur += (t - colCur) * 0.14;
     if (!force && Math.abs(t - colCur) < 0.05) return;
     tracks.forEach((tr, i) => {
       const h = halves[i], o = ((colCur % h) + h) % h;
-      tr.style.transform = `translate3d(0,${i % 2 === 0 ? -o : o - h}px,0)`;   // Columns travel in opposite directions
+      tr.style.transform = `translate3d(0,${i % 2 === 0 ? -o : o - h}px,0)`;
     });
   }
 
@@ -186,7 +181,6 @@
     addEventListener('scroll', update, { passive: true });
   }
 
-  /* Reveal sections as they enter */
   const targets = document.querySelectorAll('main > .bento, main > .rail, main .home-cols .block, main .home-side .side-card');
   targets.forEach(el => el.classList.add('rv'));
   if ('IntersectionObserver' in window && !reduce) {
@@ -199,7 +193,6 @@
     targets.forEach(el => io.observe(el));
   } else targets.forEach(el => el.classList.add('in'));
 
-  // Scroll cue jumps to the content
   const cue = $('.intro-cue');
   if (cue) cue.addEventListener('click', () => {
     target = clamp(intro.getBoundingClientRect().height - 10);

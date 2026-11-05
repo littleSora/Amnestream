@@ -1,5 +1,4 @@
-/* Service worker: installable app and offline shell; pages, scripts and styles are network-first, AniList posters and Google Fonts cache-first; change VERSION to make every device drop its old copy */
-const VERSION = 'amnestream-v73', IMG = 'amnestream-img-v1';
+const VERSION = 'amnestream-v76', IMG = 'amnestream-img-v1';
 const SHELL = [
   "index.html",
   "browse.html",
@@ -9,7 +8,6 @@ const SHELL = [
   "timeline.html",
   "profile.html",
   "settings.html",
-  "leaderboard.html",
   "dmca.html",
   "favicon.svg",
   "manifest.webmanifest",
@@ -31,13 +29,14 @@ const SHELL = [
   "js/mal.js",
   "js/common.js",
   "js/home.js",
-  "js/leaderboard.js",
   "js/mylist.js",
   "js/profile.js",
   "js/settings.js",
   "js/timeline.js",
   "js/watch.js",
   "js/wave.js",
+  "js/scenes.js",
+  "js/voxel.js",
   "data/catalog.json"
 ];
 
@@ -81,18 +80,17 @@ async function cacheFirst(req) {
   const res = await fetch(req);
   if (res.ok || res.type === 'opaque') {
     cache.put(req, res.clone());
-    cache.keys().then(k => { if (k.length > 400) cache.delete(k[0]); });   // Keep it bounded
+    cache.keys().then(k => { if (k.length > 400) cache.delete(k[0]); });
   }
   return res;
 }
 
 self.addEventListener('fetch', e => {
   const req = e.request;
-  if (req.method !== 'GET') return;                       // AniList GraphQL is POST: never touched
+  if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  if (url.origin === location.origin && /\/api\//.test(url.pathname)) return;   // Serverless functions (MAL client ID etc.) always go to the network
+  if (url.origin === location.origin && /\/api\//.test(url.pathname)) return;
   if (url.origin === location.origin) {
-    // ?id=... pages share one cached HTML file
     const key = url.pathname.endsWith('.html') || req.mode === 'navigate' ? url.origin + url.pathname : req;
     e.respondWith(staleWhileRevalidate(e, req, key));
   } else if ((url.hostname.endsWith('anilist.co') && req.destination === 'image') ||

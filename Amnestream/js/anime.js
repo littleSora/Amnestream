@@ -1,4 +1,3 @@
-/* Anime details page: poster, sidebar, synopsis and episodes / relations / recommendations / characters tabs */
 const ID = Number(new URLSearchParams(location.search).get('id'));
 let M = null, EPS = {}, epSearch = '';
 
@@ -8,7 +7,6 @@ const compact = n => new Intl.NumberFormat('en', { notation: 'compact', maximumF
 const dateLong = d => (d && d.year)
   ? new Date(d.year, (d.month || 1) - 1, d.day || 1).toLocaleDateString('en', { month: 'long', day: d.day ? 'numeric' : undefined, year: 'numeric' }) : 'TBA';
 
-/* Favourites (heart button), stored locally and included in the sync code */
 const Fav = {
   ids: () => jget('as_fav', []),
   has: id => Fav.ids().includes(id),
@@ -22,7 +20,7 @@ const Fav = {
 };
 
 async function initAnime() {
-  if (!localStorage.getItem('as_epstyle19')) {            // Default to the episode-card layout once for existing users
+  if (!localStorage.getItem('as_epstyle19')) {
     localStorage.setItem('as_epstyle19', '1');
     if (Settings.get().epStyle === 'grid') Settings.set('epStyle', 'list');
   }
@@ -36,7 +34,6 @@ async function initAnime() {
       if (x && !EPS[+x[1]]) EPS[+x[1]] = { title: x[2] || '', thumb: e.thumbnail };
     });
     render();
-    // Episodes AniList has no preview or title for: fill them in from the extra source, then repaint the list
     Api.episodeArt(ID).then(art => {
       let changed = false;
       Object.keys(art).forEach(n => {
@@ -188,11 +185,10 @@ function render() {
     toast(on ? 'Added to favourites' : 'Removed from favourites');
   };
   $('#share-btn').onclick = async () => {
-    try { if (navigator.share) { await navigator.share({ title, url: location.href }); return; } } catch { return; }   // Share sheet closed
+    try { if (navigator.share) { await navigator.share({ title, url: location.href }); return; } } catch { return; }
     navigator.clipboard?.writeText(location.href).then(() => toast('Link copied'));
   };
 
-  /* Synopsis: show Read More only when the text is cut off */
   const syn = $('#syn-text'), more = $('#syn-more');
   const fit = () => { if (syn.classList.contains('clamp')) more.hidden = syn.scrollHeight <= syn.clientHeight + 1; };
   more.onclick = () => {
@@ -202,21 +198,18 @@ function render() {
   fit();
   document.fonts?.ready.then(fit);
 
-  /* Tabs */
-  /* Sliding highlight under the active tab */
   const ink = $('.dp-ink');
   const placeInk = () => {
     const on = $('.dp-tab.on'); if (!on || !ink) return;
     ink.style.width = on.offsetWidth + 'px';
     ink.style.transform = `translateX(${on.offsetLeft}px)`;
-    requestAnimationFrame(() => ink.classList.add('ready'));      // First placement jumps, later ones slide
+    requestAnimationFrame(() => ink.classList.add('ready'));
   };
-  /* Tab content fades in with staggered cards */
   let animT = 0;
   const animatePanel = panel => {
     if (!panel) return;
     $$('.ep-card, .card, .dp-char', panel).slice(0, 24).forEach((el, i) => el.style.setProperty('--i', i));
-    panel.classList.remove('dp-anim'); void panel.offsetWidth;    // Restart the animation
+    panel.classList.remove('dp-anim'); void panel.offsetWidth;
     panel.classList.add('dp-anim');
     clearTimeout(animT); animT = setTimeout(() => panel.classList.remove('dp-anim'), 1400);
   };
@@ -233,10 +226,8 @@ function render() {
   if (typeof Comments !== 'undefined') Comments.mountGated($('#p-cm'), m.id, refreshCommentCount, null, hidden => { if (hidden) $('#cm-total').textContent = ''; else refreshCommentCount(); });
   else $('#p-cm').innerHTML = '<p class="empty">Comments failed to load. Refresh the page.</p>';
 
-  /* MyAnimeList panel: set your MAL status, episodes and score for this anime */
   if (m.idMal && typeof Mal !== 'undefined') Mal.panel($('#mal-box'), m);
 
-  /* Seasons: every season, movie and OVA of this show, below the episodes */
   Api.seasonChain(m.id).then(list => {
     const box = $('#seasons'); if (!box || list.length < 2) return;
     let n = 0;
@@ -253,7 +244,6 @@ function render() {
     $('.ss-card.on', box)?.scrollIntoView({ block: 'nearest', inline: 'center' });
   }).catch(() => {});
 
-  /* Episode tools */
   const q = $('#ep-q');
   $('#ep-find').onclick = () => { q.classList.toggle('open'); if (q.classList.contains('open')) q.focus(); else { q.value = ''; epSearch = ''; renderEps(); } };
   q.oninput = () => { epSearch = q.value.trim().toLowerCase(); renderEps(); };
@@ -263,7 +253,7 @@ function render() {
     Settings.set('epStyle', order[(order.indexOf(cur) + 1) % 3]); renderEps(); animatePanel($('#p-ep'));
   };
   renderEps(); animatePanel($('#p-ep'));
-  if (airedCount(m) > 0) {                                  // Find out up front whether the show has a dub at all, so DUB is crossed out before anyone clicks it
+  if (airedCount(m) > 0) {
     const had = Dub.missing(m.id, 1);
     Dub.probe(m.id, 1).then(r => {
       if (r === 'no') Dub.mark(m.id, 1), Dub.markSeries(m.id);
@@ -273,14 +263,13 @@ function render() {
     });
   }
 
-  /* Episode click opens the preview modal; ctrl/cmd-click opens the player page */
   $('#ep-wrap').addEventListener('click', e => {
     if (e.button || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
     const a = e.target.closest('a'), c = a?.closest('.ep-card');
     if (!c) return;
     e.preventDefault();
     const chip = a.classList.contains('ep-chip');
-    if (chip && a.dataset.l === 'dub' && Dub.missing(m.id, +c.dataset.n)) { toast('No dub for this episode.'); return; }   // Crossed out: cannot be picked
+    if (chip && a.dataset.l === 'dub' && Dub.missing(m.id, +c.dataset.n)) { toast('No dub for this episode.'); return; }
     EpModal.open(+c.dataset.n, { lang: chip ? a.dataset.l : undefined, play: chip });
   });
   const tb = $('#trailer-btn');
@@ -302,8 +291,8 @@ function openShell(cls, inner, onClose) {
     document.removeEventListener('keydown', key, true);
     el.classList.remove('on');
     document.body.classList.remove('modal-open');
-    setTimeout(() => el.remove(), 180);                       // Fade out, then remove the iframe to stop playback
-    try { prevFocus?.focus?.({ preventScroll: true }); } catch { /* ignore */ }
+    setTimeout(() => el.remove(), 180);
+    try { prevFocus?.focus?.({ preventScroll: true }); } catch { }
     onClose?.();
   };
   const key = e => {
@@ -329,7 +318,6 @@ const TrailerModal = {
   },
 };
 
-/* Episode preview: in-place playback, SUB/DUB switch, prev/next, open full player */
 const EpModal = {
   n: 1, lang: 'sub', playing: false, ui: null, dirty: false,
   open(n, { lang, play = false } = {}) {
@@ -417,14 +405,14 @@ const EpModal = {
       <div class="epm-loading"><span class="spinner"></span>Loading player...</div>`;
     const hint = $('#epm-hint', this.ui.el), n = this.n, lang = this.lang;
     if (hint) hint.hidden = true;
-    if (lang === 'dub') Dub.probe(M.id, n).then(r => {            // No dub on the servers: say so and play sub instead of an error page
+    if (lang === 'dub') Dub.probe(M.id, n).then(r => {
       if (r !== 'no' || !this.ui || this.n !== n || this.lang !== 'dub') return;
       Dub.mark(M.id, n); this.dirty = true; this.lang = 'sub';
       toast('No dub for this episode, playing Sub.');
       this.paint(); this.start();
     });
     clearTimeout(this._slow);
-    this._slow = setTimeout(() => {                               // No sign of life: cover the provider's raw error page with a plain message
+    this._slow = setTimeout(() => {
       const cover = $('.epm-loading', st); if (!cover) return;
       cover.style.pointerEvents = 'auto';
       cover.innerHTML = 'Server error. Please swap to another server (open the full player).';
@@ -469,7 +457,7 @@ function renderEps() {
   $('#ep-style').title = `View: ${STYLE_NAME[style]} (click to change)`;
 
   $('#ep-wrap').className = s.hideSpoilers ? 'spoil' : '';
-  if (!total) {                                             // Nothing has aired: no made-up episode list
+  if (!total) {
     const at = m.nextAiringEpisode?.airingAt, sd = m.startDate || {};
     const when = at ? new Date(at * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
       : sd.year ? new Date(sd.year, (sd.month || 1) - 1, sd.day || 1).toLocaleDateString(undefined, { year: 'numeric', ...(sd.month ? { month: 'long' } : {}), ...(sd.day ? { day: 'numeric' } : {}) }) : '';

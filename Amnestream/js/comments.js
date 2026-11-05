@@ -1,5 +1,3 @@
-/* Comments on the anime details page. Stored in Supabase (supabase/comments.sql), so they stay for good.
-   Reading uses the public REST endpoint (no login, no library); posting and deleting use the signed-in Supabase client. */
 const Comments = {
   PAGE: 15, MAX: 1000,
   _base: () => `${window.AS_CONFIG.supabaseUrl.replace(/\/$/, '')}/rest/v1/comments`,
@@ -61,9 +59,6 @@ const Comments = {
   },
 
 
-  /* ---------- Spoiler gate ----------
-     Comments are hidden by default (Settings > Content and privacy > Show comments). Each anime then shows a spoiler alert, and the person can open the
-     comments for that one anime only (remembered in as_cm_ok). Turning the setting on shows comments on every anime. */
   OK_KEY: 'as_cm_ok',
   _oks: () => { const l = jget('as_cm_ok', []); return Array.isArray(l) ? l : []; },
   allowed: id => !!Settings.get().showComments || Comments._oks().includes(Number(id)),
@@ -75,7 +70,7 @@ const Comments = {
       if (Comments.allowed(animeId)) {
         onGate && onGate(false);
         Comments.mount(root, animeId, onCount, episode);
-        if (!Settings.get().showComments) {                                  // Opened for this anime only: offer to hide them again
+        if (!Settings.get().showComments) {
           const b = document.createElement('div'); b.className = 'cm-regate';
           b.innerHTML = '<button type="button" class="cm-link">Hide comments for this anime</button>';
           b.firstChild.onclick = () => { Comments.unallow(animeId); draw(); };
@@ -83,7 +78,7 @@ const Comments = {
         }
         return;
       }
-      root._tok = {};                                                        // Anything still loading for this box is now stale
+      root._tok = {};
       onGate && onGate(true);
       root.innerHTML = `<div class="cm-gate" role="group" aria-label="Spoiler alert">
         <span class="cm-gate-ic">${icon('eye', 22)}</span>
@@ -99,7 +94,7 @@ const Comments = {
 
   async mount(root, animeId, onCount, episode = null) {
     if (!Comments.ready()) { root.innerHTML = '<p class="empty">Comments need the login system. Add your Supabase URL and key in js/config.js.</p>'; return; }
-    const st = { offset: 0, total: 0, replies: {} }, tok = root._tok = {};   // A newer mount (next episode) makes older answers stale
+    const st = { offset: 0, total: 0, replies: {} }, tok = root._tok = {};
     const me = () => Auth.current();
 
     root.innerHTML = `<div class="cm"><div class="cm-compose"></div><div class="cm-list"></div><div class="cm-more"></div></div>`;
@@ -127,7 +122,7 @@ const Comments = {
         compose.innerHTML = '<div class="cm-login"><span>Log in to join the conversation.</span><button type="button" class="dp-btn primary sm" id="cm-login">Log in</button></div>';
         $('#cm-login', compose).onclick = () => {
           openAuth('login');
-          const t = setInterval(() => { if (!$('.auth-bg')) { clearInterval(t); if (me()) { paintCompose(); paintList(true); } } }, 500);   // Repaint once the login popup closes
+          const t = setInterval(() => { if (!$('.auth-bg')) { clearInterval(t); if (me()) { paintCompose(); paintList(true); } } }, 500);
         };
         return;
       }
@@ -140,7 +135,7 @@ const Comments = {
 
     let rows = [];
     const paintList = (reset) => {
-      if (reset) { /* repaint everything already loaded (used after login so Delete shows) */ }
+      if (reset) { }
       listEl.innerHTML = rows.length ? rows.map(c => rowHTML(c, st.replies[c.id])).join('') : (episode == null ? '<p class="empty">No comments yet. Be the first.</p>' : '<p class="empty">No comments on this episode yet. Be the first.</p>');
       moreEl.innerHTML = rows.length < st.total ? '<button type="button" class="dp-btn sm" id="cm-more">Load more</button>' : '';
       const b = $('#cm-more', moreEl); if (b) b.onclick = () => load();

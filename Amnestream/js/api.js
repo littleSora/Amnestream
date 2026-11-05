@@ -1,21 +1,16 @@
-/* AniList GraphQL client: slim queries, caching, de-duplicated and abortable requests, multi-host failover */
-
-/* All hosts share the AniList schema, so only the hostname changes; the first to answer wins */
 const ANILIST_ENDPOINTS = [
-  'https://graphql.aniraku.tech/',   // Primary: full database, no depth cap
-  'https://graphql.anilist.co',      // Official: rate limited
+  'https://graphql.aniraku.tech/',
+  'https://graphql.anilist.co',
 ];
 
-const EP_COOLDOWN = 60e3;      // Park a failing host for 60s
-const RATE_PARK   = 90e3;      // Rate limits park a host longer (per-minute window)
+const EP_COOLDOWN = 60e3;
+const RATE_PARK   = 90e3;
 const _epCooldown = new Map();
 const _probing    = new Set();
-let _epIndex = 0;              // Stay on the host that last worked
+let _epIndex = 0;
 
-/* A host returning empty or malformed lists is parked briefly and skipped */
 const THIN_PARK = 120e3;
 
-/* ?host=<name> forces a host for testing (?host=0 clears it) */
 const _hostPref = (() => {
   try {
     const q = new URLSearchParams(location.search).get('host');
@@ -59,12 +54,10 @@ async function _pace(endpoint, signal) {
 }
 
 
-const EP_COOLDOWN_429 = 10e3;  // Short rate-limit blips park a host for only 10s
+const EP_COOLDOWN_429 = 10e3;
 
-/* Errors that mean the host cannot answer, not that the query is wrong */
 const VALIDATION_RE = /Cannot query field|Unknown argument|Unknown type|is not defined|Syntax Error/i;
 
-/* Full metadata (details page and spotlight) */
 const MEDIA_CORE = `
 fragment MediaCore on Media {
   id
@@ -90,7 +83,6 @@ fragment MediaCore on Media {
   nextAiringEpisode { episode airingAt timeUntilAiring }
 }`;
 
-/* Slim fields for cards, rows and timeline bars */
 const MEDIA_CARD = `
 fragment MediaCard on Media {
   id
@@ -108,8 +100,6 @@ fragment MediaCard on Media {
   nextAiringEpisode { episode airingAt }
 }`;
 
-/* Slim fields for the watch page */
-/* Watch page: also carries the per-episode previews and titles for its episode list */
 const MEDIA_PLAYER = `
 fragment MediaPlayer on Media {
   id
@@ -125,7 +115,6 @@ fragment MediaPlayer on Media {
   streamingEpisodes { title thumbnail }
 }`;
 
-/* Slim fields for search suggestions */
 const MEDIA_SUGGEST = `
 fragment MediaSuggest on Media {
   id
@@ -139,7 +128,6 @@ fragment MediaSuggest on Media {
   nextAiringEpisode { episode }
 }`;
 
-/* Cache */
 const TTL = { short: 2 * 60e3, normal: 5 * 60e3, long: 15 * 60e3 };
 const _mem = new Map();
 const _inflight = new Map();
@@ -159,7 +147,7 @@ function _cacheGet(key) {
       if (o.exp > Date.now()) { _mem.set(key, o); return o; }
       sessionStorage.removeItem('al:' + key);
     }
-  } catch { /* storage unavailable */ }
+  } catch { }
   return null;
 }
 function _cacheSet(key, data, ttl) {
@@ -168,13 +156,12 @@ function _cacheSet(key, data, ttl) {
   if (_mem.size > 150) _mem.delete(_mem.keys().next().value);
   try { sessionStorage.setItem('al:' + key, JSON.stringify(o)); }
   catch {
-    try { Object.keys(sessionStorage).filter(k => k.startsWith('al:')).forEach(k => sessionStorage.removeItem(k)); } catch { /* ignore */ }
+    try { Object.keys(sessionStorage).filter(k => k.startsWith('al:')).forEach(k => sessionStorage.removeItem(k)); } catch { }
   }
 }
 
-/* Transport with failover */
-const REQ_TIMEOUT = 12e3;          // Give up on requests that hang too long
-const MAX_PARALLEL = 4;            // Throttle requests so AniList's rate limit is not mistaken for a dead site
+const REQ_TIMEOUT = 12e3;
+const MAX_PARALLEL = 4;
 let _busy = 0, _backoffUntil = 0;
 const _waiting = [];
 const _abortErr = () => new DOMException('Aborted', 'AbortError');
@@ -191,7 +178,7 @@ function _slot(signal) {           // Wait for a free slot; leave the queue if t
 function _release() { _busy--; const next = _waiting.shift(); if (next) next(); }
 
 async function _post(endpoint, query, variables, signal) {
-  await _slot(signal);                       // At most 4 requests in flight
+  await _slot(signal);
   try {
     const ctrl = new AbortController();
     let timedOut = false;
@@ -209,7 +196,7 @@ async function _post(endpoint, query, variables, signal) {
           signal: ctrl.signal,
         });
       } catch (e) {
-        if (e && e.name === 'AbortError' && signal && signal.aborted) throw e;   // Caller cancelled
+        if (e && e.name === 'AbortError' && signal && signal.aborted) throw e;
         const err = new Error(timedOut ? 'Timed out' : 'Rate limited');
         err.status = timedOut ? 408 : 429;
         throw err;
@@ -259,12 +246,12 @@ async function _request(query, variables, signal, valid) {
     _probing.add(ep);
     try {
       const data = await _post(ep, query, variables, signal);
-      if (_thin(data)) {                                  // Empty 200 is not a real success
+      if (_thin(data)) {
         if (!thinFallback) thinFallback = data;
         _epCooldown.set(ep, Date.now() + THIN_PARK);
         continue;
       }
-      if (valid && !valid(data)) {                        // Wrong-shaped 200: try the next host without parking
+      if (valid && !valid(data)) {
         if (!thinFallback) thinFallback = data;
         continue;
       }
@@ -275,13 +262,13 @@ async function _request(query, variables, signal, valid) {
       lastErr = err;
       if (!VALIDATION_RE.test(err.message || '')) {
         _epCooldown.set(ep, Date.now() + (err.status === 429 ? RATE_PARK : EP_COOLDOWN));
-        if (err.status === 429) _backoffUntil = Date.now() + 30e3;   // Delay optional work
-        if (idx === _epIndex) _epIndex = 0;                          // Avoid sticking to a dead host
+        if (err.status === 429) _backoffUntil = Date.now() + 30e3;
+        if (idx === _epIndex) _epIndex = 0;
       }
     } finally { _probing.delete(ep); }
   }
 
-  if (thinFallback) return thinFallback;                  // All hosts were thin: show what we have
+  if (thinFallback) return thinFallback;
 
   const ep = ANILIST_ENDPOINTS[_epIndex] || ANILIST_ENDPOINTS[0];
   try {
@@ -297,7 +284,6 @@ async function _request(query, variables, signal, valid) {
   }
 }
 
-/* Baked catalog: data/catalog.json holds long-TTL home page answers and is used instead of the network when available */
 const BAKE_URL = 'data/catalog.json';
 let _baked = null, _bakePromise = null;
 
@@ -310,7 +296,6 @@ const _noBake = (() => {
   } catch { return false; }
 })();
 
-/* Stored payloads count only when complete; otherwise fall back to live data */
 const BAKE_CHECK = {
   homeRails:     d => !!(d && d.trending && (d.trending.media || []).length),
   trendingQuick: d => !!(d && d.Page && (d.Page.media || []).length),
@@ -359,10 +344,10 @@ function _gqlLive(query, variables, { ttl = TTL.normal, signal, fresh = false, l
     if (hit) return Promise.resolve(hit.data);
   }
   if (lazy && _backoffUntil > Date.now()) return Promise.reject(new Error('AniList is busy'));
-  if (_inflight.has(key)) {                         // Join an identical in-flight request
+  if (_inflight.has(key)) {
     const shared = _inflight.get(key);
     if (!signal) return shared;
-    return new Promise((res, rej) => {              // Callers can still cancel their own wait
+    return new Promise((res, rej) => {
       const stop = () => rej(new DOMException('Aborted', 'AbortError'));
       if (signal.aborted) return stop();
       signal.addEventListener('abort', stop, { once: true });
@@ -390,7 +375,6 @@ const COUNT_CAP = 5000;
 const COUNT_FORMATS = ['TV', 'TV_SHORT', 'MOVIE', 'SPECIAL', 'OVA', 'ONA', 'MUSIC'];
 const COUNT_STATUS = ['FINISHED', 'RELEASING', 'NOT_YET_RELEASED', 'CANCELLED', 'HIATUS'];
 
-/* Maps picker names to AniList genres or tags (e.g. Military is a tag, not a genre) */
 const GENRE_TAGS = {
   'Boys Love': ["Boys' Love", 'Yaoi', 'Boys Love'],
   'Erotica': ['Erotica', 'Nudity'], 'Girls Love': ["Girls' Love", 'Yuri', 'Girls Love'], 'Gourmet': ['Food'],
@@ -398,7 +382,6 @@ const GENRE_TAGS = {
   'Samurai': ['Samurai'], 'School': ['School'], 'Seinen': ['Seinen'], 'Shoujo': ['Shoujo'], 'Shounen': ['Shounen'],
   'Space': ['Space', 'Space Opera'], 'Vampire': ['Vampire'],
 };
-/* Tags that show a genre is present without being the main genre (an Action title with a romantic tag, a Romance title with fights...); unknown names simply match nothing */
 const SUBTLE_TAGS = {
   Romance: ['Love Triangle', 'Unrequited Love', 'Matchmaking', 'Heterosexual', 'Age Gap', 'Marriage', 'Arranged Marriage', 'Cohabitation', 'Tsundere', 'Yandere', "Teens' Love"],
   Action: ['Martial Arts', 'Swordplay', 'Gunfights', 'Battle Royale', 'Super Power', 'War', 'Assassins', 'Guns', 'Tournament', 'Espionage', 'Archery', 'Boxing'],
@@ -443,12 +426,11 @@ const _filterArgs = has => [
 ].filter(Boolean);
 const _baseOf = v => _gsplit({ search: v.search, genres: v.genres, format: v.format, status: v.status, season: v.season, year: v.year });
 
-/* Popularity ranges that cover every title; POP is the first cut and over-cap ranges are halved */
 const POP = [-1, 5, 20, 60, 150, 400, 1000, 2500, 6000, 15000, 40000, 100000, 10000000];
 function popSlices(pop) {
   if (!pop) return POP.slice(1).map((hi, i) => ({ pop: [POP[i], hi] }));
   const [lo, hi] = pop;
-  if (hi - lo <= 1) return null;                                    // Single value still over the cap
+  if (hi - lo <= 1) return null;
   const mid = Math.floor((lo + hi) / 2);
   return [{ pop: [lo, mid] }, { pop: [mid, hi] }];
 }
@@ -462,13 +444,12 @@ function _sliceQuery(base, slices) {
     if (has.genres) a.push('genre_in: $genres');
     if (has.tags) a.push('tag_in: $tags');
     if (has.season) a.push('season: $season');
-    // Each is either the user's pick (variable) or the slice being counted (constant)
     if (has.format) a.push('format: $format');
     else if (sl.format) a.push(`format: ${sl.format}`);
     else if (sl.formatRest) a.push(`format_not_in: [${COUNT_FORMATS.join(', ')}]`);
     if (has.status) a.push('status: $status'); else if (sl.status) a.push(`status: ${sl.status}`);
     if (has.year) a.push('seasonYear: $year'); else if (sl.year) a.push(`seasonYear: ${Number(sl.year)}`);
-    if (sl.pop) a.push(`popularity_greater: ${Number(sl.pop[0])}`, `popularity_lesser: ${Number(sl.pop[1]) + 1}`);   // (lo, hi] range
+    if (sl.pop) a.push(`popularity_greater: ${Number(sl.pop[0])}`, `popularity_lesser: ${Number(sl.pop[1]) + 1}`);
     return `s${i}: Page(page: 1, perPage: 1) { pageInfo { total } media(${a.join(', ')}) { id } }`;
   }).join('\n  ');
   return { query: `query Count${decl.length ? '(' + decl.join(', ') + ')' : ''} {\n  ${body}\n}`, vars };
@@ -476,7 +457,7 @@ function _sliceQuery(base, slices) {
 
 async function _countSlices(base, slices, signal, lazy = true) {
   const chunks = [];
-  for (let i = 0; i < slices.length; i += 30) chunks.push(slices.slice(i, i + 30));    // Keep requests small
+  for (let i = 0; i < slices.length; i += 30) chunks.push(slices.slice(i, i + 30));
   const parts = await Promise.all(chunks.map(async ch => {
     const { query, vars } = _sliceQuery(base, ch);
     const d = await gql(query, vars, { ttl: TTL.long, signal, lazy });
@@ -489,8 +470,7 @@ async function _countSlices(base, slices, signal, lazy = true) {
   return parts.flat();
 }
 
-/* Deep paging past AniList's 5000-title cap: split by popularity ranges, count each, map a page to its ranges */
-const _planCache = new Map();                                   // Filters to cached plan of popularity ranges (lowest first)
+const _planCache = new Map();
 const _planKey = base => JSON.stringify([base, adultOn()]);
 /* Plans are also kept in localStorage (2 hours): counting the ranges takes several round trips, so a reload or a later visit should not repeat it */
 const PLAN_TTL = 2 * 3600e3, _planStoreKey = base => 'as_plan:' + _hash(_planKey(base));
@@ -498,7 +478,7 @@ function _planStored(base) {
   try {
     const o = JSON.parse(localStorage.getItem(_planStoreKey(base)));
     if (o && o.exp > Date.now() && Array.isArray(o.p) && o.p.length) return o.p;
-  } catch { /* storage unavailable */ }
+  } catch { }
   return null;
 }
 function _planSave(base, p) {
@@ -506,7 +486,7 @@ function _planSave(base, p) {
     const keys = Object.keys(localStorage).filter(k => k.startsWith('as_plan:'));
     if (keys.length > 40) keys.forEach(k => { try { if (JSON.parse(localStorage.getItem(k)).exp < Date.now()) localStorage.removeItem(k); } catch { localStorage.removeItem(k); } });
     localStorage.setItem(_planStoreKey(base), JSON.stringify({ exp: Date.now() + PLAN_TTL, p }));
-  } catch { /* storage full */ }
+  } catch { }
 }
 /* True when the plan is already known (finished in memory or stored), so using it costs no network */
 const _planPeek = base => { const h = _planCache.get(_planKey(base)); return !!((h && h.exp > Date.now() && h.done) || _planStored(base)); };
@@ -520,10 +500,10 @@ function _popBuckets(base) {
     const totals = await _countSlices(base, slices, undefined, false);
     const parts = await Promise.all(slices.map((sl, i) => {
       if (totals[i] < COUNT_CAP) return [{ pop: sl.pop, count: totals[i] }];
-      const kids = popSlices(sl.pop);                           // Still over the cap: halve it
+      const kids = popSlices(sl.pop);
       return kids ? expand(kids) : [{ pop: sl.pop, count: COUNT_CAP, capped: true }];
     }));
-    return parts.flat();                                        // Promise.all keeps order, so ranges stay sorted by popularity
+    return parts.flat();
   };
   const p = expand(popSlices(null));
   const entry = { exp: Date.now() + TTL.long, p, done: false };
@@ -538,7 +518,7 @@ function _planWindow(leaves, offset, per) {
   let skip = offset, need = per;
   for (let i = leaves.length - 1; i >= 0 && need > 0; i--) {
     const lf = leaves[i];
-    if (skip >= lf.count) { skip -= lf.count; continue; }         // Range is entirely before this page
+    if (skip >= lf.count) { skip -= lf.count; continue; }
     const take = Math.min(need, lf.count - skip);
     segs.push({ pop: lf.pop, from: Math.floor(skip / per) + 1, to: Math.floor((skip + take - 1) / per) + 1, cut: skip % per, take });
     need -= take; skip = 0;
@@ -551,7 +531,7 @@ function _deepQuery(base, segs, per) {
   const common = ['type: ANIME', ...(adultOn() ? [] : ['isAdult: false']), ..._filterArgs(has), 'sort: POPULARITY_DESC'];
   const rows = [];
   segs.forEach((sg, i) => {
-    const a = [...common, `popularity_greater: ${Number(sg.pop[0])}`, `popularity_lesser: ${Number(sg.pop[1]) + 1}`];    // (lo, hi] range
+    const a = [...common, `popularity_greater: ${Number(sg.pop[0])}`, `popularity_lesser: ${Number(sg.pop[1]) + 1}`];
     for (let pg = sg.from; pg <= sg.to; pg++) rows.push(`p${i}_${pg}: Page(page: ${pg}, perPage: ${per}) { media(${a.join(', ')}) { ...MediaCard } }`);
   });
   return { query: `${MEDIA_CARD}\nquery Deep${decl.length ? '(' + decl.join(', ') + ')' : ''} {\n  ${rows.join('\n  ')}\n}`, vars };
@@ -560,10 +540,10 @@ function _deepQuery(base, segs, per) {
 
 /* Titles with nothing to watch yet (not released, or episode 1 not aired) are hidden from lists */
 function hasEpisodes(m) {
-  if (!m || !m.status) return true;                                   // Unknown: do not hide
+  if (!m || !m.status) return true;
   if (m.status === 'NOT_YET_RELEASED') return false;
   if (m.episodes === 0) return false;
-  if (m.status === 'RELEASING' && m.nextAiringEpisode && m.nextAiringEpisode.episode <= 1) return false;   // Episode 1 not aired yet
+  if (m.status === 'RELEASING' && m.nextAiringEpisode && m.nextAiringEpisode.episode <= 1) return false;
   return true;
 }
 const _playable = list => Array.isArray(list) ? list.filter(hasEpisodes) : list;
@@ -577,7 +557,7 @@ async function _episodeArt(id) {
   try {
     const c = JSON.parse(localStorage.getItem(key) || 'null');
     if (c && Date.now() - c.t < c.ttl) return c.v;
-  } catch { /* no cache */ }
+  } catch { }
   let out = {};
   try {
     const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), 8000);
@@ -587,13 +567,13 @@ async function _episodeArt(id) {
       const eps = (await res.json()).episodes || {};
       Object.keys(eps).forEach(k => {
         const n = +k, e = eps[k];
-        if (!n || !e) return;                                               // Skips specials ("S1") and junk
+        if (!n || !e) return;
         const t = (e.title && (e.title.en || e.title['x-jat'] || e.title.ja)) || '';
         if (e.image || t) out[n] = { title: t, thumb: e.image || '' };
       });
     }
-  } catch { /* offline or blocked */ }
-  try { localStorage.setItem(key, JSON.stringify({ t: Date.now(), ttl: Object.keys(out).length ? 864e5 : 36e5, v: out })); } catch { /* storage full */ }
+  } catch { }
+  try { localStorage.setItem(key, JSON.stringify({ t: Date.now(), ttl: Object.keys(out).length ? 864e5 : 36e5, v: out })); } catch { }
   return out;
 }
 
@@ -641,7 +621,7 @@ const Api = {
       .then(d => {
         if (!d) return d;
         const out = { ...d };
-        for (const k of ['trending', 'seasonPopular', 'topRated', 'topAiring']) if (d[k]) out[k] = _scrubPage({ Page: d[k] }).Page;   // "upcoming" stays: it is the Coming soon row
+        for (const k of ['trending', 'seasonPopular', 'topRated', 'topAiring']) if (d[k]) out[k] = _scrubPage({ Page: d[k] }).Page;
         return out;
       });
   },
@@ -674,7 +654,7 @@ const Api = {
   /* Browse > Latest episodes: loads the whole last-7-days schedule once (shared by every filter change), applies Browse filters client-side,
      one card per show, then pages the filtered result so every page is full and the page count is exact */
   async _latestAll(opts = {}) {
-    const until = Math.floor(Date.now() / 300000) * 300;          // 5 min steps keep the cache key stable
+    const until = Math.floor(Date.now() / 300000) * 300;
     if (Api._latestMemo && Api._latestMemo.until === until) return Api._latestMemo.p;
     const fetchPage = pg => gql(`${MEDIA_CARD}
       query LatestAired($page: Int, $since: Int, $until: Int) {
@@ -694,7 +674,7 @@ const Api = {
       return [first, ...rest].flatMap(d => (d && d.Page.airingSchedules) || []);
     })();
     Api._latestMemo = { until, p };
-    p.catch(() => { if (Api._latestMemo && Api._latestMemo.p === p) Api._latestMemo = null; });   // Failed loads are retried next time
+    p.catch(() => { if (Api._latestMemo && Api._latestMemo.p === p) Api._latestMemo = null; });
     return p;
   },
   async latestAired(vars, page = 1, opts = {}) {
@@ -717,13 +697,13 @@ const Api = {
       all.push({ ...m, __ep: r.episode, __at: r.airingAt });
     }
     const lastPage = Math.max(1, Math.ceil(all.length / per));
-    const cur = Math.min(Math.max(1, page), lastPage);              // A page past the end shows the last real page
+    const cur = Math.min(Math.max(1, page), lastPage);
     const media = all.slice((cur - 1) * per, cur * per);
     return { Page: { pageInfo: { currentPage: cur, lastPage, hasNextPage: cur < lastPage, total: all.length, latest: true }, media } };
   },
 
   browse({ page = 1, perPage = 30, search, genres: picked, format, status, season, year, sort }, opts) {
-    const { genres, tags } = _gsplit({ genres: picked });          // Picker names to AniList genres and tags
+    const { genres, tags } = _gsplit({ genres: picked });
     return gql(`${MEDIA_CARD}
       query Browse($page: Int, $perPage: Int, $search: String, $genres: [String], $tags: [String],
                    $format: MediaFormat, $status: MediaStatus, $season: MediaSeason,
@@ -734,8 +714,8 @@ const Api = {
                 status: $status, season: $season, seasonYear: $year,
                 sort: $sort, isAdult: $adult) { ...MediaCard }
         }
-      }`, { page, perPage, search, genres, tags, format, status, season, year, sort, adult: adultVar() }, { ttl: TTL.long, ...opts })   // Cached 15 min so revisiting a genre is instant
-      .then(d => status === 'NOT_YET_RELEASED' ? d : _scrubPage(d));           // Picking "Upcoming" on purpose still lists unreleased titles
+      }`, { page, perPage, search, genres, tags, format, status, season, year, sort, adult: adultVar() }, { ttl: TTL.long, ...opts })
+      .then(d => status === 'NOT_YET_RELEASED' ? d : _scrubPage(d));
   },
 
   /* Like browse() but not limited to the first 5000 titles; only POPULARITY_DESC can be stitched from ranges, other sorts use browse() */
@@ -750,7 +730,7 @@ const Api = {
     if (sort !== 'POPULARITY_DESC') return Api.browse({ ...vars, page }, opts);
 
     const base = _baseOf(vars);
-    if (page === 1 && !Object.values(base).some(Boolean)) {            // Unfiltered landing page: the baked copy needs no network at all
+    if (page === 1 && !Object.values(base).some(Boolean)) {
       const baked = await _bakeGetAsync(`browseLanding:${adultOn() ? 1 : 0}`);
       if (baked && baked.media) {
         const total = baked.total || baked.media.length;
@@ -767,16 +747,14 @@ const Api = {
     if (offset + per <= COUNT_CAP) {
       plain = await Api.browse({ ...vars, page }, opts);
       if (plain.Page.pageInfo.total !== COUNT_CAP) return plain;
-      /* Capped at 5000: this page is already here, so show it now. The exact total and page count are worked out afterwards (Api.deepInfo)
-         instead of making every page wait for several counting round trips. */
       if (!_planPeek(base)) return { Page: { ...plain.Page, pageInfo: { ...plain.Page.pageInfo, capped: true } } };
     }
-    if (opts.lazy && !_planPeek(base)) throw new Error('AniList is busy');   // Prefetch never pays for counting
+    if (opts.lazy && !_planPeek(base)) throw new Error('AniList is busy');
 
     const leaves = await _popBuckets(base);
     const total = leaves.reduce((n, lf) => n + lf.count, 0);
     const pageInfo = { currentPage: page, lastPage: Math.max(1, Math.ceil(total / per)), hasNextPage: offset + per < total, total, deep: true };
-    if (plain) return { Page: { ...plain.Page, pageInfo } };               // Inside the first 5000: already loaded
+    if (plain) return { Page: { ...plain.Page, pageInfo } };
 
     const segs = _planWindow(leaves, offset, per);
     if (!segs.length) return { Page: { pageInfo, media: [] } };
@@ -819,7 +797,6 @@ const Api = {
     const need = Math.min(per - media.length, total - Math.max(offset, tA) - 0);
     if (need > 0 && tB) {
       const bStart = Math.max(0, offset - tA);
-      /* Round robin over the tier 2 lists: slot k goes to list (k mod n) until a list runs dry */
       const order = [], taken = counts.map(() => 0);
       for (let guard = 0; order.length < bStart + need && guard < 1e6; guard++) {
         let any = false;
@@ -872,7 +849,6 @@ const Api = {
       !base.status && { slices: () => COUNT_STATUS.map(status => ({ status })) },
       !base.format && { slices: () => [...COUNT_FORMATS.map(format => ({ format })), { formatRest: true }] },
     ].filter(Boolean);
-    // Last resort: popularity ranges, halving any that are still over the cap
     let approx = false;
     const walk = async (fixed, level) => {
       const dim = dims[level];
@@ -974,7 +950,7 @@ const Api = {
       .then(d => {
         const lists = KEYS.map(k => listOf(d, k)).filter(Boolean);
         if (!lists.length) throw new Error('The schedule is not available right now. Try again in a moment.');
-        return lists.flat().filter(r => r && r.media && (adultOn() || !r.media.isAdult));   // airingSchedules has no isAdult argument, so filter rows here
+        return lists.flat().filter(r => r && r.media && (adultOn() || !r.media.isAdult));
       });
   },
 
@@ -982,13 +958,13 @@ const Api = {
   timelineFor(ids) {
     ids = [...new Set((ids || []).map(Number).filter(Boolean))];
     const chunks = [];
-    for (let i = 0; i < ids.length; i += 50) chunks.push(ids.slice(i, i + 50));      // Whole My List, 50 at a time
+    for (let i = 0; i < ids.length; i += 50) chunks.push(ids.slice(i, i + 50));
     return Promise.all(chunks.map(c => gql(`${MEDIA_CARD}
       query Timeline($ids: [Int], $adult: Boolean) {
         Page(page: 1, perPage: 50) {
           media(id_in: $ids, type: ANIME, isAdult: $adult) { ...MediaCard }
         }
-      }`, { ids: c, adult: adultVar() }, { ttl: TTL.normal })))                      // No status filter: anything with a next episode counts (airing, or premiering soon)
+      }`, { ids: c, adult: adultVar() }, { ttl: TTL.normal })))
       .then(parts => ({ Page: { media: parts.flatMap(d => d.Page.media) } }));
   },
 

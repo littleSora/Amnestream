@@ -1,4 +1,3 @@
-/* Profile: stats computed from what you watched. Modern is a cinema title card with a film strip of your days and end credits; Classic is the watcher pass. Both read the same data. */
 const RANKS = ['Newcomer', 'Casual viewer', 'Regular', 'Binge apprentice', 'Marathoner', 'Senpai', 'Sensei', 'Legend'];
 let HEAT_WEEKS = 26;
 const isModernUI = () => Settings.get().uiMode !== 'classic';
@@ -13,7 +12,7 @@ function pfData() {
   let streak = 0; const d = new Date();
   if (!act[dayKey(d)]) d.setDate(d.getDate() - 1);
   while (act[dayKey(d)]) { streak++; d.setDate(d.getDate() - 1); }
-  const days = Object.keys(act).filter(k => act[k] > 0).sort();       // Longest run of consecutive days
+  const days = Object.keys(act).filter(k => act[k] > 0).sort();
   let best = 0, run = 0, prev = null;
   days.forEach(k => {
     const t = new Date(k + 'T12:00:00').getTime();
@@ -42,7 +41,6 @@ function pfSwitchHTML() {
 }
 function wirePfSwitch() { $$('[data-ui-pick]').forEach(b => b.onclick = () => { if (Settings.get().uiMode === b.dataset.uiPick) return; Settings.set('uiMode', b.dataset.uiPick); paintProfile(); window.scrollTo({ top: 0 }); }); }
 
-/* ---------- Classic: the watcher pass ---------- */
 function badgesOf(p) {
   return [
     ['First episode', 'Watch an episode', p.eps, 1, 'play'], ['Ten down', 'Watch 10 episodes', p.eps, 10, 'play'], ['Half-century', 'Watch 50 episodes', p.eps, 50, 'play'],
@@ -117,7 +115,6 @@ function paintPass() {
 }
 
 
-/* ---------- Modern: the cinema title card ---------- */
 const dayLabel = k => new Date(k + 'T12:00:00').toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
 function filmFrames(act, weeks) {
   const today = new Date(); today.setHours(12);
@@ -179,7 +176,7 @@ function paintCinema() {
   wireEdit(p, stubs);
   $$('#heat-seg button').forEach(b => b.onclick = () => { HEAT_WEEKS = +b.dataset.w; paintCinema(); });
   const strip = $('#cin-strip');
-  strip.scrollLeft = strip.scrollWidth;                                          // Start at today, the right-hand end
+  strip.scrollLeft = strip.scrollWidth;
   strip.addEventListener('click', e => {
     const f = e.target.closest('i[data-k]'); if (!f) return;
     $$('i.pick', strip).forEach(x => x.classList.remove('pick')); f.classList.add('pick');
@@ -202,7 +199,7 @@ function editDialogHTML(u) {
 function wireEdit(p, stubs) {
   const dlg = $('#pf-dlg');
   $('#pf-edit-btn').onclick = () => {
-    if (!Auth.session()) { openAuth('login'); return; }                       // Guests have no profile to edit
+    if (!Auth.session()) { openAuth('login'); return; }
     if (dlg.showModal) dlg.showModal(); else location.href = 'settings.html?s=account';
   };
   $('#pf-cancel').onclick = e => { e.preventDefault(); dlg.close(); };
@@ -227,7 +224,7 @@ function savePass(p, stubs) {
   g.fillStyle = col('--bg'); g.fillRect(0, 0, 1200, 630);
   rr(60, 60, 1080, 510, 36); g.fillStyle = col('--card'); g.fill();
   g.save(); rr(60, 60, 1080, 510, 36); g.clip(); g.fillStyle = col('--accent'); g.fillRect(60, 60, 14, 510); g.restore();
-  const py = 570 - 150;                                                         // Perforation line
+  const py = 570 - 150;
   g.fillStyle = col('--bg'); [60, 1140].forEach(x => { g.beginPath(); g.arc(x, py, 22, 0, 7); g.fill(); });
   g.strokeStyle = col('--muted'); g.globalAlpha = .5; g.setLineDash([10, 9]); g.lineWidth = 2; g.beginPath(); g.moveTo(100, py); g.lineTo(1100, py); g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
   rr(110, 110, 150, 150, 36); g.fillStyle = col('--accent'); g.fill();
@@ -255,5 +252,5 @@ function paintProfile() { return isModernUI() ? paintCinema() : paintPass(); }
 document.addEventListener('DOMContentLoaded', () => {
   paintProfile();
   Store.fillTitles().then(changed => { if (changed) paintProfile(); });
-  document.addEventListener('as:synced', () => { if (!$('#pf-dlg')?.open) paintProfile(); });      // Another device changed your data
+  document.addEventListener('as:synced', () => { if (!$('#pf-dlg')?.open) paintProfile(); });
 });

@@ -1,4 +1,3 @@
-/* Saved list and continue watching */
 document.addEventListener('DOMContentLoaded', () => {
   const paintList = () => {
     const list = Store.list();
@@ -34,12 +33,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const fresh = items.filter(x => x.fresh).length;
     $('#cont-new').textContent = fresh ? `${fresh} with new episodes` : '';
   };
-  paint(Continue.quick());                            // Instant, from storage
-  Continue.load().then(paint).catch(() => {});        // Then add new-episode badges
-  document.addEventListener('as:synced', () => {        // Another device changed your list or progress
+  paint(Continue.quick());
+  Continue.load().then(paint).catch(() => {});
+  document.addEventListener('as:synced', () => {
     paintList(); paint(Continue.quick()); Continue.load().then(paint).catch(() => {});
   });
-  Store.fillTitles().then(changed => {                // Titles saved by older versions: add both languages once
+  Store.fillTitles().then(changed => {
     if (!changed) return;
     paintList(); paint(Continue.quick()); Continue.load().then(paint).catch(() => {});
   });

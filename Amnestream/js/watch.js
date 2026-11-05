@@ -1,14 +1,12 @@
-/* Watch page: embed player and episode navigation */
 const Q = new URLSearchParams(location.search);
 const WID = Number(Q.get('id'));
 let EP = Math.max(1, Number(Q.get('ep')) || 1);
 const HAS_LANG = ['sub', 'dub'].includes(Q.get('lang'));
 let LANG = HAS_LANG ? Q.get('lang') : localStorage.getItem('as_lang') || Settings.get().audio;
 const syncURL = () => history.replaceState(null, '', `watch.html?id=${WID}&ep=${EP}${HAS_LANG ? '&lang=' + LANG : ''}`);
-let PREF_LANG = LANG;                                            // What the person asked for; LANG is what actually plays (falls back to sub when no dub exists)
+let PREF_LANG = LANG;
 let MEDIA = null;
 
-/* Player providers: key says which id is needed; order sets priority; a provider that never signals is benched */
 const SERVERS = [
   { id: 'anixo',        label: 'Anixo',          key: 'anilist', host: 'anixo.buzz',
     url: (a, m, e, l) => `https://anixo.buzz/embed/ani/${a}/${e}?track=${l}` },
@@ -26,14 +24,12 @@ const SERVERS = [
   { id: 'megaplay-mal', label: 'MegaPlay (MAL)', key: 'mal', host: 'megaplay.buzz',
     url: (a, m, e, l) => `https://megaplay.buzz/stream/mal/${m}/${e}/${l}` },
 
-  /* Path unverified: remove if it never works */
   { id: 'vidnest',      label: 'VidNest',        key: 'anilist', host: 'vidnest.fun',
     url: (a, m, e, l) => `https://vidnest.fun/animepahe/${a}/${e}/${l}` },
 ];
 
 const PROVIDER_HOSTS = SERVERS.map(s => s.host);
 
-/* Migrate the old 'ani' / 'mal' values */
 const OLD_SERVER_MAP = { ani: 'anixo', mal: 'anixo-mal' };
 let SERVER = (() => {
   const saved = localStorage.getItem('as_server');
@@ -42,7 +38,6 @@ let SERVER = (() => {
   return SERVERS[0].id;
 })();
 
-/* Server health */
 const DEAD_TTL = 30 * 60e3;
 const deadMap = () => { try { return JSON.parse(localStorage.getItem('as_dead_servers')) || {}; } catch { return {}; } };
 const deadKey = id => id + ':' + LANG;                       // A server can fail for dub and still work for sub
@@ -74,7 +69,7 @@ async function initWatch() {
   try {
     const { Media } = await Api.playerMeta(WID);
     MEDIA = Media;
-    if (airedCount(MEDIA) === 0) {                                      // Nothing to play yet
+    if (airedCount(MEDIA) === 0) {
       document.title = `${titleOf(MEDIA)} - Amnestream`;
       $('#w-title').textContent = titleOf(MEDIA);
       $('#w-sub').textContent = 'This anime has not aired yet.';
@@ -82,7 +77,7 @@ async function initWatch() {
       $$('.player-bar, .side-col').forEach(el => { el.style.display = 'none'; });
       return;
     }
-    if (EP > epCountOf(MEDIA)) { EP = epCountOf(MEDIA); syncURL(); }      // A link to an episode that has not aired yet opens the latest one
+    if (EP > epCountOf(MEDIA)) { EP = epCountOf(MEDIA); syncURL(); }
     document.title = `${titleOf(MEDIA)} - Episode ${EP} - Amnestream`;
     buildPage();
   } catch (err) {
@@ -92,7 +87,7 @@ async function initWatch() {
 
 function buildPage() {
   const total = epCountOf(MEDIA);
-  LANG = PREF_LANG === 'dub' && Dub.missing(MEDIA.id, EP) ? 'sub' : PREF_LANG;   // No dub for this episode: play sub instead of an error
+  LANG = PREF_LANG === 'dub' && Dub.missing(MEDIA.id, EP) ? 'sub' : PREF_LANG;
   $$('#lang-seg button').forEach(b => b.classList.toggle('on', b.dataset.lang === LANG));
 
   $('#w-title').textContent = titleOf(MEDIA);
@@ -118,7 +113,7 @@ function buildPage() {
   $('#next-ep').onclick = () => gotoEp(EP + 1);
 
   renderSideEps(total);
-  if (!_artAsked) {                                                      // Fill in missing episode previews and titles once, then repaint the panel
+  if (!_artAsked) {
     _artAsked = true;
     Api.episodeArt(MEDIA.id).then(art => {
       let changed = false; epTitleOf(1);
@@ -135,7 +130,7 @@ function buildPage() {
   checkDub();
   mountComments();
   Store.saveProgress(MEDIA, EP);
-  clearTimeout(_malT);                                                   // Players that never say "ended": count the episode as watched after 70% of its length
+  clearTimeout(_malT);
   if (typeof Mal !== 'undefined' && Mal.active()) { const m = MEDIA, e = EP; _malT = setTimeout(() => Mal.track(m, e), Math.max(4, (m.duration || 24) * .7) * 60e3); }
 
   $('#autonext').checked = Settings.get().autonext;
@@ -151,7 +146,7 @@ function mountComments() {
   const count = () => Comments.count(id, ep).then(n => { if (ep === EP && Comments.allowed(id)) $('#cm-total').textContent = n ? `(${n})` : ''; }).catch(() => {});
   $('#cm-total').textContent = '';
   if (typeof Comments === 'undefined') { box.innerHTML = '<p class="empty">Comments failed to load. Refresh the page.</p>'; return; }
-  Comments.mountGated(box, id, count, ep, hidden => { if (hidden) $('#cm-total').textContent = ''; else count(); });   // Hidden behind a spoiler alert unless Settings > Show comments is on or this anime was opened
+  Comments.mountGated(box, id, count, ep, hidden => { if (hidden) $('#cm-total').textContent = ''; else count(); });
 }
 
 /* Options are built here so watch.html needs no edit */
@@ -171,7 +166,7 @@ function embedURL() {
 }
 
 function setLang(l) {
-  if (l === 'dub' && Dub.missing(MEDIA.id, EP)) { toast('No dub for this episode.'); return; }   // Crossed out: cannot be picked
+  if (l === 'dub' && Dub.missing(MEDIA.id, EP)) { toast('No dub for this episode.'); return; }
   LANG = PREF_LANG = l;
   autoTried = 0;
   localStorage.setItem('as_lang', LANG);
@@ -235,7 +230,7 @@ function failServer() {
   markDead(s.id);
   buildServerOptions();
   const nxt = nextServerId(s.id);
-  const limit = LANG === 'dub' ? 3 : SERVERS.filter(usable).length;      // A dub that three servers cannot start is not coming
+  const limit = LANG === 'dub' ? 3 : SERVERS.filter(usable).length;
   if (nxt && nxt !== s.id && autoTried < limit - 1) {
     autoTried++;
     SERVER = nxt;
@@ -255,7 +250,7 @@ function probeEmbed(url, seq) {
   const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 6000);
   fetch(url, { cache: 'no-store', signal: ctrl.signal }).then(res => {
     clearTimeout(t);
-    try { res.body && res.body.cancel(); } catch { /* ignore */ }
+    try { res.body && res.body.cancel(); } catch { }
     if (seq !== mountSeq || playerReady || res.status < 400) return;
     failServer();
   }).catch(() => clearTimeout(t));
@@ -267,7 +262,6 @@ function mountPlayer() {
   playerReady = false;
   const seq = ++mountSeq, url = embedURL();
 
-  /* The loading cover stays until the player reports it works, so a provider's raw error page is never shown */
   $('#player').innerHTML = `
     <iframe src="${url}"
             allow="autoplay; fullscreen; picture-in-picture"
@@ -275,11 +269,9 @@ function mountPlayer() {
     <div class="player-loading" id="player-loading"><span class="spinner"></span>Loading player...</div>`;
   if (url) probeEmbed(url, seq);
 
-  /* An iframe 'load' also fires for a provider's error page, so only a postMessage from the player proves it works */
   readyTimer = setTimeout(() => { if (seq === mountSeq && !playerReady) failServer(); }, 7000);
 }
 
-/* Episode panel: follows Settings (Episode list style + order), like the details page */
 let _epTitles = null, _artAsked = false;
 function epTitleOf(n) {
   if (!_epTitles) {
@@ -295,7 +287,7 @@ function renderSideEps(total) {
   const box = $('#side-eps'), s = Settings.get();
   const style = ['list', 'compact', 'grid'].includes(s.epStyle) ? s.epStyle : 'grid';
   const seen = new Set((Store.seen()[MEDIA.id]) || []);
-  const fb = bannerOf(MEDIA) || thumbOf(MEDIA);      // No episode preview: show the anime's art instead
+  const fb = bannerOf(MEDIA) || thumbOf(MEDIA);
   let nums = Array.from({ length: total }, (_, i) => i + 1);
   if (s.epOrder === 'desc') nums.reverse();
   box.className = 'side-eps as-' + style;
@@ -311,7 +303,6 @@ function renderSideEps(total) {
   if (active) active.scrollIntoView({ block: 'nearest' });
 }
 
-/* Seasons under the episode grid: every season, movie and OVA of this show; fetched once, then only repainted */
 let SEASONS = null;
 function renderSideSeasons() {
   const box = $('#side-seasons'); if (!box) return;
@@ -346,7 +337,6 @@ function gotoEp(n) {
 }
 
 function onPlayerMessage(e) {
-  /* Origin is not restricted to megaplay, so other providers work */
   if (e.origin && !PROVIDER_HOSTS.some(h => String(e.origin).includes(h))) return;
 
   let d = e.data;
@@ -356,7 +346,7 @@ function onPlayerMessage(e) {
   const ev = String(d.event || d.type || d.name || '').toLowerCase();
 
   if (ev === 'complete' || ev === 'ended') {
-    if (typeof Mal !== 'undefined') Mal.track(MEDIA, EP);                  // Finished: mark it on MyAnimeList (if connected)
+    if (typeof Mal !== 'undefined') Mal.track(MEDIA, EP);
     if ($('#autonext').checked) gotoEp(EP + 1);
     return;
   }
