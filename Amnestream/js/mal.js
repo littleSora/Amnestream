@@ -108,17 +108,19 @@ const Mal = (() => {
       await ready;
       if (!Mal.configured()) return;
       box.hidden = false;
+      box.classList.add('simple');
       if (!Mal.connected()) { box.innerHTML = `<span class="mal-tag">MAL</span><span class="mal-txt">Track this on MyAnimeList</span><a class="dp-btn sm" href="settings.html?s=you">Connect</a>`; return; }
       box.innerHTML = `<span class="mal-tag">MAL</span><span class="mal-txt">Loading your list...</span>`;
       let e; try { e = await Mal.entry(media.idMal); } catch (x) { box.innerHTML = `<span class="mal-tag">MAL</span><span class="mal-txt">${esc(x.message)}</span>`; return; }
       const total = e.total || media.episodes || 0, l = e.list || {};
       const paint = list => {
         const cur = list || {};
-        box.innerHTML = `<span class="mal-tag">MAL</span>
-          <label>Status<select id="mal-st"><option value="">Not on my list</option>${STATUS.map(([v, n]) => `<option value="${v}" ${cur.status === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
-          <label>Episodes<span class="mal-eps"><input id="mal-ep" type="number" min="0" ${total ? `max="${total}"` : ''} value="${cur.num_watched_episodes || 0}" inputmode="numeric"> <small>/ ${total || '?'}</small></span></label>
-          <label>Score<select id="mal-sc"><option value="0">-</option>${[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(n => `<option value="${n}" ${cur.score === n ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
-          <button class="dp-btn primary sm" id="mal-save">Save</button>${list ? '<button class="dp-btn sm" id="mal-del" title="Remove from my MAL list">Remove</button>' : ''}`;
+        box.classList.remove('simple');
+        box.innerHTML = `<div class="mal-head"><span class="mal-tag">MAL</span><span class="mal-txt">Your MyAnimeList entry</span></div>
+          <label class="mal-f mal-status">Status<select id="mal-st"><option value="">Not on my list</option>${STATUS.map(([v, n]) => `<option value="${v}" ${cur.status === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+          <label class="mal-f mal-ep">Episodes<span class="mal-eps"><input id="mal-ep" type="number" min="0" ${total ? `max="${total}"` : ''} value="${cur.num_watched_episodes || 0}" inputmode="numeric"><small>/ ${total || '?'}</small></span></label>
+          <label class="mal-f mal-sc">Score<select id="mal-sc"><option value="0">-</option>${[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(n => `<option value="${n}" ${cur.score === n ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+          <div class="mal-act"><button class="dp-btn primary" id="mal-save">Save</button>${list ? '<button class="dp-btn" id="mal-del" title="Remove from my MAL list">Remove</button>' : ''}</div>`;
         const st = $('#mal-st', box), ep = $('#mal-ep', box);
         st.onchange = () => { if (st.value === 'completed' && total) ep.value = total; };
         ep.oninput = () => { if (total && Number(ep.value) >= total && st.value !== 'completed' && st.value !== '') st.value = 'completed'; };

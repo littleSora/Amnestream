@@ -87,6 +87,8 @@ async function initWatch() {
 
 function buildPage() {
   const total = epCountOf(MEDIA);
+  EpProg.flush();                           // Write down how far the previous episode got before the list repaints
+  Store.saveProgress(MEDIA, EP);            // First, so nothing that fails further down can stop it from being remembered
   LANG = PREF_LANG === 'dub' && Dub.missing(MEDIA.id, EP) ? 'sub' : PREF_LANG;
   $$('#lang-seg button').forEach(b => b.classList.toggle('on', b.dataset.lang === LANG));
 
@@ -127,9 +129,9 @@ function buildPage() {
   }
   renderSideSeasons();
   mountPlayer();
+  startEstimate();
   checkDub();
   mountComments();
-  Store.saveProgress(MEDIA, EP);
   clearTimeout(_malT);
   if (typeof Mal !== 'undefined' && Mal.active()) { const m = MEDIA, e = EP; _malT = setTimeout(() => Mal.track(m, e), Math.max(4, (m.duration || 24) * .7) * 60e3); }
 
@@ -286,17 +288,17 @@ function epTitleOf(n) {
 function renderSideEps(total) {
   const box = $('#side-eps'), s = Settings.get();
   const style = ['list', 'compact', 'grid'].includes(s.epStyle) ? s.epStyle : 'grid';
-  const seen = new Set((Store.seen()[MEDIA.id]) || []);
+  const prog = EpProg.of(MEDIA.id);
   const fb = bannerOf(MEDIA) || thumbOf(MEDIA);
   let nums = Array.from({ length: total }, (_, i) => i + 1);
   if (s.epOrder === 'desc') nums.reverse();
   box.className = 'side-eps as-' + style;
   box.innerHTML = nums.map(n => {
-    const cls = (n === EP ? 'on ' : '') + (seen.has(n) ? 'done' : '');
-    if (style === 'grid') return `<button class="${cls}" data-ep="${n}">${n}</button>`;
+    const st = prog[n], cls = (n === EP ? 'on ' : '') + (st && st.d ? 'fin' : ''), bar = `<span class="se-prog"><i style="width:${EpProg.width(st, n === EP)}%"></i></span>`;
+    if (style === 'grid') return `<button class="${cls}" data-ep="${n}">${n}${bar}</button>`;
     const e = epTitleOf(n), t = esc(e.title || 'Episode ' + n);
     const thumb = style === 'list' ? `<span class="se-thumb">${(e.thumb || fb) ? `<img loading="lazy" src="${esc(e.thumb || fb)}" alt="" ${e.thumb && fb ? `onerror="this.onerror=null;this.src='${esc(fb)}'"` : ''}>` : ''}</span>` : '';
-    return `<button class="${cls}" data-ep="${n}">${thumb}<span class="se-body"><em>Episode ${n}</em><b>${t}</b></span><i class="se-state">${seen.has(n) ? '\u2713' : ''}</i></button>`;
+    return `<button class="${cls}" data-ep="${n}">${thumb}<span class="se-body"><em>Episode ${n}</em><b>${t}</b></span>${bar}</button>`;
   }).join('');
   $$('button', box).forEach(b => b.onclick = () => gotoEp(+b.dataset.ep));
   const active = $('button.on', box);
@@ -336,6 +338,35 @@ function gotoEp(n) {
   window.scrollTo({ top: 0, behavior: scrollMode() });
 }
 
+/* Underline under each episode: follows the player's position live and is remembered per episode */
+let _estT = 0, _estAcc = 0, _realAt = 0, _playing = null;
+function paintLive(st) {
+  const b = $(`#side-eps button[data-ep="${EP}"]`);
+  if (b && st) EpProg.paint(b, st, true);
+}
+function trackProgress(d, ev) {
+  if (!MEDIA) return;
+  if (/^(pause|paused)$/.test(ev) || /complete|ended|finish/.test(ev)) _playing = false;
+  else if (/^(play|playing)$/.test(ev)) _playing = true;
+  if (/complete|ended|finish/.test(ev)) { paintLive(EpProg.record(MEDIA.id, EP, 100)); EpProg.flush(); return; }
+  const p = EpProg.fromMessage(d);
+  if (p == null) return;
+  _realAt = Date.now();
+  paintLive(EpProg.record(MEDIA.id, EP, p));
+}
+/* Some players never report a position: then count the seconds the episode has been playing, never past 94% (only the end of the video marks it watched) */
+function startEstimate() {
+  clearInterval(_estT);
+  _estAcc = 0; _realAt = 0; _playing = null;
+  _estT = setInterval(() => {
+    if (!MEDIA || !playerReady || document.hidden || _playing === false) return;
+    if (Date.now() - _realAt < 6000) return;
+    _estAcc++;
+    const p = Math.min(94, _estAcc / ((MEDIA.duration || 24) * 60) * 100);
+    paintLive(EpProg.record(MEDIA.id, EP, p, { raiseOnly: true }));
+  }, 1000);
+}
+
 function onPlayerMessage(e) {
   if (e.origin && !PROVIDER_HOSTS.some(h => String(e.origin).includes(h))) return;
 
@@ -344,6 +375,9 @@ function onPlayerMessage(e) {
   if (!d || typeof d !== 'object') return;
 
   const ev = String(d.event || d.type || d.name || '').toLowerCase();
+
+  const fr = $('#player iframe');
+  if (!fr || !e.source || e.source === fr.contentWindow) trackProgress(d, ev);   // Only the player on screen counts, never one that was just replaced
 
   if (ev === 'complete' || ev === 'ended') {
     if (typeof Mal !== 'undefined') Mal.track(MEDIA, EP);

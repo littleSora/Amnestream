@@ -18,6 +18,9 @@ async function initHome() {
     `<a href="browse.html?genre=${encodeURIComponent(g)}">${g}</a>`).join('');
   renderContinue();
   document.addEventListener('as:synced', renderContinue);
+  /* Coming back from the player (back button, tab switch, restored page): show what you just watched */
+  window.addEventListener('pageshow', e => { if (e.persisted) renderContinue(); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') renderContinue(); });
   placeTop10();
   wireTabs();
   initSchedule();
@@ -334,7 +337,23 @@ function paintContinue(items) {
   el.innerHTML = `
     <div class="container rail-head"><h2>Continue watching</h2>
       <a class="rail-link" href="mylist.html">My list &rarr;</a></div>
-    <div class="rail-wrap"><div class="rail-track">${items.map(continueCardHTML).join('')}</div></div>`;
+    <div class="rail-wrap">
+      <button class="rail-nav left" aria-label="Scroll left">&lsaquo;</button>
+      <div class="rail-track">${items.map(continueCardHTML).join('')}</div>
+      <button class="rail-nav right" aria-label="Scroll right">&rsaquo;</button>
+    </div>`;
+  const track = $('.rail-track', el), step = () => track.clientWidth * 0.85;
+  $('.rail-nav.left', el).onclick  = () => track.scrollBy({ left: -step(), behavior: scrollMode() });
+  $('.rail-nav.right', el).onclick = () => track.scrollBy({ left:  step(), behavior: scrollMode() });
+  /* PC: the arrows stay visible, and the one pointing at nothing (start or end of the row) hides */
+  const wrap = $('.rail-wrap', el);
+  const edges = () => {
+    wrap.classList.toggle('at-start', track.scrollLeft <= 2);
+    wrap.classList.toggle('at-end', track.scrollLeft + track.clientWidth >= track.scrollWidth - 2);
+  };
+  track.addEventListener('scroll', edges, { passive: true });
+  addEventListener('resize', edges);
+  edges();
 }
 function renderContinue() {
   if (!Settings.get().continueRow) { paintContinue([]); return; }

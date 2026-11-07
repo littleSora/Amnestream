@@ -2,7 +2,7 @@ const THEMES = [
   ['sakura','Vista Blue','#181c25','#9db4ff','#fff',0],['retro96','Retro 96','#008080','#000080','#fff',0],['cyberpunk','Cyberpunk','linear-gradient(135deg,#0a0a10,#2b0a33)','#fcee0a','#fff',0],
   ['rgb','RGB','#07070c','linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f)','#fff',1],['wave','Wave','linear-gradient(135deg,#060a1c,#0b2b55)','linear-gradient(90deg,#00e5ff,#ff2d95)','#fff',1],
   ['voxel','Voxel','linear-gradient(#79b8ff 58%,#5fbf2a 58% 68%,#7a5535 68%)','#5fbf2a','#fff',0],['vapor','Vaporwave','linear-gradient(135deg,#1a0536,#ff3d9a)','#01cdfe','#fff',1],['terminal','Terminal','#000','#33ff66','#33ff66',0],
-  ['blueprint','Blueprint','#0c3a8a','#7fe3ff','#fff',0],['parchment','Parchment','#eadfc3','#8c2f1b','#33241a',0],['blossom','Sakura','linear-gradient(135deg,#ffffff,#ffd3e2)','#d93a72','#3a1b28',1],
+  ['blueprint','Blueprint','#0c3a8a','#7fe3ff','#fff',0],['parchment','Parchment','#eadfc3','#8c2f1b','#33241a',0],['blossom','Sakura','linear-gradient(135deg,#ffffff,#ffd3e2)','#d93a72','#3a1b28',1],['blossom-night','Sakura Inverted','linear-gradient(135deg,#1d0d17,#5a1c3a)','#ff7aa8','#fff',1],
   ['brutal','Brutalist','#fff7d6','#ff4d8d','#000',0],['frost','Frostglass','linear-gradient(135deg,#2a6f9a,#0b1b2b)','#9be7ff','#fff',0],['noir','Noir','linear-gradient(135deg,#000,#2a2a2a)','#e10600','#fff',0],
   ['aurora','Aurora','linear-gradient(135deg,#040912,#0c4a45 70%,#3b2a80)','#5effc2','#fff',1],['magma','Magma','linear-gradient(0deg,#6a1a06,#090302 70%)','#ff5a1f','#fff',0],['galaxy','Galaxy','radial-gradient(ellipse at 50% 50%,#3a2a7a 0,#0b0a1f 45%,#02020a 80%)','#9b7bff','#fff',1],
   ['photo','Your picture','','#ff9ec7','#fff',0]];

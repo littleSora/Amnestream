@@ -83,20 +83,10 @@ function render() {
         <div class="dp-poster"><img src="${esc(coverOf(m))}" alt="${esc(title)}"></div>
         ${trailer ? `<a class="dp-trailer" id="trailer-btn" target="_blank" rel="noopener" href="${trailer}">${icon('play', 12)} Watch Trailer</a>` : ''}
       </div>
-      <div class="dp-meta">
-        <section><dl>
-          ${metaRow('Type', esc(fmtLabel(m)))}
-          ${metaRow('Status', esc(STATUS_LONG[m.status] || ''))}
-          ${metaRow('Release', esc(dateLong(m.startDate)))}
-          ${metaRow('Episodes', `${released}/${m.episodes || '?'}`)}
-          ${metaRow('Next episode', esc(nextIn))}
-          ${metaRow('Duration', m.duration ? m.duration + ' min' : '')}
-          ${audio ? `<div><dt class="dp-lbl">Audio languages</dt><dd>${chips([audio])}</dd></div>` : ''}
-        </dl></section>
-        ${(m.genres || []).length ? `<section><span class="dp-lbl">Genres</span><div class="dp-chips">${m.genres.map(g => `<a href="browse.html?genre=${encodeURIComponent(g)}">${esc(g)}</a>`).join('')}</div></section>` : ''}
-        ${tags.length ? `<section><span class="dp-lbl">Themes</span>${chips(tags)}</section>` : ''}
-        ${studios.length ? `<section><span class="dp-lbl">Studios</span>${chips(studios)}</section>` : ''}
-      </div>
+      <section class="dp-comments" id="comments">
+        <h2>Comments <span class="cm-total" id="cm-total"></span></h2>
+        <div id="p-cm"></div>
+      </section>
     </aside>
 
     <div class="dp-main">
@@ -104,17 +94,18 @@ function render() {
       <h1>${esc(title)}</h1>
 
       <div class="dp-row">
-        <button class="dp-btn sm" id="share-btn" style="margin-left:auto">${icon('share', 13)} Share</button>
-      </div>
-
-      <div class="dp-row">
         <div class="dp-actions">
           ${noEps ? `<span class="dp-btn primary" aria-disabled="true" style="opacity:.55;cursor:default;pointer-events:none">${icon('clock', 13)} Not aired yet</span>`
             : `<a class="dp-btn primary" href="watch.html?id=${m.id}&ep=${watchEp}">${icon('play', 13)} Watch Ep ${watchEp}</a>`}
           <button class="dp-btn ${inList ? 'on' : ''}" id="list-btn">${icon(inList ? 'check' : 'plus', 14)} <span>${inList ? 'In My List' : 'Add to My List'}</span></button>
-          <button class="dp-btn ico ${isFav ? 'on' : ''}" id="fav-btn" title="${isFav ? 'Remove from favourites' : 'Add to favourites'}" aria-label="Favourite">${icon('heart', 16)}</button>
-          <a class="dp-ext al" target="_blank" rel="noopener" href="https://anilist.co/anime/${m.id}" title="Open on AniList">A</a>
-          ${m.idMal ? `<a class="dp-ext mal" target="_blank" rel="noopener" href="https://myanimelist.net/anime/${m.idMal}" title="Open on MyAnimeList">MAL</a>` : ''}
+          <div class="dp-act-ico">
+            <button class="dp-btn ico ${isFav ? 'on' : ''}" id="fav-btn" title="${isFav ? 'Remove from favourites' : 'Add to favourites'}" aria-label="Favourite">${icon('heart', 16)}</button>
+            <button class="dp-btn ico" id="share-btn" title="Share" aria-label="Share">${icon('share', 15)}</button>
+            <span class="dp-act-ext">
+              <a class="dp-ext al" target="_blank" rel="noopener" href="https://anilist.co/anime/${m.id}" title="Open on AniList">A</a>
+              ${m.idMal ? `<a class="dp-ext mal" target="_blank" rel="noopener" href="https://myanimelist.net/anime/${m.idMal}" title="Open on MyAnimeList">MAL</a>` : ''}
+            </span>
+          </div>
         </div>
         ${avg ? `<div class="dp-rates">
           ${rateHTML(avg, compact(m.popularity), 'user', 'Average', `Average score, ${(m.popularity || 0).toLocaleString()} users`)}
@@ -130,10 +121,20 @@ function render() {
         <button class="dp-more" id="syn-more" hidden>Read More &rarr;</button>
       </div>
 
-      <section class="dp-comments" id="comments">
-        <h2>Comments <span class="cm-total" id="cm-total"></span></h2>
-        <div id="p-cm"></div>
-      </section>
+      <div class="dp-meta dp-info">
+        <section><dl>
+          ${metaRow('Type', esc(fmtLabel(m)))}
+          ${metaRow('Status', esc(STATUS_LONG[m.status] || ''))}
+          ${metaRow('Release', esc(dateLong(m.startDate)))}
+          ${metaRow('Episodes', `${released}/${m.episodes || '?'}`)}
+          ${metaRow('Next episode', esc(nextIn))}
+          ${metaRow('Duration', m.duration ? m.duration + ' min' : '')}
+          ${audio ? `<div><dt class="dp-lbl">Audio languages</dt><dd>${chips([audio])}</dd></div>` : ''}
+        </dl></section>
+        ${(m.genres || []).length ? `<section><span class="dp-lbl">Genres</span><div class="dp-chips">${m.genres.map(g => `<a href="browse.html?genre=${encodeURIComponent(g)}">${esc(g)}</a>`).join('')}</div></section>` : ''}
+        ${tags.length ? `<section><span class="dp-lbl">Themes</span>${chips(tags)}</section>` : ''}
+        ${studios.length ? `<section><span class="dp-lbl">Studios</span>${chips(studios)}</section>` : ''}
+      </div>
 
       <div class="dp-tabs" role="tablist">
         <span class="dp-ink" aria-hidden="true"></span>
@@ -221,7 +222,7 @@ function render() {
   });
   placeInk(); document.fonts?.ready.then(placeInk); addEventListener('resize', placeInk);
 
-  /* Comments: below the synopsis, behind a spoiler alert unless Settings > Show comments is on or this anime was opened */
+  /* Comments: in the left column under the poster, behind a spoiler alert unless Settings > Show comments is on or this anime was opened */
   const refreshCommentCount = () => Comments.count(m.id).then(n => { if (Comments.allowed(m.id)) $('#cm-total').textContent = n ? `(${n})` : ''; }).catch(() => {});
   if (typeof Comments !== 'undefined') Comments.mountGated($('#p-cm'), m.id, refreshCommentCount, null, hidden => { if (hidden) $('#cm-total').textContent = ''; else refreshCommentCount(); });
   else $('#p-cm').innerHTML = '<p class="empty">Comments failed to load. Refresh the page.</p>';
@@ -325,7 +326,7 @@ const EpModal = {
     this.lang = lang || localStorage.getItem('as_lang') || Settings.get().audio;
     if (this.lang === 'dub' && Dub.missing(M.id, n)) this.lang = 'sub';
     this.playing = false; this.dirty = false;
-    this.ui = openShell('episode', '', () => { this.ui = null; this.playing = false; window.removeEventListener('message', this.onMsg); if (this.dirty) renderEps(); });
+    this.ui = openShell('episode', '', () => { this.ui = null; this.playing = false; window.removeEventListener('message', this.onMsg); EpProg.flush(); if (this.dirty) renderEps(); });
     this.ui.el._key = e => {
       if (e.target.tagName === 'INPUT') return;
       if (e.key === 'ArrowRight') this.go(this.n + 1);
@@ -424,6 +425,17 @@ const EpModal = {
     if (!EpModal.ui || !String(e.origin).includes('megaplay')) return;
     let d = e.data; if (typeof d === 'string') { try { d = JSON.parse(d); } catch { return; } }
     if (!d) return;
+    const fr = $('.epm-stage iframe', EpModal.ui.el);
+    if (!fr || !e.source || e.source === fr.contentWindow) {          // Position of the episode in the preview: move its underline in the list behind
+      const ended = d.event === 'complete' || d.event === 'ended';
+      const p = ended ? 100 : EpProg.fromMessage(d);
+      if (p != null) {
+        const st = EpProg.record(M.id, EpModal.n, p);
+        if (ended) EpProg.flush();
+        const card = $(`#ep-wrap .ep-card[data-n="${EpModal.n}"]`);
+        if (card && st) EpProg.paint(card, st, !ended);
+      }
+    }
     if ((d.event === 'complete' || d.event === 'ended') && Settings.get().autonext) EpModal.go(EpModal.n + 1);
     if (/^(ready|playing|play|loaded|canplay)$/.test(String(d.event || '').toLowerCase())) {
       clearTimeout(EpModal._slow);
@@ -443,6 +455,7 @@ const STYLE_NAME = { list: 'Cards', compact: 'Compact', grid: 'Numbers' };
 function renderEps() {
   const m = M, total = airedCount(m), s = Settings.get();
   const seen = new Set(Store.seen()[m.id] || []);
+  const eprog = EpProg.of(m.id);
   const prog = Store.progress()[m.id];
   const cur = prog ? prog.ep : 0;
   const maxSeen = Math.max(0, ...seen);
@@ -465,12 +478,14 @@ function renderEps() {
     return;
   }
   $('#ep-wrap').innerHTML = nums.length ? `<div class="ep-cards ${style}">${nums.map(n => {
-    const e = EPS[n], done = seen.has(n), href = `watch.html?id=${m.id}&ep=${n}`;
-    return `<article class="ep-card ${done ? 'done' : ''} ${n === cur ? 'cur' : ''} ${n > maxSeen + 1 ? 'hide' : ''}" data-n="${n}">
+    const e = EPS[n], done = seen.has(n), href = `watch.html?id=${m.id}&ep=${n}`, st = eprog[n];
+    const bar = `<span class="ep-prog"><i style="width:${EpProg.width(st, false)}%"></i></span>`;
+    return `<article class="ep-card ${done ? 'done' : ''} ${st && st.d ? 'fin' : ''} ${n === cur ? 'cur' : ''} ${n > maxSeen + 1 ? 'hide' : ''}" data-n="${n}">
       <a class="ep-thumb" href="${href}" tabindex="-1" aria-hidden="true">
         <img loading="lazy" src="${esc(e?.thumb || bannerOf(m))}" alt="">
         ${m.duration ? `<span class="ep-dur">${m.duration}m</span>` : ''}
         ${!done && n === cur + 1 ? '<span class="ep-flag">Up next</span>' : ''}
+        ${bar}
       </a>
       <div class="ep-body">
         <span class="ep-n">Episode ${n}</span>
@@ -480,10 +495,20 @@ function renderEps() {
       <div class="ep-foot">
         <a class="ep-chip" data-l="sub" href="${href}&lang=sub" title="Preview with subtitles"><b>SUB</b><i>${icon('play', 8)}</i></a>
         <a class="ep-chip${Dub.missing(m.id, n) ? ' no-dub' : ''}" data-l="dub" href="${href}&lang=dub" title="${Dub.missing(m.id, n) ? 'No dub found for this episode' : 'Preview dubbed'}"><b>DUB</b><i>${icon('play', 8)}</i></a>
-        <span class="ep-state" title="${done ? 'Watched' : 'Not watched yet'}">${done ? icon('check', 10) : ''}</span>
+        <span class="ep-state" title="${done ? 'Watched' : 'Not watched yet'}"></span>
       </div>
+      ${bar.replace('ep-prog', 'ep-prog ep-prog-card')}
     </article>`;
   }).join('')}</div>` : '<p class="empty">No episodes match.</p>';
 }
 
+/* Back from the player: the episodes list shows how far each one got */
+const repaintEps = () => {
+  if (!M) return;
+  EpProg.flush();
+  const st = EpProg.of(M.id);
+  $$('#ep-wrap .ep-card[data-n]').forEach(c => EpProg.paint(c, st[+c.dataset.n]));    // In place, so the list keeps its scroll position
+};
+addEventListener('pageshow', e => { if (e.persisted) repaintEps(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) repaintEps(); });
 document.addEventListener('DOMContentLoaded', initAnime);

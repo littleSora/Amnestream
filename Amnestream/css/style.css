@@ -421,7 +421,12 @@ body.dp-page main,body.dp-page .site-footer{position:relative;z-index:1}
 .ep-card:hover .ep-thumb img{transform:scale(1.05)}
 .ep-dur{position:absolute;left:7px;top:7px;padding:3px 8px;border-radius:6px;font-size:11.5px;font-weight:800;letter-spacing:.01em;color:#fff;background:rgba(18,18,24,.82);backdrop-filter:blur(4px)}
 .ep-flag{position:absolute;right:6px;top:6px;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;background:var(--accent);color:var(--accent-ink)}
-.ep-card.done .ep-thumb::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--accent)}
+.ep-prog{position:absolute;left:0;right:0;bottom:0;height:3px;overflow:hidden;background:rgba(255,255,255,.14);pointer-events:none}
+.ep-prog i{display:block;height:100%;width:0;border-radius:0 3px 3px 0;background:var(--ok);transition:width .5s linear}
+.ep-prog-card{display:none}
+.ep-card.fin{opacity:.5;filter:grayscale(1);transition:opacity .2s,filter .2s}
+.ep-card.fin:hover{opacity:.9;filter:none}
+.ep-card.fin .ep-prog i{background:var(--muted)}
 .ep-body{min-width:0;padding:12px 0 0}
 .ep-n{display:block;font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .ep-t{display:block;margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14.5px;font-weight:700;color:var(--text)}
@@ -454,7 +459,8 @@ body.dp-page main,body.dp-page .site-footer{position:relative;z-index:1}
 .ep-cards.grid .ep-num{display:block;padding:11px 4px;border-radius:10px;text-align:center;font-size:13.5px;font-weight:700;
   color:var(--text);background:color-mix(in srgb,var(--card) 85%,transparent);box-shadow:inset 0 0 0 1px var(--ep-edge);transition:.15s}
 .ep-cards.grid .ep-card:hover .ep-num{background:var(--accent);color:var(--accent-ink);box-shadow:none}
-.ep-cards.grid .ep-card.done .ep-num{box-shadow:inset 0 -3px 0 var(--accent)}
+.ep-cards.compact .ep-prog-card,.ep-cards.grid .ep-prog-card{display:block;left:12px;right:12px;height:3px;border-radius:3px 3px 0 0}
+.ep-cards.grid .ep-prog-card{left:8px;right:8px}
 .ep-cards.grid .ep-card.cur .ep-num{box-shadow:inset 0 0 0 1.5px var(--accent)}
 
 .spoil .ep-card.hide .ep-thumb img{filter:blur(10px)}
@@ -684,7 +690,14 @@ html::-webkit-scrollbar,*::-webkit-scrollbar{display:none!important;width:0!impo
 .se-body b{font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .side-eps.as-list .se-body b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .se-state{flex:0 0 auto;font-style:normal;font-size:12px;color:var(--ok);min-width:12px}
-.side-eps.as-grid button.done:not(.on){box-shadow:inset 0 -3px 0 var(--accent)}
+.side-eps button{position:relative;overflow:hidden}
+.se-prog{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,.12);pointer-events:none}
+.se-prog i{display:block;height:100%;width:0;border-radius:0 3px 3px 0;background:var(--ok);transition:width .5s linear}
+.side-eps button.fin:not(.on){opacity:.45;filter:grayscale(1)}
+.side-eps button.fin:not(.on):hover{opacity:.9;filter:none}
+.side-eps button.fin .se-prog i{background:var(--muted)}
+.side-eps button.on .se-prog{background:rgba(0,0,0,.22)}
+.side-eps button.on .se-prog i{background:var(--ok)}
 
 @keyframes pageIn{from{opacity:0;transform:translate3d(0,14px,0)}to{opacity:1;transform:none}}
 @keyframes pageFade{from{opacity:0}to{opacity:1}}

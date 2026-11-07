@@ -2,7 +2,7 @@
 
 # amnestream.
 
-**A fast, themeable anime streaming site with sub / dub, server failover and optional cloud sync.**
+**A fast, anime streaming site with sub / dub, server failover and optional cloud sync.**
 No backend, no build step: plain HTML, CSS and JavaScript.
 
 ![Static site](https://img.shields.io/badge/static%20site-no%20build-9db4ff?style=flat-square)
@@ -22,10 +22,9 @@ No backend, no build step: plain HTML, CSS and JavaScript.
 
 ## Screenshots
 
-|                                          Home                                          |                               Browse                               |
-| :------------------------------------------------------------------------------------: | :----------------------------------------------------------------: |
-| <img width="1920" height="929" alt="rows" src="https://github.com/user-attachments/assets/e82b1cac-3557-471a-92c8-20198f84d6d7" /> | <img width="1920" height="929" alt="browse" src="https://github.com/user-attachments/assets/c8290193-6a9e-4e1c-9a35-da2d7c6eb327" />
-
+|                                                                Home                                                                |                                                                Browse                                                                |
+| :--------------------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------: |
+| <img width="1920" height="929" alt="rows" src="https://github.com/user-attachments/assets/e82b1cac-3557-471a-92c8-20198f84d6d7" /> | <img width="1920" height="929" alt="browse" src="https://github.com/user-attachments/assets/c8290193-6a9e-4e1c-9a35-da2d7c6eb327" /> |
 
 <div align="center">
 <img width="1920" height="920" alt="watch" src="https://github.com/user-attachments/assets/a773e962-0df7-4f6a-9ed5-07b6df3b1451" />
@@ -75,7 +74,7 @@ Then open <http://localhost:8080>. There is nothing to install or build.
 | `css/`                                                          | `style.css` base, `atlas.css` and `me.css` page styles, `mobile.css` phone layer, `themes.css` every theme       |
 | `data/catalog.json`                                             | Pre-baked catalog for an instant first paint                                                                     |
 | `sw.js`, `manifest.webmanifest`, `icons/`                       | PWA shell                                                                                                        |
-| `docs/`                                                         | [DMCA policy](DMCA.md)                                                                                      |
+| `docs/`                                                         | [DMCA policy](DMCA.md)                                                                                           |
 
 ## Built with
 
@@ -87,7 +86,6 @@ Then open <http://localhost:8080>. There is nothing to install or build.
 | Video               | Third-party embedded players in an `<iframe>`                   |
 | Accounts and sync   | Supabase Auth plus a `user_data` table                          |
 | Install and offline | Service worker and web app manifest                             |
-
 
 ## Known limits
 

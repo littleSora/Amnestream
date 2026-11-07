@@ -8,7 +8,15 @@ const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 const esc = (s = '') => String(s).replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const jget = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
-const jset = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+/* Disposable caches (episode art, plans) share localStorage's ~5 MB with your history. When it is full, drop them so saving your progress never fails */
+function freeSpace() {
+  try { Object.keys(localStorage).filter(k => k.startsWith('as_epart:') || k.startsWith('as_plan:')).forEach(k => localStorage.removeItem(k)); } catch { }
+}
+const jset = (k, v) => {
+  const raw = JSON.stringify(v);
+  try { localStorage.setItem(k, raw); }
+  catch (e) { freeSpace(); localStorage.setItem(k, raw); }       // Still full: let the caller see the error
+};
 
 const ICONS = {
   home:'<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
@@ -63,7 +71,7 @@ Object.assign(ICONS, {
 });
 const icon = (n, s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ''}</svg>`;
 
-const THEME_IDS = ['sakura', 'retro96', 'cyberpunk', 'rgb', 'wave', 'voxel', 'vapor', 'terminal', 'blueprint', 'parchment', 'blossom', 'brutal', 'frost', 'noir', 'aurora', 'magma', 'galaxy', 'photo', 'pre-rich', 'pre-oxford', 'pre-charcoal', 'pre-brunswick', 'pre-violet', 'pre-cosmos', 'pre-jet', 'pre-alabaster'];
+const THEME_IDS = ['sakura', 'retro96', 'cyberpunk', 'rgb', 'wave', 'voxel', 'vapor', 'terminal', 'blueprint', 'parchment', 'blossom', 'blossom-night', 'brutal', 'frost', 'noir', 'aurora', 'magma', 'galaxy', 'photo', 'pre-rich', 'pre-oxford', 'pre-charcoal', 'pre-brunswick', 'pre-violet', 'pre-cosmos', 'pre-jet', 'pre-alabaster'];
 const THEME_FONTS = { cyberpunk: 'Orbitron:wght@600;800', voxel: 'VT323', terminal: 'JetBrains+Mono:wght@400;700', blueprint: 'IBM+Plex+Mono:wght@400;600',
   parchment: 'Playfair+Display:ital,wght@0,700;1,700', noir: 'Playfair+Display:ital,wght@0,700;1,700', brutal: 'Space+Grotesk:wght@400;700' };
 
@@ -115,7 +123,7 @@ function waveSync(th) {
   sc.onload = () => { if (document.documentElement.dataset.theme === 'wave') AsWave.start(); };
   document.head.appendChild(sc);
 }
-const SCENE_OF = { galaxy: 'galaxy', vapor: 'vapor', blossom: 'sakura', aurora: 'aurora' };
+const SCENE_OF = { galaxy: 'galaxy', vapor: 'vapor', blossom: 'sakura', 'blossom-night': 'sakura-night', aurora: 'aurora' };
 const LEGACY_THEMES = { void: 'galaxy', pealcd: 'blossom' };
 function sceneSync(th) {
   const sc = SCENE_OF[th];
@@ -407,6 +415,8 @@ function currentSeason(d = new Date()) {
   return { season: m <= 3 ? 'WINTER' : m <= 6 ? 'SPRING' : m <= 9 ? 'SUMMER' : 'FALL', year: y };
 }
 
+const SITE_BUILD = 'v81';
+const CONTINUE_MAX = 24;                               // Continue watching holds this many anime
 const dayKey = (d = new Date()) => d.toISOString().slice(0, 10);
 const Store = {
   list: () => jget('as_list', []),
@@ -422,24 +432,38 @@ const Store = {
   },
   setList(l) { jset('as_list', l.slice(0, 500)); Sync.touch('list'); },
   /* Clears progress, seen episodes and activity here and (through the stamp) on your other devices */
-  clearHistory() { ['as_progress', 'as_seen', 'as_activity'].forEach(k => localStorage.removeItem(k)); Sync.touch('hist'); },
+  clearHistory() { ['as_progress', 'as_seen', 'as_activity', 'as_epprog'].forEach(k => localStorage.removeItem(k)); EpProg._pend = null; Sync.touch('hist'); },
   progress: () => jget('as_progress', {}),
   seen: () => jget('as_seen', {}),
   activity: () => jget('as_activity', {}),
+  /* True once the last episode has been reached (a show that is over, or an airing show with a known total) */
+  isDone: x => (x.end !== undefined ? !!x.end : x.ep >= x.total),
   saveProgress(m, ep) {
-    if (Settings.get().incognito) return;
+    if (Settings.get().incognito || !m || !m.id) return;
     ep = Number(ep);
+    if (!(ep >= 1)) return;
+    const total = epCountOf(m);
+    const end = m.status === 'RELEASING' ? (!!m.episodes && ep >= m.episodes) : ep >= total;
     const p = Store.progress();
-    p[m.id] = { id: m.id, title: titleOf(m), titles: titlesOf(m), cover: coverOf(m), ep, total: epCountOf(m), ts: Date.now() };
-    jset('as_progress', p);
-    Sync.later();
-    const seen = Store.seen();
-    const arr = seen[m.id] || [];
-    if (!arr.includes(ep)) {
-      arr.push(ep); seen[m.id] = arr; jset('as_seen', seen);
-      const act = Store.activity(); const k = dayKey();
-      act[k] = (act[k] || 0) + 1; jset('as_activity', act);
+    p[m.id] = { id: m.id, title: titleOf(m), titles: titlesOf(m), cover: coverOf(m), ep, total, end, ts: Date.now() };
+    try { jset('as_progress', p); }
+    catch {                                              // Storage full: forget the oldest entries and try once more
+      try {
+        const keep = Object.values(p).sort((a, b) => b.ts - a.ts).slice(0, 40);
+        const slim = {}; keep.forEach(x => { slim[x.id] = x; });
+        jset('as_progress', slim);
+      } catch { }
     }
+    Sync.later();
+    try {
+      const seen = Store.seen();
+      const arr = seen[m.id] || [];
+      if (!arr.includes(ep)) {
+        arr.push(ep); seen[m.id] = arr; jset('as_seen', seen);
+        const act = Store.activity(); const k = dayKey();
+        act[k] = (act[k] || 0) + 1; jset('as_activity', act);
+      }
+    } catch { }
   },
   /* Fetch both title languages once for entries saved with only one; resolves true if something changed */
   async fillTitles() {
@@ -457,9 +481,76 @@ const Store = {
     } catch { return false; }
   },
   continueList() {
-    return Object.values(Store.progress()).filter(x => x.ep < x.total).sort((a, b) => b.ts - a.ts).slice(0, 24);
+    return Object.values(Store.progress()).filter(x => !Store.isDone(x)).sort((a, b) => b.ts - a.ts).slice(0, CONTINUE_MAX);
   },
 };
+
+/* How far through each episode you are (0-100), for the underline under every episode. Kept on this device only.
+   A player message with the playback position moves the bar live; once an episode is played to the end it is marked finished and greyed out. */
+const EpProg = {
+  KEY: 'as_epprog',
+  END: 95,                                              // At or past this many percent counts as watched to the end
+  _pend: null, _t: 0,
+  all: () => jget('as_epprog', {}),
+  /* { ep: { p, d } } for one anime; d = reached the end at some point */
+  of(id) {
+    const o = EpProg.all()[id] || {}, out = {};
+    for (const k in o) { const p = Number(o[k].p) || 0; out[k] = { p, d: !!o[k].d || p >= EpProg.END }; }
+    const q = EpProg._pend;
+    if (q && q.id == id) out[q.ep] = { p: q.p, d: !!(out[q.ep]?.d || q.p >= EpProg.END) };
+    return out;
+  },
+  /* Percent watched from a player message, or null when the message carries no position. Providers differ in shape, so stay tolerant. */
+  fromMessage(d) {
+    if (!d || typeof d !== 'object') return null;
+    const src = [d, d.data, d.info, d.payload].filter(x => x && typeof x === 'object');
+    const pick = keys => { for (const o of src) for (const k of keys) { if (o[k] == null || o[k] === '' || typeof o[k] === 'boolean') continue; const v = Number(o[k]); if (isFinite(v)) return v; } return null; };
+    const t = pick(['currentTime', 'current_time', 'time', 'position', 'played', 'seconds']);
+    const dur = pick(['duration', 'total', 'totalTime', 'length']);
+    if (t != null && dur > 0) return Math.max(0, Math.min(100, t / dur * 100));
+    const pc = pick(['percent', 'percentage']);
+    if (pc != null) return Math.max(0, Math.min(100, pc));
+    const fr = pick(['progress']);
+    if (fr != null) return Math.max(0, Math.min(100, fr <= 1 ? fr * 100 : fr));
+    return null;
+  },
+  /* Remember a position. The page repaints its own bar at once; storage is written a few seconds at a time. */
+  record(id, ep, p, { raiseOnly = false } = {}) {
+    ep = Number(ep); p = Math.max(0, Math.min(100, Number(p) || 0));
+    if (Settings.get().incognito || !id || !(ep >= 1)) return null;
+    const known = EpProg.of(id)[ep];
+    if (raiseOnly && known && known.p >= p) return known;
+    const q = EpProg._pend;
+    if (q && (q.id != id || q.ep !== ep)) EpProg.flush();
+    EpProg._pend = { id, ep, p: Math.round(p * 10) / 10 };
+    if (!EpProg._t) EpProg._t = setTimeout(EpProg.flush, 2500);
+    return { p, d: !!(known?.d || p >= EpProg.END) };
+  },
+  flush() {
+    clearTimeout(EpProg._t); EpProg._t = 0;
+    const q = EpProg._pend; EpProg._pend = null;
+    if (!q) return;
+    try {
+      const all = EpProg.all(), a = all[q.id] || (all[q.id] = {});
+      a[q.ep] = { p: q.p, d: (a[q.ep] && a[q.ep].d) || q.p >= EpProg.END ? 1 : 0, ts: Date.now() };
+      const ids = Object.keys(all);
+      if (ids.length > 120) {                           // Keep it small: drop the anime touched longest ago
+        const last = i => Math.max(0, ...Object.values(all[i]).map(x => x.ts || 0));
+        ids.sort((x, y) => last(x) - last(y)).slice(0, ids.length - 100).forEach(i => { delete all[i]; });
+      }
+      jset('as_epprog', all);
+    } catch { }
+  },
+  /* Set one underline: width follows the position; a finished episode is full and greyed out by its .fin class */
+  width: (st, live) => st ? (st.d && !live ? 100 : st.p) : 0,       // The episode being played shows where you are right now
+  paint(el, st, live = false) {
+    if (!el) return;
+    el.classList.toggle('fin', !!(st && st.d));
+    el.querySelectorAll('.ep-prog i, .se-prog i').forEach(bar => { bar.style.width = EpProg.width(st, live) + '%'; });
+  },
+};
+addEventListener('pagehide', () => EpProg.flush());
+document.addEventListener('visibilitychange', () => { if (document.hidden) EpProg.flush(); });
 
 const Dub = {
   _m: () => jget('as_nodub', {}),
@@ -500,6 +591,7 @@ const Sync = {
     if (!Auth.current()) return;
     const m = Sync.meta(), now = Date.now();
     if (kind === 'list') m.listTs = now; else if (kind === 'fav') m.favTs = now; else if (kind === 'hist') m.histTs = now;
+    else if (kind === 'cm') m.cmTs = now;
     jset('as_sync', m);
     Sync.later();
   },
@@ -511,11 +603,13 @@ const Sync = {
   _stable: v => JSON.stringify(v, (k, x) => (x && typeof x === 'object' && !Array.isArray(x)) ? Object.keys(x).sort().reduce((o, key) => (o[key] = x[key], o), {}) : x),
   _local(m) {
     return { list: jget('as_list', []), listTs: m.listTs || 0, fav: jget('as_fav', []), favTs: m.favTs || 0,
-      progress: jget('as_progress', {}), seen: jget('as_seen', {}), activity: jget('as_activity', {}), histTs: m.histTs || 0 };
+      progress: jget('as_progress', {}), seen: jget('as_seen', {}), activity: jget('as_activity', {}), histTs: m.histTs || 0,
+      cm: jget('as_cm_ok', []), cmTs: m.cmTs || 0 };
   },
   _norm: r => ({ list: Array.isArray(r?.list) ? r.list : [], listTs: Number(r?.listTs) || 0, fav: Array.isArray(r?.fav) ? r.fav : [], favTs: Number(r?.favTs) || 0,
     progress: r?.progress && typeof r.progress === 'object' ? r.progress : {}, seen: r?.seen && typeof r.seen === 'object' ? r.seen : {},
-    activity: r?.activity && typeof r.activity === 'object' ? r.activity : {}, histTs: Number(r?.histTs) || 0 }),
+    activity: r?.activity && typeof r.activity === 'object' ? r.activity : {}, histTs: Number(r?.histTs) || 0,
+    cm: Array.isArray(r?.cm) ? r.cm.map(Number).filter(Boolean) : [], cmTs: Number(r?.cmTs) || 0 }),
   /* baseline: this device has synced with this account before, so timestamps can be trusted for list/favourites */
   merge(l, r, baseline) {
     const uniq = (arr, key) => { const s = new Set(); return arr.filter(x => { const k = key(x); if (s.has(k)) return false; s.add(k); return true; }); };
@@ -525,6 +619,9 @@ const Sync = {
     if (baseline) { const w = l.favTs >= r.favTs ? l : r; out.fav = w.fav; out.favTs = w.favTs; }
     else { out.fav = uniq([...r.fav, ...l.fav], x => x).slice(0, 500); out.favTs = Math.max(l.favTs, r.favTs); }
     out.histTs = Math.max(l.histTs, r.histTs);
+    /* Anime whose comments you opened: the newer list wins, but a device that never stamped one is merged in instead of overwritten */
+    out.cmTs = Math.max(l.cmTs || 0, r.cmTs || 0);
+    out.cm = (l.cmTs && r.cmTs) ? ((l.cmTs >= r.cmTs ? l.cm : r.cm) || []) : [...new Set([...(r.cm || []), ...(l.cm || [])])].slice(-400);
     out.progress = {};
     for (const src of [r.progress, l.progress]) for (const [id, p] of Object.entries(src)) {
       if (!p || !(p.ts > out.histTs)) continue;
@@ -545,9 +642,10 @@ const Sync = {
     const put = (key, val, old) => { if (Sync._stable(val) !== Sync._stable(old)) { jset(key, val); changed = true; } };
     put('as_list', merged.list, local.list); put('as_fav', merged.fav, local.fav);
     put('as_progress', merged.progress, local.progress); put('as_seen', merged.seen, local.seen); put('as_activity', merged.activity, local.activity);
+    put('as_cm_ok', merged.cm, local.cm);
     return changed;
   },
-  _wipeLocal() { ['as_list', 'as_fav', 'as_progress', 'as_seen', 'as_activity', 'as_sync'].forEach(k => localStorage.removeItem(k)); },
+  _wipeLocal() { ['as_list', 'as_fav', 'as_progress', 'as_seen', 'as_activity', 'as_epprog', 'as_cm_ok', 'as_sync'].forEach(k => localStorage.removeItem(k)); EpProg._pend = null; },
   run() {
     if (!Auth.current() || !Auth.configured() || Sync.off) return Promise.resolve(false);
     if (Sync._p) { Sync._again = true; return Sync._p; }
@@ -578,7 +676,7 @@ const Sync = {
     const local = Sync._local(meta);
     const merged = remote ? Sync.merge(local, remote, !!meta.uid && meta.uid === uid) : local;
     const changed = Sync._apply(merged, local);
-    jset('as_sync', { uid, listTs: merged.listTs, favTs: merged.favTs, histTs: merged.histTs });
+    jset('as_sync', { uid, listTs: merged.listTs, favTs: merged.favTs, histTs: merged.histTs, cmTs: merged.cmTs || 0 });
     Sync._sig = Sync._stable(Sync._local(Sync.meta()));
     if (!remote || Sync._stable(merged) !== Sync._stable(remote)) {
       const { error: e2 } = await sb.from('user_data').upsert({ user_id: uid, data: { v: 1, ...merged }, updated_at: new Date().toISOString() });
@@ -638,18 +736,21 @@ const Continue = {
     }
     return all.map(x => {
       const m = info[x.id];
-      let avail = x.total;
+      let avail = x.total, end = Store.isDone(x);
       if (m) {
         avail = m.status === 'RELEASING'
           ? (m.nextAiringEpisode ? m.nextAiringEpisode.episode - 1 : (m.episodes || x.total))
           : (m.episodes || x.total);
+        avail = Math.max(1, avail);
+        /* Stays listed while you are on the newest episode of an airing show; leaves only when the last episode is reached */
+        end = m.status === 'RELEASING' ? (!!m.episodes && x.ep >= m.episodes) : x.ep >= avail;
       }
       avail = Math.max(1, avail);
-      return { ...x, avail, fresh: Math.max(0, avail - x.total) };
+      return { ...x, avail, end, fresh: Math.max(0, avail - x.total) };
     })
-      .filter(x => x.ep < x.avail)
-      .sort((a, b) => (b.fresh > 0) - (a.fresh > 0) || b.ts - a.ts)
-      .slice(0, 24);
+      .filter(x => !x.end)
+      .sort((a, b) => b.ts - a.ts)                      // Most recently watched first: a new anime takes the front and the oldest one falls off the end
+      .slice(0, CONTINUE_MAX);
   },
   /* Instant first paint from storage before the check finishes */
   quick: () => Store.continueList().map(x => ({ ...x, avail: x.total, fresh: 0 })),
@@ -741,7 +842,7 @@ function latestCardHTML({ m, ep, at }) {
     <article class="card ${watched ? 'is-watched' : ''}">
       <div class="card-media">
         <img loading="lazy" decoding="async" src="${thumbOf(m)}" alt="${esc(titleOf(m))}">
-        ${watched ? '<span class="badge badge-watched">&#10003; Watched</span>' : `<span class="badge badge-air">${timeAgo(at)}</span>`}
+        ${watched ? '<span class="badge badge-watched">Watched</span>' : `<span class="badge badge-air">${timeAgo(at)}</span>`}
         ${target !== ep ? `<span class="badge badge-note">Up next: Ep ${target}</span>` : ''}
         ${hitHTML(details, titleOf(m))}
         ${playBtnHTML(playHref, `Play Ep ${target}`)}
@@ -1294,7 +1395,8 @@ function buildFooter() {
         <p class="footer-brand">AMNE<b>STREAM</b></p>
       </div>
     </div>
-    <p class="footer-note muted">Amnestream doesn't host any files; it only shows content from third-party providers.</p>`;
+    <p class="footer-note muted">Amnestream doesn't host any files; it only shows content from third-party providers.</p>
+    <p class="footer-note muted" style="margin-top:6px;font-size:11px;opacity:.6">Build ${SITE_BUILD}</p>`;
 }
 
 function skeletonGrid(n = 12) {
@@ -1313,7 +1415,10 @@ function buildBackToTop() {
 }
 
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  /* A new version of the site takes over by itself: reload once so you are never left on stale files */
+  const hadSW = !!navigator.serviceWorker.controller; let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (!hadSW || reloaded) return; reloaded = true; location.reload(); });
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').then(r => r.update()).catch(() => {}));
 }
 
 document.addEventListener('click', e => {

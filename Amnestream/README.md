@@ -2,7 +2,7 @@
 
 # amnestream.
 
-**A fast, themeable anime streaming site with sub / dub, server failover and optional cloud sync.**
+**A fast, anime streaming site with sub / dub, server failover and optional cloud sync.**
 No backend, no build step: plain HTML, CSS and JavaScript.
 
 ![Static site](https://img.shields.io/badge/static%20site-no%20build-9db4ff?style=flat-square)

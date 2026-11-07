@@ -16,13 +16,91 @@
 
 .watch-comments{grid-column:1/-1;min-width:0;margin-top:8px}
 
-.dp-mal{display:flex;align-items:flex-end;flex-wrap:wrap;gap:10px 12px;margin-top:16px;padding:12px 14px;border-radius:16px;background:color-mix(in srgb,var(--card) 86%,transparent);box-shadow:inset 0 0 0 1px var(--line)}
+/* ---- Details page: action row, ratings and the MAL box ----
+   One compact stacked layout everywhere; it opens up into a single row when .dp-main is wide enough (container query). */
+.dp-main{container:dpm / inline-size}
+.dp-main>.dp-row{display:flex;flex-direction:column;align-items:stretch;gap:14px;margin-top:16px}
+.dp-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.dp-actions>.dp-btn{width:100%;min-width:0;white-space:nowrap}
+.dp-act-ico{grid-column:1/-1;display:flex;align-items:center;gap:10px}
+.dp-act-ext{display:flex;align-items:center;gap:8px;margin-left:auto}
+.dp-ext{flex:none;min-width:38px;height:38px;padding:0 10px}
+.dp-rates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.dp-rate{min-width:0;padding:10px 14px;border-radius:14px;background:color-mix(in srgb,var(--card) 70%,transparent);box-shadow:inset 0 0 0 1px var(--line)}
+.dp-rate>div{min-width:0}
+.dp-rate-ico{flex:none}
+.dp-rate small{white-space:nowrap}
+@container dpm (max-width:370px){
+  .dp-rate{gap:8px;padding:10px}
+  .dp-rate-ico{width:30px;height:30px}
+  .dp-rate b{font-size:20px}
+  .dp-rate small{letter-spacing:.03em}
+}
+@container dpm (min-width:600px){
+  .dp-main>.dp-row{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px 24px}
+  .dp-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+  .dp-actions>.dp-btn{width:auto}
+  .dp-act-ico,.dp-act-ext{display:contents}
+  .dp-ext{min-width:34px;height:34px;padding:0 6px}
+  .dp-rates{display:flex;align-items:center;gap:24px}
+  .dp-rate{padding:0;border-radius:0;background:none;box-shadow:none}
+}
+
+.dp-mal{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:end;gap:14px 12px;margin-top:16px;padding:14px;border-radius:16px;background:color-mix(in srgb,var(--card) 86%,transparent);box-shadow:inset 0 0 0 1px var(--line)}
 .dp-mal[hidden]{display:none}
-.dp-mal .mal-tag{align-self:center;padding:4px 9px;border-radius:8px;font-size:11px;font-weight:800;letter-spacing:.06em;color:#fff;background:#2e51a2}
-.dp-mal .mal-txt{align-self:center;flex:1;min-width:0;font-size:13px;color:var(--muted)}
-.dp-mal label{display:flex;flex-direction:column;gap:4px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-.dp-mal select,.dp-mal input{height:34px;padding:0 10px;border:0;border-radius:10px;background:var(--card2);color:var(--text);font:600 13px inherit;font-family:inherit;box-shadow:inset 0 0 0 1px var(--line)}
-.dp-mal input{width:64px}
-.dp-mal .mal-eps{display:flex;align-items:center;gap:6px;text-transform:none;letter-spacing:0}
-.dp-mal .mal-eps small{font-size:12px;font-weight:600;color:var(--muted)}
-@media (max-width:600px){.dp-mal label:has(#mal-st){flex:1 1 100%}.dp-mal select{width:100%}}
+.dp-mal.simple{display:flex;align-items:center;gap:12px}
+.dp-mal .mal-head{grid-column:1/-1;display:flex;align-items:center;gap:10px;min-width:0}
+.dp-mal .mal-tag{flex:none;display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:8px;font-size:11px;font-weight:800;letter-spacing:.06em;color:#fff;background:#2e51a2}
+.dp-mal .mal-txt{flex:1;min-width:0;font-size:13px;color:var(--muted)}
+.dp-mal .mal-f{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.dp-mal .mal-status,.dp-mal .mal-act{grid-column:1/-1}
+.dp-mal select,.dp-mal input{display:block;box-sizing:border-box;width:100%;min-width:0;height:38px;padding:0 12px;border:0;border-radius:12px;background-color:var(--card2);color:var(--text);font-family:inherit;font-size:13px;font-weight:600;line-height:38px;box-shadow:inset 0 0 0 1px var(--line)}
+.dp-mal select{-webkit-appearance:none;appearance:none;padding-right:34px;cursor:pointer;background-repeat:no-repeat;background-position:right 12px center;background-size:12px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238d95a8' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")}
+.dp-mal input[type=number]{-moz-appearance:textfield;appearance:textfield}
+.dp-mal input::-webkit-outer-spin-button,.dp-mal input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.dp-mal select:focus-visible,.dp-mal input:focus-visible{outline:0;box-shadow:inset 0 0 0 1.5px var(--accent)}
+.dp-mal .mal-eps{display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0}
+.dp-mal .mal-eps input{flex:1 1 auto}
+.dp-mal .mal-eps small{flex:none;font-size:12.5px;font-weight:600;color:var(--muted);white-space:nowrap}
+.dp-mal .mal-act{display:flex;gap:10px}
+.dp-mal .mal-act .dp-btn{flex:1 1 0;height:38px;padding:0 18px;border-radius:12px;font-size:13px}
+.dp-mal.simple .dp-btn{flex:none}
+@container dpm (min-width:600px){
+  .dp-mal{grid-template-columns:auto minmax(150px,1.6fr) minmax(110px,.8fr) minmax(84px,.5fr) auto;gap:12px 14px}
+  .dp-mal .mal-head{grid-column:auto;height:38px}
+  .dp-mal .mal-head .mal-txt{display:none}
+  .dp-mal .mal-status,.dp-mal .mal-act{grid-column:auto}
+  .dp-mal .mal-act .dp-btn{flex:none}
+}
+
+/* ---- Phones (Brave/Chrome): no white strip when the address bar slides away ----
+   Theme rules that use the `background` shorthand reset the page colour to transparent, so the
+   area below the painted background showed the browser's white. Keep the theme colour under everything,
+   and let the fixed backgrounds cover the tallest viewport (address bar hidden). */
+html,html[data-theme]{background-color:var(--bg)!important}
+@media (max-width:900px){
+  html #as-scene{height:100vh!important;height:100lvh!important}
+  .dp-bg{bottom:auto;height:100vh;height:100lvh}
+}
+
+/* ---- Details page: comments in the left column, info card under the synopsis ---- */
+.dp{grid-template-columns:clamp(260px,26vw,340px) minmax(0,1fr)}
+.dp-side .dp-side-top{width:210px;max-width:100%}
+.dp-side .dp-comments{margin:14px 0 0;padding:16px;border:0;border-radius:14px;
+  background:color-mix(in srgb,var(--card) 58%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.dp-side .dp-comments h2{margin:0 0 12px;font-size:16px}
+.dp-side .cm{max-width:none}
+.dp-side .cm-gate{flex-direction:column;align-items:flex-start;gap:12px;padding:14px;box-shadow:none;background:transparent}
+.dp-side .cm-gate-txt{flex:0 1 auto}
+.dp-side .cm-gate-act{width:100%;flex-direction:column}
+.dp-side .cm-gate-act .dp-btn{width:100%;justify-content:center;text-align:center}
+.dp-side .cm-login{padding:12px 14px;font-size:13px}
+.dp-side .cm-item{gap:10px}
+.dp-info{margin:24px 0 0}
+.dp-info dl{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px 22px}
+@media (max-width:900px){
+  .dp-side .dp-side-top{width:min(200px,62vw)}
+  .dp-side .dp-comments{order:3;margin:0}
+  .dp-info{margin-top:18px}
+}

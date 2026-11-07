@@ -166,10 +166,12 @@
 
   /* Sakura: a pale page with a cherry-blossom branch coming in from the right, vertical lettering on the left and petals drifting down.
      The branch is painted once into an offscreen layer; each frame only sways that layer a hair and moves the petals. */
-  function sakura() {
+  function sakura(inv = false) {                       // inv: the same scene after dark (light wood and glowing blossom on a deep plum page)
     reseed(5);
     const SIZE = 740;                                   // the branch is designed on a 740 x 740 board
     const INK = '#2a1b22', ROSE = '#ec5b86';
+    const BARK = inv ? [['#ead6de', 1, 0], ['rgba(255,238,244,.5)', .32, -.18]] : [['#33262a', 1, 0], ['rgba(120,92,96,.55)', .32, -.18]];
+    const TWIG = inv ? '#d2b8c2' : '#3a2a2e', STEM = inv ? '#dcc3cc' : '#4a3036', GLOW = inv ? 'rgba(255,125,175,.38)' : 'rgba(150,50,90,.2)';
     const BRANCHES = [
       [[800, 184], [716, 205], [668, 226], [626, 252], [584, 278], [552, 306], [528, 342], [512, 380], [496, 418], [470, 452], [436, 480], [400, 492], [352, 494], [300, 492], [250, 498], [205, 508]],
       [[724, 196], [704, 184], [672, 170], [640, 160], [604, 150], [570, 140], [540, 125], [520, 108]],
@@ -212,7 +214,7 @@
       }
       out.push(pts[pts.length - 1]);
       c.lineCap = 'round'; c.lineJoin = 'round';
-      for (const [col, f, dx] of [['#33262a', 1, 0], ['rgba(120,92,96,.55)', .32, -.18]]) {
+      for (const [col, f, dx] of BARK) {
         for (let i = 0; i < out.length - 1; i++) {
           const w = lerp(w0, w1, i / (out.length - 1)) * f * U;
           c.strokeStyle = col; c.lineWidth = Math.max(.6, w);
@@ -243,7 +245,7 @@
       c.save(); c.translate(ox + x * U, oy + y * U); c.rotate(rnd() * TAU); c.scale(1, tilt);
       r *= U;
       const off = rnd() * TAU;
-      c.shadowColor = 'rgba(150,50,90,.2)'; c.shadowBlur = r * .14; c.shadowOffsetY = r * .05;
+      c.shadowColor = GLOW; c.shadowBlur = r * (inv ? .5 : .14); c.shadowOffsetY = inv ? 0 : r * .05;
       for (let i = 0; i < 5; i++) {
         c.save(); c.rotate(off + i * TAU / 5 + (rnd() - .5) * .18); const k = .92 + rnd() * .14; petal(c, r * k, depth); c.restore();
       }
@@ -263,7 +265,7 @@
     function bud(c, x, y, ang) {
       const s = U * 10 * (.8 + rnd() * .5);
       c.save(); c.translate(ox + x * U, oy + y * U); c.rotate(ang);
-      c.strokeStyle = '#4a3036'; c.lineWidth = Math.max(.8, U * 1.3); c.beginPath(); c.moveTo(0, 0); c.lineTo(0, s * .9); c.stroke();
+      c.strokeStyle = STEM; c.lineWidth = Math.max(.8, U * 1.3); c.beginPath(); c.moveTo(0, 0); c.lineTo(0, s * .9); c.stroke();
       const g = c.createRadialGradient(-s * .25, -s * .1, 0, 0, 0, s * 1.1);
       g.addColorStop(0, '#f27aa5'); g.addColorStop(.6, '#d6336c'); g.addColorStop(1, '#a3174f');
       c.shadowColor = 'rgba(120,20,60,.25)'; c.shadowBlur = s * .3;
@@ -280,7 +282,7 @@
       const samples = [];
       BRANCHES.forEach((b, i) => { const s = limb(c, b, WIDTH[i][0], WIDTH[i][1]); for (const p of s) samples.push(p); });
       const near = (x, y) => { let best = null, bd = 1e9; for (const p of samples) { const d = (p[0] - x) ** 2 + (p[1] - y) ** 2; if (d < bd) { bd = d; best = p; } } return best; };
-      c.strokeStyle = '#3a2a2e'; c.lineCap = 'round';
+      c.strokeStyle = TWIG; c.lineCap = 'round';
       for (const [x, y, r] of FLOWERS) { const p = near(x, y); c.lineWidth = Math.max(.8, U * 1.5); c.beginPath(); c.moveTo(ox + p[0] * U, oy + p[1] * U); c.lineTo(ox + x * U, oy + y * U); c.stroke(); }
       for (const [x, y] of BUDS) { const p = near(x, y); bud(c, x, y, Math.atan2(y - p[1], x - p[0]) - Math.PI / 2 + Math.PI); }
       [...FLOWERS].sort((a, b) => a[2] - b[2]).forEach(f => flower(c, ...f));
@@ -319,7 +321,8 @@
     }
     function frame(t, dt) {
       const bg = ctx.createLinearGradient(0, 0, 0, H);
-      bg.addColorStop(0, '#ffffff'); bg.addColorStop(.7, '#fffafb'); bg.addColorStop(1, '#fff1f5');
+      if (inv) { bg.addColorStop(0, '#1d0d17'); bg.addColorStop(.7, '#150a11'); bg.addColorStop(1, '#2a0f1f'); }
+      else { bg.addColorStop(0, '#ffffff'); bg.addColorStop(.7, '#fffafb'); bg.addColorStop(1, '#fff1f5'); }
       ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
       ctx.save();
       ctx.translate(ax, ay); ctx.rotate(Math.sin(t * .45) * .0035 + Math.sin(t * .17) * .002); ctx.translate(-ax, -ay);
@@ -393,12 +396,26 @@
     return { resize, frame };
   }
 
-  const SCENES = { galaxy, vapor, sakura, aurora };
+  const SCENES = { galaxy, vapor, sakura: () => sakura(false), 'sakura-night': () => sakura(true), aurora };
+
+  /* Phones: the tallest the viewport gets (address bar hidden), so sliding the bar in and out never changes the size */
+  function fullHeight() {
+    let h = innerHeight;
+    if (matchMedia('(max-width:900px)').matches && document.body) {
+      const d = document.createElement('div');
+      d.style.cssText = 'position:fixed;left:0;top:0;width:0;height:100vh;height:100lvh;visibility:hidden;pointer-events:none';
+      document.body.appendChild(d); h = Math.max(h, d.offsetHeight); d.remove();
+    }
+    return h;
+  }
 
   function resize() {
     if (!cv) return;
+    const nw = Math.max(1, Math.round(innerWidth)), nh = Math.max(1, Math.round(fullHeight()));
+    if (cv._w === nw && cv._h === nh) return;     // Only the address bar moved: keep the canvas (resizing it would blank it for a frame)
+    cv._w = nw; cv._h = nh;
     dpr = Math.min(window.devicePixelRatio || 1, name === 'galaxy' || name === 'aurora' ? 1.25 : 1.5);
-    W = Math.max(1, Math.round(innerWidth)); H = Math.max(1, Math.round(innerHeight));
+    W = nw; H = nh;
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     if (scene) { scene.resize(); if (still) draw(); }

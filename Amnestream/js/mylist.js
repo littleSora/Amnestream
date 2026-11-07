@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   paint(Continue.quick());
   Continue.load().then(paint).catch(() => {});
+  window.addEventListener('pageshow', e => { if (e.persisted) { paint(Continue.quick()); Continue.load().then(paint).catch(() => {}); } });
   document.addEventListener('as:synced', () => {
     paintList(); paint(Continue.quick()); Continue.load().then(paint).catch(() => {});
   });

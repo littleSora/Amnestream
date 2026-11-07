@@ -1,4 +1,4 @@
-const VERSION = 'amnestream-v76', IMG = 'amnestream-img-v1';
+const VERSION = 'amnestream-v81', IMG = 'amnestream-img-v1';
 const SHELL = [
   "index.html",
   "browse.html",

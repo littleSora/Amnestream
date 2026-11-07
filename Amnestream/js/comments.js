@@ -62,20 +62,26 @@ const Comments = {
   OK_KEY: 'as_cm_ok',
   _oks: () => { const l = jget('as_cm_ok', []); return Array.isArray(l) ? l : []; },
   allowed: id => !!Settings.get().showComments || Comments._oks().includes(Number(id)),
-  allow(id) { const l = Comments._oks(); if (!l.includes(Number(id))) { l.push(Number(id)); jset('as_cm_ok', l.slice(-400)); } },
-  unallow(id) { jset('as_cm_ok', Comments._oks().filter(x => x !== Number(id))); },
+  allow(id) {                                            // Remembered for this anime (and on your other devices when signed in)
+    const l = Comments._oks();
+    if (!l.includes(Number(id))) { l.push(Number(id)); try { jset('as_cm_ok', l.slice(-400)); } catch { } Sync.touch('cm'); }
+  },
+  unallow(id) { try { jset('as_cm_ok', Comments._oks().filter(x => x !== Number(id))); } catch { } Sync.touch('cm'); },
   /* Same as mount(), but behind the gate. onGate(true|false) tells the page whether the comments are hidden, so it can hide the count. */
   mountGated(root, animeId, onCount, episode = null, onGate) {
     const draw = () => {
       if (Comments.allowed(animeId)) {
         onGate && onGate(false);
         Comments.mount(root, animeId, onCount, episode);
+        const b = document.createElement('div'); b.className = 'cm-regate';
         if (!Settings.get().showComments) {
-          const b = document.createElement('div'); b.className = 'cm-regate';
           b.innerHTML = '<button type="button" class="cm-link">Hide comments for this anime</button>';
           b.firstChild.onclick = () => { Comments.unallow(animeId); draw(); };
-          root.appendChild(b);
+        } else {
+          b.innerHTML = '<button type="button" class="cm-link">Hide comments on every anime</button>';
+          b.firstChild.onclick = () => { Settings.set('showComments', false); Comments.unallow(animeId); toast('Comments are hidden again'); draw(); };
         }
+        root.appendChild(b);
         return;
       }
       root._tok = {};
@@ -85,9 +91,10 @@ const Comments = {
         <div class="cm-gate-txt"><strong>Spoiler alert</strong><p>Comments are hidden because they can spoil things you haven't watched yet.</p></div>
         <div class="cm-gate-act">
           <button type="button" class="dp-btn primary sm" data-gate="show">Show comments for this anime</button>
-          <a class="dp-btn sm" href="settings.html?s=privacy">Turn on for every anime</a>
+          <button type="button" class="dp-btn sm" data-gate="all">Turn on for every anime</button>
         </div></div>`;
       $('[data-gate="show"]', root).onclick = () => { Comments.allow(animeId); draw(); };
+      $('[data-gate="all"]', root).onclick = () => { Settings.set('showComments', true); toast('Comments are on for every anime. Change it in Settings > Privacy.'); draw(); };
     };
     draw();
   },

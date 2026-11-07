@@ -166,11 +166,11 @@ html[data-theme] .segc{background:var(--card)}
 html[data-theme] .stg-insp .segc{display:inline-grid;grid-template-columns:repeat(var(--n,2),auto)}
 
 
-html:is([data-theme=galaxy],[data-theme=vapor],[data-theme=blossom],[data-theme=aurora]) body{background:transparent;text-shadow:0 1px 8px rgba(0,0,0,.55)}
+html:is([data-theme=galaxy],[data-theme=vapor],[data-theme=blossom],[data-theme=blossom-night],[data-theme=aurora]) body{background:transparent;text-shadow:0 1px 8px rgba(0,0,0,.55)}
 html[data-theme=blossom] body{text-shadow:none}
-html:is([data-theme=galaxy],[data-theme=vapor],[data-theme=blossom],[data-theme=aurora]) :is(.side-card,.pf-card,.sched-list,.set-row,.set-side,.player-bar,.side-panel,.lb-row,.char,.tl-scroll,.cm-login){backdrop-filter:blur(12px) saturate(1.2);-webkit-backdrop-filter:blur(12px) saturate(1.2);box-shadow:inset 0 0 0 1px var(--line)}
-html:is([data-theme=galaxy],[data-theme=vapor],[data-theme=blossom],[data-theme=aurora]) #as-scene{display:block}
-html:is([data-theme=rgb],[data-theme=photo],[data-theme=parchment],[data-theme=frost],[data-theme=magma],[data-theme=galaxy],[data-theme=vapor],[data-theme=blossom],[data-theme=aurora]) body .mrow.stack{box-shadow:none;background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none;padding:14px 0;margin:0}
+html:is([data-theme=galaxy],[data-theme=vapor],[data-theme=blossom],[data-theme=blossom-night],[data-theme=aurora]) :is(.side-card,.pf-card,.sched-list,.set-row,.set-side,.player-bar,.side-panel,.lb-row,.char,.tl-scroll,.cm-login){backdrop-filter:blur(12px) saturate(1.2);-webkit-backdrop-filter:blur(12px) saturate(1.2);box-shadow:inset 0 0 0 1px var(--line)}
+html:is([data-theme=galaxy],[data-theme=vapor],[data-theme=blossom],[data-theme=blossom-night],[data-theme=aurora]) #as-scene{display:block}
+html:is([data-theme=rgb],[data-theme=photo],[data-theme=parchment],[data-theme=frost],[data-theme=magma],[data-theme=galaxy],[data-theme=vapor],[data-theme=blossom],[data-theme=blossom-night],[data-theme=aurora]) body .mrow.stack{box-shadow:none;background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none;padding:14px 0;margin:0}
 html:is([data-theme=parchment],[data-theme=brutal],[data-theme=pre-alabaster],[data-theme=retro96],[data-theme=blossom]) :is(.cin-hero,.cin-film){--text:#f4eef8;--muted:#b9b0c4;--line:#ffffff2e;color:#f4eef8}
 html[data-theme=voxel] body{text-shadow:0 2px 0 rgba(15,40,80,.55)}
 html[data-theme=voxel] :is(.btn,.card,.side-card,.pf-card,.set-row,.stg-insp,.stg-hot,.theme-opt){text-shadow:none}
@@ -224,3 +224,14 @@ html[data-theme] :is(.stg-hero h3,.stg-hero-in .stg-chips span:not(.adult)){colo
 html[data-theme] .stg-hero-in .stg-chips span:not(.adult){background:#ffffff2e}
 html[data-theme] .stg-poster,html[data-theme] .stg-poster span{color:#fff}
 html[data-theme] .stg-hero-bg::after{background:linear-gradient(0deg,color-mix(in srgb,var(--bg) 55%,transparent),transparent 70%)}
+
+
+/* Sakura Inverted: the Sakura scene after dark. Same branch and petals on a deep plum page, light text, pink accent. */
+html[data-theme=blossom-night]{--bg:#12070e;--bg2:#1a0b14;--card:#241019cc;--card2:#321623;--line:#4a2336;--text:#fbeef3;--muted:#c9a3b4;
+  --accent:#ff7aa8;--accent-ink:#2a0a17;--accent2:#ffb3cd;--sh:rgba(0,0,0,.55)}
+html[data-theme=blossom-night]{background:linear-gradient(180deg,#1d0d17 0,#150a11 70%,#2a0f1f 100%) fixed}
+html[data-theme=blossom-night] #as-scene-text .st-jp{color:#fbeef3}
+html[data-theme=blossom-night] #as-scene-text .st-en{color:#ff7aa8}
+html[data-theme=blossom-night] body:not(.home) #as-scene-text{display:none}
+html[data-theme=blossom-night] :is(.stg-insp,.stg-nav,.stg-tabs){backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+html[data-theme=blossom-night] .stg-insp{background:#241019e6}

@@ -573,7 +573,11 @@ async function _episodeArt(id) {
       });
     }
   } catch { }
-  try { localStorage.setItem(key, JSON.stringify({ t: Date.now(), ttl: Object.keys(out).length ? 864e5 : 36e5, v: out })); } catch { }
+  try {
+    const old = Object.keys(localStorage).filter(k => k.startsWith('as_epart:'));       // Keep only the 25 newest so history always has room
+    if (old.length > 25) old.map(k => { let t = 0; try { t = JSON.parse(localStorage.getItem(k)).t; } catch { } return [k, t]; }).sort((a, b) => a[1] - b[1]).slice(0, old.length - 25).forEach(([k]) => localStorage.removeItem(k));
+    localStorage.setItem(key, JSON.stringify({ t: Date.now(), ttl: Object.keys(out).length ? 864e5 : 36e5, v: out }));
+  } catch { }
   return out;
 }
 
