@@ -415,7 +415,7 @@ function currentSeason(d = new Date()) {
   return { season: m <= 3 ? 'WINTER' : m <= 6 ? 'SPRING' : m <= 9 ? 'SUMMER' : 'FALL', year: y };
 }
 
-const SITE_BUILD = 'v81';
+const SITE_BUILD = 'v82';
 const CONTINUE_MAX = 24;                               // Continue watching holds this many anime
 const dayKey = (d = new Date()) => d.toISOString().slice(0, 10);
 const Store = {
@@ -432,7 +432,7 @@ const Store = {
   },
   setList(l) { jset('as_list', l.slice(0, 500)); Sync.touch('list'); },
   /* Clears progress, seen episodes and activity here and (through the stamp) on your other devices */
-  clearHistory() { ['as_progress', 'as_seen', 'as_activity', 'as_epprog'].forEach(k => localStorage.removeItem(k)); EpProg._pend = null; Sync.touch('hist'); },
+  clearHistory() { ['as_progress', 'as_seen', 'as_activity', 'as_epprog', 'as_cont_info'].forEach(k => localStorage.removeItem(k)); EpProg._pend = null; Continue._info = null; Sync.touch('hist'); },
   progress: () => jget('as_progress', {}),
   seen: () => jget('as_seen', {}),
   activity: () => jget('as_activity', {}),
@@ -467,21 +467,19 @@ const Store = {
   },
   /* Fetch both title languages once for entries saved with only one; resolves true if something changed */
   async fillTitles() {
-    const list = Store.list(), prog = Store.progress();
-    const ids = [...new Set([...list, ...Object.values(prog)].filter(x => !x.titles).map(x => x.id))].slice(0, 50);
+    const ids = [...new Set([...Store.list(), ...Object.values(Store.progress())].filter(x => !x.titles).map(x => x.id))].slice(0, 50);
     if (!ids.length) return false;
     try {
       const got = {};
       (await Api.titlesOf(ids)).Page.media.forEach(m => { got[m.id] = titlesOf(m); });
+      /* Read again only now: anything saved while waiting for the network (another tab, a new episode) must not be overwritten */
+      const list = Store.list(), prog = Store.progress();
       let changed = false;
       list.forEach(x => { if (!x.titles && got[x.id]) { x.titles = got[x.id]; changed = true; } });
       Object.values(prog).forEach(x => { if (!x.titles && got[x.id]) { x.titles = got[x.id]; changed = true; } });
       if (changed) { jset('as_list', list); jset('as_progress', prog); }
       return changed;
     } catch { return false; }
-  },
-  continueList() {
-    return Object.values(Store.progress()).filter(x => !Store.isDone(x)).sort((a, b) => b.ts - a.ts).slice(0, CONTINUE_MAX);
   },
 };
 
@@ -645,7 +643,7 @@ const Sync = {
     put('as_cm_ok', merged.cm, local.cm);
     return changed;
   },
-  _wipeLocal() { ['as_list', 'as_fav', 'as_progress', 'as_seen', 'as_activity', 'as_epprog', 'as_cm_ok', 'as_sync'].forEach(k => localStorage.removeItem(k)); EpProg._pend = null; },
+  _wipeLocal() { ['as_list', 'as_fav', 'as_progress', 'as_seen', 'as_activity', 'as_epprog', 'as_cont_info', 'as_cm_ok', 'as_sync'].forEach(k => localStorage.removeItem(k)); EpProg._pend = null; Continue._info = null; },
   run() {
     if (!Auth.current() || !Auth.configured() || Sync.off) return Promise.resolve(false);
     if (Sync._p) { Sync._again = true; return Sync._p; }
@@ -724,36 +722,56 @@ async function randomAnime(btn) {
   catch { toast('Could not pick a random title'); if (btn) btn.disabled = false; }
 }
 
+/* Continue watching. This is the only place that decides what the row holds and when it refreshes.
+   A page hands over its painter once with Continue.bind(paint). From then on, loading the page, coming back to the tab,
+   a finished sync and another tab saving progress all end in the same run(), so nothing can overlap or paint stale data. */
 const Continue = {
-  /* Compares last watched with what has aired since (one light, cached query) */
-  async load() {
-    const all = Object.values(Store.progress()).sort((a, b) => b.ts - a.ts);
-    const info = {};
-    if (all.length) {
-      try {
-        (await Api.statusOf(all.slice(0, 50).map(x => x.id))).Page.media.forEach(m => { info[m.id] = m; });
-      } catch { }
-    }
-    return all.map(x => {
-      const m = info[x.id];
+  _paint: null, _wired: false, _seq: 0, _t: 0, _info: null,
+  /* Last known status of each show ({ status, episodes, next }), kept so even the first paint follows the same rule as the checked one */
+  _known() { return Continue._info || (Continue._info = jget('as_cont_info', {})); },
+  /* The list: what you saved, compared with what has aired since. Stays while you are on the newest episode of an airing show; leaves when the last episode is reached */
+  items() {
+    const known = Continue._known();
+    return Object.values(Store.progress()).sort((a, b) => b.ts - a.ts).map(x => {
+      const m = known[x.id];
       let avail = x.total, end = Store.isDone(x);
       if (m) {
-        avail = m.status === 'RELEASING'
-          ? (m.nextAiringEpisode ? m.nextAiringEpisode.episode - 1 : (m.episodes || x.total))
-          : (m.episodes || x.total);
+        avail = m.status === 'RELEASING' ? (m.next ? m.next - 1 : (m.episodes || x.total)) : (m.episodes || x.total);
         avail = Math.max(1, avail);
-        /* Stays listed while you are on the newest episode of an airing show; leaves only when the last episode is reached */
         end = m.status === 'RELEASING' ? (!!m.episodes && x.ep >= m.episodes) : x.ep >= avail;
       }
       avail = Math.max(1, avail);
       return { ...x, avail, end, fresh: Math.max(0, avail - x.total) };
-    })
-      .filter(x => !x.end)
-      .sort((a, b) => b.ts - a.ts)                      // Most recently watched first: a new anime takes the front and the oldest one falls off the end
-      .slice(0, CONTINUE_MAX);
+    }).filter(x => !x.end).slice(0, CONTINUE_MAX);      // Most recently watched first: a new anime takes the front and the oldest one falls off the end
   },
-  /* Instant first paint from storage before the check finishes */
-  quick: () => Store.continueList().map(x => ({ ...x, avail: x.total, fresh: 0 })),
+  /* Paint now from storage, then check what has aired (one light, cached query) and paint again only if the answer changed anything */
+  async run() {
+    const paint = Continue._paint, seq = ++Continue._seq;
+    if (!paint) return;
+    paint(Continue.items());
+    const ids = Object.values(Store.progress()).sort((a, b) => b.ts - a.ts).slice(0, 50).map(x => x.id);
+    if (!ids.length) return;
+    let res; try { res = await Api.statusOf(ids); } catch { return; }
+    if (seq !== Continue._seq) return;                  // A newer run started while this one waited: its answer wins
+    const known = Continue._known(), keep = Store.progress();
+    res.Page.media.forEach(m => { known[m.id] = { status: m.status, episodes: m.episodes || 0, next: m.nextAiringEpisode ? m.nextAiringEpisode.episode : 0 }; });
+    Object.keys(known).forEach(id => { if (!keep[id]) delete known[id]; });
+    try { jset('as_cont_info', known); } catch { }
+    paint(Continue.items());
+  },
+  /* Anything that wants a fresh row asks here; requests that land together (tab visible + pageshow + sync) become one run */
+  refresh() { clearTimeout(Continue._t); Continue._t = setTimeout(Continue.run, 60); },
+  bind(paint) {
+    Continue._paint = paint;
+    if (!Continue._wired) {
+      Continue._wired = true;
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') Continue.refresh(); });
+      addEventListener('pageshow', e => { if (e.persisted) Continue.refresh(); });
+      document.addEventListener('as:synced', Continue.refresh);
+      addEventListener('storage', e => { if (e.key === null || e.key === 'as_progress' || e.key === 'as_settings') Continue.refresh(); });   // Watched something in another tab
+    }
+    Continue.run();
+  },
 };
 function continueCardHTML(x) {
   const ep = x.fresh && x.ep >= x.total ? x.ep + 1 : x.ep;

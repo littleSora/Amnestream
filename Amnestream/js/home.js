@@ -16,11 +16,7 @@ async function initHome() {
 
   $('#genre-cloud').innerHTML = visibleGenres().map(g =>
     `<a href="browse.html?genre=${encodeURIComponent(g)}">${g}</a>`).join('');
-  renderContinue();
-  document.addEventListener('as:synced', renderContinue);
-  /* Coming back from the player (back button, tab switch, restored page): show what you just watched */
-  window.addEventListener('pageshow', e => { if (e.persisted) renderContinue(); });
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') renderContinue(); });
+  Continue.bind(paintContinue);                       // The one function behind this row: page load, coming back from the player, sync, another tab
   placeTop10();
   wireTabs();
   initSchedule();
@@ -330,9 +326,10 @@ let contSig = '';
 function paintContinue(items) {
   const el = $('#rail-continue');
   if (!items.length || !Settings.get().continueRow) { el.style.display = 'none'; contSig = ''; return; }
-  const sig = items.map(x => `${x.id}:${x.ep}:${x.avail}:${x.fresh}`).join('|');
-  if (sig === contSig) return;
+  const sig = items.map(x => `${x.id}:${x.ep}:${x.avail}:${x.fresh}:${x.cover}:${savedTitle(x)}`).join('|');
+  if (sig === contSig) return;                         // Nothing the row shows has changed
   contSig = sig;
+  const oldTrack = $('.rail-track', el), keepAt = oldTrack ? oldTrack.scrollLeft : 0;
   el.style.display = '';
   el.innerHTML = `
     <div class="container rail-head"><h2>Continue watching</h2>
@@ -343,6 +340,7 @@ function paintContinue(items) {
       <button class="rail-nav right" aria-label="Scroll right">&rsaquo;</button>
     </div>`;
   const track = $('.rail-track', el), step = () => track.clientWidth * 0.85;
+  if (keepAt) track.scrollTo({ left: keepAt, behavior: 'instant' });    // A refresh must not throw the row back to the start
   $('.rail-nav.left', el).onclick  = () => track.scrollBy({ left: -step(), behavior: scrollMode() });
   $('.rail-nav.right', el).onclick = () => track.scrollBy({ left:  step(), behavior: scrollMode() });
   /* PC: the arrows stay visible, and the one pointing at nothing (start or end of the row) hides */
@@ -354,11 +352,6 @@ function paintContinue(items) {
   track.addEventListener('scroll', edges, { passive: true });
   addEventListener('resize', edges);
   edges();
-}
-function renderContinue() {
-  if (!Settings.get().continueRow) { paintContinue([]); return; }
-  paintContinue(Continue.quick());
-  Continue.load().then(paintContinue).catch(() => {});
 }
 
 document.addEventListener('DOMContentLoaded', initHome);

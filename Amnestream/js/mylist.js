@@ -26,21 +26,21 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   paintList();
 
+  let contSig = '';
   const paint = items => {
+    const sig = items.map(x => `${x.id}:${x.ep}:${x.avail}:${x.fresh}:${x.cover}:${savedTitle(x)}`).join('|');
+    if (sig === contSig) return;                       // Nothing the grid shows has changed
+    contSig = sig;
     $('#cont').innerHTML = items.length
       ? `<div class="grid">${items.map(continueCardHTML).join('')}</div>`
       : `<p class="empty">Nothing in progress.</p>`;
     const fresh = items.filter(x => x.fresh).length;
     $('#cont-new').textContent = fresh ? `${fresh} with new episodes` : '';
   };
-  paint(Continue.quick());
-  Continue.load().then(paint).catch(() => {});
-  window.addEventListener('pageshow', e => { if (e.persisted) { paint(Continue.quick()); Continue.load().then(paint).catch(() => {}); } });
-  document.addEventListener('as:synced', () => {
-    paintList(); paint(Continue.quick()); Continue.load().then(paint).catch(() => {});
-  });
+  Continue.bind(paint);                                // The same single function as the home row
+  document.addEventListener('as:synced', paintList);
   Store.fillTitles().then(changed => {
     if (!changed) return;
-    paintList(); paint(Continue.quick()); Continue.load().then(paint).catch(() => {});
+    paintList(); Continue.refresh();
   });
 });

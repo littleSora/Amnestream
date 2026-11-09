@@ -56,7 +56,7 @@ function paintPass() {
   const recent = p.prog.slice().sort((a, b) => b.ts - a.ts).slice(0, 12);
   const delta = p.week - p.lastWeek, activeDays = Object.keys(p.act).filter(k => p.act[k] > 0).length;
   const stubs = [[p.streak, p.streak === 1 ? 'day streak' : 'day streak', p.best > p.streak ? `best ${p.best}` : 'your best'], [p.eps, 'episodes watched', `${p.week} this week`], [p.titles, 'titles started', `${p.finished} finished`],
-    [p.hours, 'hours watched', 'at about 24 min each'], [p.list.length, 'in your list', `${Store.continueList().length} in progress`]];
+    [p.hours, 'hours watched', 'at about 24 min each'], [p.list.length, 'in your list', `${Continue.items().length} in progress`]];
   $('#page').innerHTML = `<div class="mpf">
     <div class="pf-switch">${pfSwitchHTML()}</div>
     <div class="pass-wrap"><article class="pass">
