@@ -77,11 +77,13 @@
 /* ---- Phones (Brave/Chrome): no white strip when the address bar slides away ----
    Theme rules that use the `background` shorthand reset the page colour to transparent, so the
    area below the painted background showed the browser's white. Keep the theme colour under everything,
-   and let the fixed backgrounds cover the tallest viewport (address bar hidden). */
+   and let the fixed backgrounds run past the bottom edge: 100lvh does not count Brave's bottom toolbar / tab strip,
+   so the page background now overshoots by more than any toolbar is tall (the extra part is simply off-screen).
+   The animated theme canvas (#as-scene) gets its height from scenes.js for the same reason. */
 html,html[data-theme]{background-color:var(--bg)!important}
 @media (max-width:900px){
-  html #as-scene{height:100vh!important;height:100lvh!important}
-  .dp-bg{bottom:auto;height:100vh;height:100lvh}
+  .dp-bg{bottom:-320px}
+  html[data-theme=photo] body::before{bottom:-320px}
 }
 
 /* ---- Details page: comments in the left column, info card under the synopsis ---- */

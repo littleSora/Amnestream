@@ -29,19 +29,16 @@ async function initAnime() {
     const { Media } = await Api.anime(ID);
     M = Media;
     document.title = titleOf(M) + ' - Amnestream';
-    (M.streamingEpisodes || []).forEach(e => {
+    /* A later season can inherit season 1's names and pictures, so its list waits for the cleaned-up guide instead of flashing the wrong ones first */
+    if (!Api.isSequel(M)) (M.streamingEpisodes || []).forEach(e => {
       const x = /(\d+)\s*[-–:.]\s*(.*)$/.exec(e.title || '') || /Episode\s+(\d+)/i.exec(e.title || '');
       if (x && !EPS[+x[1]]) EPS[+x[1]] = { title: x[2] || '', thumb: e.thumbnail };
     });
     render();
-    Api.episodeArt(ID).then(art => {
-      let changed = false;
-      Object.keys(art).forEach(n => {
-        const cur = EPS[n] || (EPS[n] = { title: '', thumb: '' });
-        if (!cur.thumb && art[n].thumb) { cur.thumb = art[n].thumb; changed = true; }
-        if (!cur.title && art[n].title) { cur.title = art[n].title; changed = true; }
-      });
-      if (changed && $('#ep-wrap')) renderEps();
+    Api.episodeGuide(M).then(guide => {
+      if (JSON.stringify(guide) === JSON.stringify(EPS)) return;
+      EPS = guide;
+      if ($('#ep-wrap')) renderEps();
     }).catch(() => {});
   } catch (err) {
     $('#dp').innerHTML = `<div style="padding:80px 24px"><h1>Not found</h1><p class="muted">${esc(err.message)}</p></div>`;
@@ -242,7 +239,9 @@ function render() {
         <span class="ss-n">${esc(label)}</span><b>${esc(titleOf(x))}</b><i>${esc(meta)}</i></a>`;
     }).join('')}</div>`;
     box.hidden = false;
-    $('.ss-card.on', box)?.scrollIntoView({ block: 'nearest', inline: 'center' });
+    /* Centre the current season inside its own row. scrollIntoView() also scrolled the whole page down to the seasons, which is why the page opened on the episode list */
+    const row = $('.ss-row', box), cur = $('.ss-card.on', box);
+    if (row && cur) row.scrollLeft += cur.getBoundingClientRect().left - row.getBoundingClientRect().left - (row.clientWidth - cur.offsetWidth) / 2;
   }).catch(() => {});
 
   const q = $('#ep-q');

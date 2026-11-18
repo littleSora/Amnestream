@@ -117,14 +117,11 @@ function buildPage() {
   renderSideEps(total);
   if (!_artAsked) {
     _artAsked = true;
-    Api.episodeArt(MEDIA.id).then(art => {
-      let changed = false; epTitleOf(1);
-      Object.keys(art).forEach(n => {
-        const cur = _epTitles[n] || (_epTitles[n] = { title: '', thumb: '' });
-        if (!cur.thumb && art[n].thumb) { cur.thumb = art[n].thumb; changed = true; }
-        if (!cur.title && art[n].title) { cur.title = art[n].title; changed = true; }
-      });
-      if (changed) renderSideEps(epCountOf(MEDIA));
+    Api.episodeGuide(MEDIA).then(guide => {
+      epTitleOf(1);
+      if (JSON.stringify(guide) === JSON.stringify(_epTitles)) return;
+      _epTitles = guide;
+      renderSideEps(epCountOf(MEDIA));
     }).catch(() => {});
   }
   renderSideSeasons();
@@ -278,7 +275,7 @@ let _epTitles = null, _artAsked = false;
 function epTitleOf(n) {
   if (!_epTitles) {
     _epTitles = {};
-    ((MEDIA && MEDIA.streamingEpisodes) || []).forEach(e => {
+    if (!Api.isSequel(MEDIA)) ((MEDIA && MEDIA.streamingEpisodes) || []).forEach(e => {      // A later season waits for the cleaned-up guide below
       const x = /(\d+)\s*[-\u2013:.]\s*(.*)$/.exec(e.title || '') || /Episode\s+(\d+)/i.exec(e.title || '');
       if (x && !_epTitles[+x[1]]) _epTitles[+x[1]] = { title: x[2] || '', thumb: e.thumbnail };
     });

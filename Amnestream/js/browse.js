@@ -239,6 +239,24 @@ let PER_PAGE = 32;
 const COUNT_AT = 5000;
 let countCtrl = null, countTimer = 0, countToken = 0;
 const nTitles = n => `${n.toLocaleString()} ${n === 1 ? 'title' : 'titles'} found`;
+
+/* AniList stops counting at 5000, so the real number is worked out separately. It does not depend on the sort, so it is remembered per set of filters
+   (6 hours): changing the sort, paging or coming back never shows the capped number again while the count is being redone. */
+const COUNT_KEY = 'as_browse_counts', COUNT_TTL = 6 * 3600e3;
+const countKeyOf = v => JSON.stringify([v.search || '', [...(v.genres || [])].sort(), v.format || '', v.status || '', v.season || '', v.year || '', adultOn() ? 1 : 0]);
+function countKnown(key) {
+  try { const o = (jget(COUNT_KEY, {}) || {})[key]; return o && Date.now() - o.t < COUNT_TTL ? o : null; } catch { return null; }
+}
+function countRemember(key, n, approx) {
+  try {
+    const all = jget(COUNT_KEY, {}) || {};
+    all[key] = { n, approx: !!approx, t: Date.now() };
+    const keys = Object.keys(all);
+    if (keys.length > 60) keys.sort((x, y) => all[x].t - all[y].t).slice(0, keys.length - 60).forEach(k => delete all[k]);
+    jset(COUNT_KEY, all);
+  } catch { }
+}
+
 function showCount(pageInfo, vars) {
   clearTimeout(countTimer);
   if (countCtrl) countCtrl.abort();
@@ -246,22 +264,36 @@ function showCount(pageInfo, vars) {
   if (!total) { el.textContent = 'No results'; return; }
   if (pageInfo.deep) { el.textContent = nTitles(total); return; }
   if (total < COUNT_AT) { el.textContent = nTitles(total); return; }
-  el.textContent = 'Loading...';
-  countTimer = setTimeout(async () => {
+
+  const paint = (exact, approx) => {
+    const reachable = (pageInfo.lastPage || 0) * PER_PAGE;
+    const reach = Math.min(exact, reachable > COUNT_AT + PER_PAGE ? Infinity : COUNT_AT, reachable);
+    el.textContent = (approx ? 'About ' : '') + nTitles(exact) +
+      (reach && exact > reach ? ` \u00b7 showing the first ${reach.toLocaleString()}, add filters to narrow it down` : '');
+  };
+  const key = countKeyOf(vars), known = countKnown(key);
+  if (known) { paint(known.n, known.approx); return; }
+  el.textContent = 'Counting...';
+
+  const attempt = async tries => {
     const ctrl = countCtrl = new AbortController();
     try {
-      const { total: exact, approx } = await Api.browseTotal(
+      const none = !vars.search && !(vars.genres || []).length && !vars.format && !vars.status && !vars.season && !vars.year;
+      const baked = none ? await Api.landingTotal() : 0;              // No filters: exact total comes with the catalog, no AniList counting needed
+      const { total: exact, approx } = baked ? { total: baked, approx: false } : await Api.browseTotal(
         { search: vars.search, genres: vars.genres, format: vars.format, status: vars.status, season: vars.season, year: vars.year },
         { signal: ctrl.signal });
       if (token !== countToken) return;
-      const reachable = (pageInfo.lastPage || 0) * PER_PAGE;
-      const reach = Math.min(exact, reachable > COUNT_AT + PER_PAGE ? Infinity : COUNT_AT, reachable);
-      el.textContent = (approx ? 'About ' : '') + nTitles(exact) +
-        (reach && exact > reach ? ` \u00b7 showing the first ${reach.toLocaleString()}, add filters to narrow it down` : '');
+      countRemember(key, exact, approx);
+      paint(exact, approx);
     } catch (err) {
-      if (token === countToken && err?.name !== 'AbortError') el.textContent = `${total.toLocaleString()}+ titles found`;
+      if (token !== countToken || err?.name === 'AbortError') return;
+      // AniList is rate-limited or busy: try again a little later instead of settling on the capped number
+      if (tries < 3) { countTimer = setTimeout(() => attempt(tries + 1), tries === 0 ? 2500 : 7000); return; }
+      el.textContent = `More than ${COUNT_AT.toLocaleString()} titles found`;
     }
-  }, 250);
+  };
+  countTimer = setTimeout(() => attempt(0), 250);
 }
 
 /* Saved or restored filters silently narrow a title search; say so and offer to drop them */

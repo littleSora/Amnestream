@@ -113,6 +113,7 @@ fragment MediaPlayer on Media {
   duration
   nextAiringEpisode { episode airingAt }
   streamingEpisodes { title thumbnail }
+  relations { edges { relationType node { id } } }
 }`;
 
 const MEDIA_SUGGEST = `
@@ -581,8 +582,114 @@ async function _episodeArt(id) {
   return out;
 }
 
+/* Later seasons often inherit season 1's episode names and pictures (AniList's streaming links and ani.zip both do this for some shows).
+   episodeGuide() returns {episode: {title, thumb}} for one title with that cleaned up:
+   - a run that keeps counting from the last season (12-23 for a 12-episode part 2) is renumbered to start at 1
+   - a picture an earlier season already uses, or a name an earlier season has at the same number, is dropped,
+     and the page falls back to the anime's own art / "Episode N" */
+const _plainTitle = t => !t || /^episode\s*\d+$/i.test(String(t).trim());
+const _isSequel = m => ((m && m.relations && m.relations.edges) || []).some(e => e.relationType === 'PREQUEL' && e.node);
+
+function _streamMap(list) {
+  const out = {};
+  (list || []).forEach(e => {
+    const x = /(\d+)\s*[-\u2013:.]\s*(.*)$/.exec(e.title || '') || /Episode\s+(\d+)/i.exec(e.title || '');
+    if (x && !out[+x[1]]) out[+x[1]] = { title: x[2] || '', thumb: e.thumbnail || '' };
+  });
+  return out;
+}
+
+function _renumber(map, total, prior) {
+  const ks = Object.keys(map).map(Number).sort((a, b) => a - b);
+  if (!ks.length || !total) return map;
+  const lo = ks[0], hi = ks[ks.length - 1];
+  if (hi <= total) return map;                                                    // Already fits this title
+  let shift = 0;
+  if (prior && map[prior + 1] && hi - prior <= total + 1) shift = prior;          // Whole-series numbering: keep this season's tail
+  else if (lo > 1 && hi - lo + 1 <= total + 1) shift = lo - 1;                    // Numbering continues from the last season
+  if (!shift) return map;
+  const out = {};
+  ks.forEach(k => { if (k > shift) out[k - shift] = map[k]; });
+  return out;
+}
+
+/* Earlier seasons of a title (up to 3 steps back along PREQUEL links), nearest first.
+   The first step comes from the title's own relations, so it never needs a request; the extra detail (episode count, streaming episodes)
+   is fetched best-effort, and a failed request still leaves the season in the list so its ani.zip art can be compared. */
+async function _priorSeasons(media) {
+  const out = [], seen = new Set([Number(media.id)]);
+  let edge = ((media.relations && media.relations.edges) || []).find(e => e.relationType === 'PREQUEL' && e.node);
+  for (let i = 0; i < 3 && edge && !seen.has(edge.node.id); i++) {
+    const id = edge.node.id;
+    seen.add(id);
+    let node = { id, format: edge.node.format || '', episodes: 0, streamingEpisodes: [] }, next = null;
+    try {
+      const d = await gql(`query Prior($id: Int) { Media(id: $id, type: ANIME) { id format episodes streamingEpisodes { title thumbnail } relations { edges { relationType node { id format } } } } }`, { id }, { ttl: TTL.long });
+      const m = d && d.Media;
+      if (m) {
+        node = { id, format: m.format || node.format, episodes: m.episodes || 0, streamingEpisodes: m.streamingEpisodes || [] };
+        next = ((m.relations && m.relations.edges) || []).find(e => e.relationType === 'PREQUEL' && e.node);
+      }
+    } catch { }
+    out.push(node);
+    edge = next;
+  }
+  return out;
+}
+
+/* Same picture under a different address (other host, size or query string): compare the file name only */
+const _imgKey = u => { try { return decodeURIComponent(new URL(u, 'https://x.invalid/').pathname.split('/').filter(Boolean).pop() || '').toLowerCase().replace(/\.[a-z0-9]+$/, ''); } catch { return String(u || ''); } };
+/* Names compare without case, spacing or punctuation (AniDB writes It`s, TVDB It's) */
+const _nameKey = t => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+
+async function _episodeGuide(media) {
+  const total = epCountOf(media);
+  const [prior, artRaw] = await Promise.all([_isSequel(media) ? _priorSeasons(media) : Promise.resolve([]), _episodeArt(media.id)]);
+  const priorEps = prior.filter(p => ['TV', 'TV_SHORT', 'ONA'].includes(p.format)).reduce((n, p) => n + (p.episodes || 0), 0);
+  let own = _renumber(_streamMap(media.streamingEpisodes), total, priorEps);
+  let art = _renumber(artRaw || {}, total, priorEps);
+  const log = { id: media.id, prior: prior.map(p => p.id), droppedThumbs: 0, droppedTitles: 0 };
+
+  if (prior.length) {
+    const priorArt = await Promise.all(prior.map(p => _episodeArt(p.id).catch(() => ({}))));
+    const thumbs = new Set(), names = {};
+    const take = map => Object.keys(map).forEach(k => {
+      const e = map[k];
+      if (e.thumb) thumbs.add(_imgKey(e.thumb));
+      if (!_plainTitle(e.title)) (names[k] || (names[k] = new Set())).add(_nameKey(e.title));
+    });
+    prior.forEach((p, i) => { take(_streamMap(p.streamingEpisodes)); take(priorArt[i] || {}); });
+    const clean = map => {
+      const out = {};
+      Object.keys(map).forEach(k => {
+        const e = map[k];
+        const dupName = !_plainTitle(e.title) && names[k] && names[k].has(_nameKey(e.title));
+        const dupThumb = e.thumb && thumbs.has(_imgKey(e.thumb));
+        if (dupName) log.droppedTitles++;
+        if (dupThumb) log.droppedThumbs++;
+        out[k] = { title: dupName ? '' : e.title, thumb: dupThumb ? '' : e.thumb };
+      });
+      return out;
+    };
+    own = clean(own); art = clean(art);
+  }
+  try { console.debug('[episodeGuide]', JSON.stringify(log)); } catch { }
+
+  const out = {};
+  const put = (n, e) => {
+    const cur = out[n] || (out[n] = { title: '', thumb: '' });
+    if (!cur.thumb && e.thumb) cur.thumb = e.thumb;
+    if (!cur.title && e.title) cur.title = e.title;
+  };
+  Object.keys(own).forEach(n => put(n, own[n]));
+  Object.keys(art).forEach(n => put(n, art[n]));
+  return out;
+}
+
 const Api = {
   episodeArt: _episodeArt,
+  episodeGuide: _episodeGuide,
+  isSequel: _isSequel,
   /* Debug helper: live and parked hosts */
   endpoints() {
     const now = Date.now();
@@ -840,10 +947,20 @@ const Api = {
 
   /* Exact total and page count for a capped popularity listing; runs after the page is already on screen */
   async deepInfo(vars, page = vars.page) {
-    const per = vars.perPage || 30;
-    const leaves = await _popBuckets(_baseOf(vars));
-    const total = leaves.reduce((n, lf) => n + lf.count, 0);
+    const per = vars.perPage || 30, base = _baseOf(vars);
+    let total = 0;
+    if (!Object.values(base).some(Boolean)) total = await Api.landingTotal();         // No filters: the baked catalog already knows the exact total
+    if (!total) {
+      const leaves = await _popBuckets(base);
+      total = leaves.reduce((n, lf) => n + lf.count, 0);
+    }
     return { currentPage: page, lastPage: Math.max(1, Math.ceil(total / per)), hasNextPage: page * per < total, total, deep: true };
+  },
+
+  /* Exact number of titles when nothing is filtered (AniList stops counting at 5000), from the baked catalog; 0 when it is not there */
+  async landingTotal() {
+    const baked = await _bakeGetAsync(`browseLanding:${adultOn() ? 1 : 0}`);
+    return baked && baked.totalExact && baked.total > COUNT_CAP ? baked.total : 0;
   },
 
   /* Exact result count for a Browse search; only needed when the total hits the cap */

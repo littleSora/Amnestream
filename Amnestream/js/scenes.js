@@ -398,13 +398,18 @@
 
   const SCENES = { galaxy, vapor, sakura: () => sakura(false), 'sakura-night': () => sakura(true), aurora };
 
-  /* Phones: the tallest the viewport gets (address bar hidden), so sliding the bar in and out never changes the size */
+  /* Phones: the tallest the viewport gets (toolbars hidden), so sliding them in and out never changes the size.
+     100lvh only counts the top address bar; Brave's bottom toolbar and tab strip are missed, which left a white strip under the canvas
+     when they slid away. So the screen height counts too (capped), and the canvas is always a little taller than the screen. */
+  const isPhone = () => matchMedia('(max-width:900px)').matches;
   function fullHeight() {
     let h = innerHeight;
-    if (matchMedia('(max-width:900px)').matches && document.body) {
+    if (isPhone() && document.body) {
       const d = document.createElement('div');
       d.style.cssText = 'position:fixed;left:0;top:0;width:0;height:100vh;height:100lvh;visibility:hidden;pointer-events:none';
       document.body.appendChild(d); h = Math.max(h, d.offsetHeight); d.remove();
+      const scr = window.screen ? Math.max(screen.height || 0, screen.availHeight || 0) : 0;
+      h = Math.max(h, Math.min(scr, innerHeight + 360)) + 80;
     }
     return h;
   }
@@ -412,6 +417,7 @@
   function resize() {
     if (!cv) return;
     const nw = Math.max(1, Math.round(innerWidth)), nh = Math.max(1, Math.round(fullHeight()));
+    cv.style.height = isPhone() ? nh + 'px' : '100%';      // Phones: exactly as tall as the drawing, so nothing is stretched
     if (cv._w === nw && cv._h === nh) return;     // Only the address bar moved: keep the canvas (resizing it would blank it for a frame)
     cv._w = nw; cv._h = nh;
     dpr = Math.min(window.devicePixelRatio || 1, name === 'galaxy' || name === 'aurora' ? 1.25 : 1.5);
