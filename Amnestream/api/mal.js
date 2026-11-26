@@ -1,5 +1,5 @@
 const PATHS = [/^\/v2\/users\/@me$/, /^\/v2\/anime\/\d{1,9}$/, /^\/v2\/anime\/\d{1,9}\/my_list_status$/];
-const FORM_KEYS = ['status', 'score', 'num_watched_episodes', 'is_rewatching'];
+const FORM_KEYS = ['status', 'score', 'num_watched_episodes', 'is_rewatching', 'num_times_rewatched', 'comments'];
 const STATUSES = ['watching', 'completed', 'on_hold', 'dropped', 'plan_to_watch'];
 /* Vercel serverless function: forwards the few MyAnimeList API calls the site makes (read the profile, read/save/remove one anime's list entry).
    The browser sends the person's own access token in the X-MAL-Token header; nothing is stored here. Anything else is refused. */

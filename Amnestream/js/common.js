@@ -68,11 +68,15 @@ Object.assign(ICONS, {
   ticket: '<path d="M3 8a2 2 0 0 0 0 8v2a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-2a2 2 0 0 1 0-8V6a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1z"/><path d="M14 5v14" stroke-dasharray="2 2"/>',
   check: '<path d="M5 12l5 5 9-10"/>',
   edit: '<path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/>',
+  eyeoff: '<path d="M3 3l18 18M10.6 5.1A10.4 10.4 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3.2 4M6.5 6.6C3.7 8.4 2 12 2 12s4 7 10 7a9.7 9.7 0 0 0 4.4-1.1M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
+  minus: '<path d="M5 12h14"/>',
+  copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>',
+  mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
 });
 const icon = (n, s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ''}</svg>`;
 
 const THEME_IDS = ['sakura', 'retro96', 'cyberpunk', 'rgb', 'wave', 'voxel', 'vapor', 'terminal', 'blueprint', 'parchment', 'blossom', 'blossom-night', 'brutal', 'frost', 'noir', 'aurora', 'magma', 'galaxy', 'photo', 'pre-rich', 'pre-oxford', 'pre-charcoal', 'pre-brunswick', 'pre-violet', 'pre-cosmos', 'pre-jet', 'pre-alabaster'];
-const THEME_FONTS = { cyberpunk: 'Orbitron:wght@600;800', voxel: 'VT323', terminal: 'JetBrains+Mono:wght@400;700', blueprint: 'IBM+Plex+Mono:wght@400;600',
+const THEME_FONTS = window.AS_THEME_FONTS || { cyberpunk: 'Orbitron:wght@600;800', voxel: 'VT323', terminal: 'JetBrains+Mono:wght@400;700', blueprint: 'IBM+Plex+Mono:wght@400;600',
   parchment: 'Playfair+Display:ital,wght@0,700;1,700', noir: 'Playfair+Display:ital,wght@0,700;1,700', brutal: 'Space+Grotesk:wght@400;700' };
 
 const Photo = {
@@ -111,7 +115,7 @@ const DEFAULTS = {
   continueRow: true, reduceMotion: false, hoverTrailer: true,
   incognito: false, hideSpoilers: false, includeAdult: false,
   showComments: false, malAuto: true,
-  uiMode: 'modern', accent: '', cardSize: 'normal',
+  uiMode: 'modern', accent: '', cardSize: 'normal', dockSize: 'medium', dockStyle: 'orbs',
 };
 /* The Wave theme's living water is a canvas in js/wave.js, loaded only while that theme is on */
 function waveSync(th) {
@@ -187,6 +191,8 @@ const Settings = {
     const root = document.documentElement;
     root.dataset.ui = s.uiMode === 'classic' ? 'classic' : 'modern';
     root.dataset.cards = ['small', 'large'].includes(s.cardSize) ? s.cardSize : 'normal';
+    root.dataset.dock = ['small', 'large'].includes(s.dockSize) ? s.dockSize : 'medium';   // size of the floating navigation (css/dock.css)
+    root.dataset.dockStyle = s.dockStyle === 'pill' ? 'pill' : 'orbs';                     // look of the floating navigation
     if (th !== 'rgb' && /^#[0-9a-f]{6}$/i.test(s.accent || '')) {
       const n = parseInt(s.accent.slice(1), 16), lum = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
       root.style.setProperty('--accent', s.accent);
@@ -195,9 +201,117 @@ const Settings = {
   },
 };
 Settings.apply();
-/* Turn "Show 18+ titles" on/off; turning it on asks first; returns the new value */
-function setAdult(on) {
-  if (on && !confirm('18+ titles can include explicit artwork and themes.\n\nShow them in Browse, search and on the home page? (You must be 18 or older.)')) return false;
+/* Styled dialogs, used instead of the browser's own alert boxes.
+   UiModal.open({ cls, html, onClose }) -> { el, box, close }   Any [data-um-close] inside closes it; Escape and a click outside close it too.
+   UiModal.confirm({ title, text, ok, cancel, icon, danger }) -> Promise<boolean> */
+const UiModal = {
+  open({ cls = '', html = '', onClose } = {}) {
+    const el = document.createElement('div');
+    el.className = 'um ' + cls;
+    el.innerHTML = `<div class="um-box" role="dialog" aria-modal="true">${html}</div>`;
+    document.body.appendChild(el);
+    document.body.classList.add('modal-open');
+    const prev = document.activeElement;
+    let shut = false;
+    const key = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); } };
+    const close = v => {
+      if (shut) return; shut = true;
+      document.removeEventListener('keydown', key, true);
+      el.classList.remove('on');
+      if (!document.querySelector('.um.on:not(.gone), .epm.on')) document.body.classList.remove('modal-open');
+      el.classList.add('gone');
+      setTimeout(() => el.remove(), 220);
+      try { prev && prev.focus && prev.focus({ preventScroll: true }); } catch { }
+      onClose && onClose(v);
+    };
+    document.addEventListener('keydown', key, true);
+    el.addEventListener('mousedown', e => { if (e.target === el) close(); });
+    $$('[data-um-close]', el).forEach(b => b.onclick = () => close());
+    requestAnimationFrame(() => el.classList.add('on'));
+    return { el, box: el.firstElementChild, close };
+  },
+  confirm({ title = 'Are you sure?', text = '', note = '', ok = 'OK', cancel = 'Cancel', icon: ic = 'info', danger = false } = {}) {
+    return new Promise(res => {
+      let yes = false;
+      const m = UiModal.open({
+        cls: 'um-sm',
+        html: `<div class="um-confirm">
+          <span class="um-ic${danger ? ' danger' : ''}">${icon(ic, 26)}</span>
+          <h2>${esc(title)}</h2>
+          ${text ? `<p>${esc(text)}</p>` : ''}
+          ${note ? `<small>${esc(note)}</small>` : ''}
+          <div class="um-act"><button type="button" class="dp-btn" data-um-close>${esc(cancel)}</button><button type="button" class="dp-btn primary${danger ? ' danger' : ''}" data-um-ok>${esc(ok)}</button></div>
+        </div>`,
+        onClose: () => res(yes),
+      });
+      const b = $('[data-um-ok]', m.el);
+      b.onclick = () => { yes = true; m.close(); };
+      b.focus({ preventScroll: true });
+    });
+  },
+};
+
+/* Share dialog: a preview card, one-tap targets, and a copy-link row. Share.open({ title, url, image }) */
+const Share = {
+  copy(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise((ok, no) => {
+      const t = document.createElement('textarea');
+      t.value = text; t.setAttribute('readonly', ''); t.style.cssText = 'position:fixed;top:-100px;opacity:0';
+      document.body.appendChild(t); t.select();
+      try { document.execCommand('copy') ? ok() : no(); } catch (e) { no(e); } finally { t.remove(); }
+    });
+  },
+  targets(title, url) {
+    const u = encodeURIComponent(url), t = encodeURIComponent(title), both = encodeURIComponent(title + ' ' + url);
+    return [
+      { n: 'WhatsApp', g: 'WA', c: '#25a85a', href: `https://wa.me/?text=${both}` },
+      { n: 'Telegram', g: 'TG', c: '#2a8fd0', href: `https://t.me/share/url?url=${u}&text=${t}` },
+      { n: 'X', g: 'X', c: '#16181c', href: `https://twitter.com/intent/tweet?text=${t}&url=${u}` },
+      { n: 'Facebook', g: 'f', c: '#2f6fe0', href: `https://www.facebook.com/sharer/sharer.php?u=${u}` },
+      { n: 'Reddit', g: 'r/', c: '#e8541f', href: `https://www.reddit.com/submit?url=${u}&title=${t}` },
+      { n: 'Email', g: icon('mail', 20), c: '#7a6cf0', href: `mailto:?subject=${t}&body=${both}`, same: true },
+    ];
+  },
+  open({ title = SITE_NAME, url = location.href, image = '' } = {}) {
+    const canNative = typeof navigator.share === 'function';
+    const m = UiModal.open({
+      cls: 'um-share',
+      html: `<div class="sh">
+        <div class="sh-head"><h2>Share</h2><button type="button" class="um-x flat" data-um-close aria-label="Close">${icon('close', 16)}</button></div>
+        <div class="sh-card">${image ? `<img src="${esc(image)}" alt="">` : `<span class="sh-noimg">${icon('film', 22)}</span>`}
+          <div><b>${esc(title)}</b><small>${esc(SITE_NAME)}</small></div></div>
+        <div class="sh-grid${canNative ? ' native' : ''}">${Share.targets(title, url).map(x =>
+          `<a class="sh-t" href="${esc(x.href)}" ${x.same ? '' : 'target="_blank" rel="noopener noreferrer"'}><span class="sh-ic" style="--c:${x.c}">${x.g}</span><em>${esc(x.n)}</em></a>`).join('')}
+          ${canNative ? `<button type="button" class="sh-t" data-native><span class="sh-ic more" style="--c:var(--card)">${icon('ext', 18)}</span><em>More</em></button>` : ''}
+        </div>
+        <div class="sh-link"><input readonly value="${esc(url)}" aria-label="Link"><button type="button" class="dp-btn primary sm" data-copy>${icon('copy', 13)}<span>Copy</span></button></div>
+      </div>`,
+    });
+    const inp = $('.sh-link input', m.el), btn = $('[data-copy]', m.el);
+    inp.onfocus = () => inp.select();
+    btn.onclick = () => Share.copy(url).then(() => {
+      btn.classList.add('done'); btn.innerHTML = icon('check', 13) + '<span>Copied</span>';
+      setTimeout(() => { if (btn.isConnected) { btn.classList.remove('done'); btn.innerHTML = icon('copy', 13) + '<span>Copy</span>'; } }, 1800);
+    }).catch(() => { inp.focus(); toast('Press Ctrl+C to copy the link'); });
+    const nat = $('[data-native]', m.el);
+    if (nat) nat.onclick = async () => { try { await navigator.share({ title, url }); m.close(); } catch { } };
+    $$('.sh-t[href]', m.el).forEach(a => a.addEventListener('click', () => { if (!a.hasAttribute('target')) return; setTimeout(() => m.close(), 150); }));
+    return m;
+  },
+};
+
+/* Turn "Show 18+ titles" on/off; turning it on asks first; resolves to the new value */
+async function setAdult(on) {
+  if (on) {
+    const sure = await UiModal.confirm({
+      icon: 'shield', title: 'Show 18+ titles?',
+      text: '18+ titles can include explicit artwork and themes. They will appear in Browse, search and on the home page.',
+      note: 'You must be 18 or older to turn this on.',
+      ok: "I'm 18 or older", cancel: 'Not now',
+    });
+    if (!sure) return false;
+  }
   Settings.set('includeAdult', !!on);
   return !!on;
 }
@@ -1151,6 +1265,8 @@ function buildHeader() {
   const host = $('#site-header');
   if (!host) return;
   host.className = 'site-header';
+  /* Desktop shows the four links in the left sidebar rail (.main-nav, styled by css/atlas.css).
+     Mobile hides .main-nav and uses the floating dock instead (js/dock.js + css/dock.css). */
   const page = location.pathname.split('/').pop() || 'index.html';
   const NAV = [
     ['index.html', 'home', 'Home'], ['browse.html', 'compass', 'Browse'],
@@ -1184,8 +1300,9 @@ function buildHeader() {
       <input id="search-input" type="search" placeholder="Search anime..." autocomplete="off" aria-label="Search anime">
       <div id="search-suggest" class="suggest"></div>
     </div>`;
-  try { localStorage.setItem('as_hdr_v1', host.innerHTML.replace(/ class="on"/g, '')); } catch { }
+  try { localStorage.setItem('as_hdr_v3', host.innerHTML.replace(/ class="on"/g, '')); } catch { }
   wireHeader();
+  if (window.AsRail) AsRail.go();
 }
 
 let _headerWired = false;
@@ -1413,8 +1530,7 @@ function buildFooter() {
         <p class="footer-brand">AMNE<b>STREAM</b></p>
       </div>
     </div>
-    <p class="footer-note muted">Amnestream doesn't host any files; it only shows content from third-party providers.</p>
-    <p class="footer-note muted" style="margin-top:6px;font-size:11px;opacity:.6">Build ${SITE_BUILD}</p>`;
+    <p class="footer-note muted">Amnestream doesn't host any files; it only shows content from third-party providers.</p>`;
 }
 
 function skeletonGrid(n = 12) {

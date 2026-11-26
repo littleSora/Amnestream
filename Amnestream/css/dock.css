@@ -1,0 +1,272 @@
+/* =====================================================================
+   dock.css - loaded last on every page.
+   1. Mobile top bar: logo, search and avatar only (the four nav links live in the floating dock)
+   2. Floating dock, mobile only (see js/dock.js): left (default), right or bottom, three sizes, see-through while scrolling and when idle. Desktop uses the sidebar rail from atlas.css
+   3. Page tabs (Episodes / Relations / Recommendations) and the "stay still" rules
+   ===================================================================== */
+
+:root{--dk-left:max(10px,env(safe-area-inset-left,0px));--dk-right:max(10px,env(safe-area-inset-right,0px));--dk-bedge:10px;--dk-scroll:.18;--dk-idle:.5}
+
+/* DESKTOP (901px and wider): the left sidebar rail from atlas.css (logo, four labelled links, search, avatar). The floating dock is not shown. */
+@media (min-width:901px){
+  :root{--hdr-h:0px;--dock-gutter:var(--rail,92px)}
+  #am-dock{display:none!important}
+
+  /* The rail's size never depends on the theme's font. Themes with their own lettering (Voxel, Cyberpunk, Terminal, Blueprint, Parchment, Noir, Brutal)
+     load it a moment after the page appears; with sizes taken from the font, the whole rail used to jump when it arrived.
+     Heights and line heights are fixed, and the logo sits centred in a fixed-length box, so only the letter shapes change. */
+  .site-header .logo{box-sizing:border-box;display:block;height:140px;text-align:center;line-height:1;white-space:nowrap}
+  .main-nav a{box-sizing:border-box;justify-content:center;height:64px;padding:0;line-height:1}
+  .main-nav a span{display:block;height:14px;line-height:14px;white-space:nowrap}
+  .main-nav a svg{flex:none}
+
+  /* Sliding highlight behind the open page (js/dock.js, AsRail). Only the pill carries the highlight once it exists, so there is no second, static one. */
+  .main-nav{position:relative}
+  .main-nav a{position:relative;z-index:1}
+  .rail-ink{position:absolute;left:0;top:0;width:0;height:0;z-index:0;border-radius:20px;pointer-events:none;opacity:0;background:var(--card2);will-change:transform,opacity}
+  .rail-ink.ready{transition:transform .5s cubic-bezier(.22,1,.36,1),opacity .3s ease}
+  html body .main-nav.main-nav a.on,html body .main-nav.main-nav a.on:hover{background:transparent;transition:color .2s}   /* the pill is the highlight from the very first frame, so no pale fill fades out while it moves */
+  html:is([data-theme=parchment],[data-theme=brutal],[data-theme=pre-alabaster],[data-theme=blossom]) .rail-ink{background:color-mix(in srgb,var(--text) 12%,transparent)}
+  html[data-theme=retro96] .rail-ink{background:#000080}
+  html[data-theme=retro96] .main-nav a.on svg{color:#fff}   /* the icon was navy (the accent) on the navy pill */  /* its open link is white, so the pill is Windows-style navy instead of pale grey */
+  html.reduce-motion .rail-ink.ready{transition:none}
+  @media (prefers-reduced-motion:reduce){.rail-ink.ready{transition:none}}
+
+  /* HOME ONLY: the sidebar rail is see-through while the page is at the top and fades into the normal solid rail once the page is scrolled
+     (.scrolled is set in common.js at 24px). Every other page keeps the solid rail from atlas.css. */
+  body.home .site-header,body.home .site-header.scrolled{transition:background-color .45s ease}
+  body.home .site-header{background:transparent!important}
+  body.home .site-header.scrolled{background:var(--bg2)!important}
+  /* the search button inside the rail fades along with it */
+  body.home .site-header .icon-btn{transition:background-color .45s ease,color .15s,border-color .15s}
+  body.home .site-header:not(.scrolled) .icon-btn:not(:hover):not(:focus-visible){background:transparent}
+  /* Nothing sits behind the rail (the page starts after it), so "transparent" would just show the plain page colour.
+     On Home the opening section is pulled under the rail so its background really shows through; its content stays exactly where it was. */
+  body.home main>.intro{margin-left:calc(-1 * var(--rail,92px));padding-left:calc(clamp(20px,4vw,64px) + var(--rail,92px))}
+  body.home .intro-cue{left:calc(25% + (var(--rail,92px) * .75))}
+}
+
+/* MOBILE / TABLET (900px and narrower): slim top bar + the floating dock */
+@media (max-width:900px){
+:root{--hdr-h:60px;--header-h:60px;--rail:0px;--dock-gutter:0px;--m-nav:var(--dk-bot,0px)}   /* --dk-bot is set by js/dock.js while the navigation sits at the bottom, else 0 */
+
+/* ---------- 1. Top bar ---------- */
+body{padding-left:var(--dock-gutter)}
+.site-header,.site-header.scrolled{top:0;bottom:auto;left:0;right:0;width:auto;height:var(--hdr-h);padding:0;box-sizing:border-box;transform:none;
+  background:transparent;border:0;backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;
+  transition:background-color .25s,box-shadow .25s}
+.site-header.scrolled{background:color-mix(in srgb,var(--bg) 72%,transparent);
+  backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3);
+  box-shadow:0 1px 0 color-mix(in srgb,var(--text) 9%,transparent)}
+.site-header .header-inner{max-width:none;width:100%;margin:0;height:100%;flex-direction:row;justify-content:space-between;align-items:center;
+  padding:0 max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px))}
+.nav-pill{flex-direction:row;gap:0;margin:0;padding:0;border:0;background:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+.logo{display:block;writing-mode:horizontal-tb;transform:none;padding:0;font-size:15px;letter-spacing:.3em}
+.main-nav,.nav-burger{display:none!important}
+.header-right{flex-direction:row;gap:10px;margin:0}
+.icon-btn{width:40px;height:40px;min-height:0;border-radius:14px}
+.avatar-btn .avatar{width:34px!important;height:34px!important}
+
+.user-menu{left:auto;right:0;top:calc(100% + 10px);bottom:auto}
+.search-pop{position:fixed;top:calc(var(--hdr-h) - 6px);left:50%;right:auto;bottom:auto;width:min(560px,calc(100vw - 24px));translate:-50% 0}
+.search-pop.open{display:block}
+.search-pop.open.closing{animation:popOut .15s ease-in forwards}
+  .search-pop{top:calc(var(--hdr-h) - 6px + env(safe-area-inset-top,0px));left:50%;right:auto;width:min(560px,calc(100vw - 24px))}
+  .search-pop.open{display:block}
+  .suggest{margin:8px 0 0;max-height:min(60vh,460px)}
+  .user-menu{bottom:auto}
+
+body:not(.home) main{padding-top:calc(var(--hdr-h) + 16px)}
+body.home main{padding-top:var(--hdr-h)}
+  body,body.home{padding-bottom:calc(28px + var(--dk-bot,0px) + env(safe-area-inset-bottom,0px))}
+  .toast{bottom:calc(22px + var(--dk-bot,0px) + env(safe-area-inset-bottom,0px))}
+  .to-top{bottom:calc(22px + var(--dk-bot,0px) + env(safe-area-inset-bottom,0px))}
+  .site-header,.site-header.scrolled{padding-top:env(safe-area-inset-top,0px);height:calc(var(--hdr-h) + env(safe-area-inset-top,0px))}
+}
+
+/* ---------- 2. Floating dock ----------
+   js/dock.js puts data-side="l" | "r" | "b" on .dk and the position along the edge in --dk-pos (a percentage).
+   Size: Settings > Navigation size sets html[data-dock=small|large]; Medium (no attribute rule) is the default.
+   Everything below is measured from the five variables, so the three sizes and the three sides share one set of rules. */
+:root{--dk-item:44px;--dk-gap:4px;--dk-p:5px;--dk-gt:16px;--dk-ico:21px}
+html[data-dock=small]{--dk-item:36px;--dk-gap:3px;--dk-gt:14px;--dk-ico:18px}
+html[data-dock=large]{--dk-item:54px;--dk-gap:5px;--dk-gt:18px;--dk-ico:25px}
+@media (max-height:420px){
+  :root{--dk-item:38px;--dk-gt:14px;--dk-ico:19px}
+  html[data-dock=small]{--dk-item:32px;--dk-gt:12px;--dk-ico:16px}
+  html[data-dock=large]{--dk-item:44px;--dk-gt:16px;--dk-ico:22px}
+}
+.dk{--dk-h:calc(var(--dk-gt) + 4 * var(--dk-item) + 3 * var(--dk-gap) + var(--dk-p));--dk-w:calc(var(--dk-p) * 2 + 4 * var(--dk-item) + 3 * var(--dk-gap));
+  position:fixed;z-index:88;left:var(--dk-left);top:50%;width:0;height:0;pointer-events:none}
+.dk[data-side=l]{left:var(--dk-left);top:clamp(calc(var(--dk-h) / 2 + 66px + env(safe-area-inset-top,0px)),var(--dk-pos,50%),calc(100% - var(--dk-h) / 2 - 12px));
+  --dk-base:translate(var(--dx,0px),calc(-50% + var(--dy,0px)));--dk-away:translate(calc(-100% - 24px),-50%);--dk-peek-out:translate(-100%,-50%);--dk-peek-in:translate(0,-50%)}
+.dk[data-side=r]{left:auto;right:var(--dk-right);top:clamp(calc(var(--dk-h) / 2 + 66px + env(safe-area-inset-top,0px)),var(--dk-pos,50%),calc(100% - var(--dk-h) / 2 - 12px));
+  --dk-base:translate(var(--dx,0px),calc(-50% + var(--dy,0px)));--dk-away:translate(calc(100% + 24px),-50%);--dk-peek-out:translate(100%,-50%);--dk-peek-in:translate(0,-50%)}
+.dk[data-side=b]{top:auto;left:clamp(calc(var(--dk-w) / 2 + 10px),var(--dk-pos,50%),calc(100% - var(--dk-w) / 2 - 10px));bottom:calc(var(--dk-bedge) + env(safe-area-inset-bottom,0px));
+  --dk-base:translate(calc(-50% + var(--dx,0px)),var(--dy,0px));--dk-away:translate(-50%,calc(100% + 24px + env(safe-area-inset-bottom,0px)));--dk-peek-out:translate(-50%,100%);--dk-peek-in:translate(-50%,0)}
+
+.dk-pill{position:absolute;box-sizing:border-box;display:flex;align-items:center;gap:var(--dk-gap);padding:var(--dk-gt) var(--dk-p) var(--dk-p);
+  border-radius:30px;pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
+  background:color-mix(in srgb,var(--card2) 88%,transparent);
+  backdrop-filter:blur(22px) saturate(1.6);-webkit-backdrop-filter:blur(22px) saturate(1.6);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--text) 13%,transparent),inset 0 1px 0 color-mix(in srgb,#fff 12%,transparent),0 24px 48px -16px rgba(0,0,0,.7);
+  transform:var(--dk-base) scale(var(--dk-sc,1));
+  transition:transform .42s cubic-bezier(.2,.9,.25,1.08),opacity .5s ease,box-shadow .2s}
+.dk[data-side=l] .dk-pill,.dk[data-side=r] .dk-pill{flex-direction:column;top:0;width:calc(var(--dk-item) + var(--dk-p) * 2)}
+.dk[data-side=l] .dk-pill{left:0}
+.dk[data-side=r] .dk-pill{right:0}
+.dk[data-side=b] .dk-pill{flex-direction:row;left:0;bottom:0;padding:var(--dk-p)}   /* same thickness as the side bar: no extra band for the grip */
+.dk[data-side=b] .dk-grip{top:max(1px,calc(var(--dk-p) / 2 - 2px))}
+.dk-grip{position:absolute;top:calc(var(--dk-gt) / 2 - 2px);left:50%;width:18px;height:3px;border-radius:3px;translate:-50% 0;background:color-mix(in srgb,var(--text) 26%,transparent)}
+.dk-item{position:relative;z-index:1;display:grid;place-items:center;flex:none;width:var(--dk-item);height:var(--dk-item);border-radius:calc(var(--dk-item) * .36);color:var(--muted);
+  -webkit-tap-highlight-color:transparent;transition:color .3s,transform .15s}
+.dk-item svg{width:var(--dk-ico);height:var(--dk-ico)}
+.dk-item:hover{color:var(--text)}
+.dk-item:active{transform:scale(.9)}
+.dk-item.on{color:var(--accent)}
+.dk-item:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.dk-ink{position:absolute;z-index:0;left:var(--dk-p);top:0;width:var(--dk-item);height:var(--dk-item);border-radius:calc(var(--dk-item) * .36);
+  background:color-mix(in srgb,var(--accent) 20%,transparent);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 46%,transparent),0 8px 20px -8px color-mix(in srgb,var(--accent) 70%,transparent);
+  transform:translateY(calc(var(--dk-gt) + var(--i,0) * (var(--dk-item) + var(--dk-gap))));will-change:transform;
+  transition:transform .5s cubic-bezier(.22,1,.36,1),opacity .3s ease}
+.dk[data-side=b] .dk-ink{left:0;top:var(--dk-p);transform:translateX(calc(var(--dk-p) + var(--i,0) * (var(--dk-item) + var(--dk-gap))))}
+.dk-ink.is-away{opacity:0}                                   /* faded out while the open page is not one of the four (and just before it fades in) */
+
+/* Labels pop out away from the screen edge: right of the bar on the left, left of it on the right, above it at the bottom */
+.dk-tip{position:absolute;left:calc(100% + 14px);top:50%;translate:-4px -50%;padding:6px 11px;border-radius:11px;white-space:nowrap;
+  font-size:12px;font-weight:700;color:var(--text);background:var(--card2);box-shadow:0 10px 24px -8px rgba(0,0,0,.6),inset 0 0 0 1px var(--line);
+  opacity:0;pointer-events:none;transition:opacity .15s,translate .15s}
+.dk[data-side=r] .dk-tip{left:auto;right:calc(100% + 14px);translate:4px -50%}
+.dk[data-side=b] .dk-tip{left:50%;top:auto;bottom:calc(100% + 14px);translate:-50% 4px}
+@media (hover:hover){
+  .dk[data-side=l] .dk-item:hover .dk-tip,.dk[data-side=l] .dk-item:focus-visible .dk-tip,
+  .dk[data-side=r] .dk-item:hover .dk-tip,.dk[data-side=r] .dk-item:focus-visible .dk-tip{opacity:1;translate:0 -50%}
+  .dk[data-side=b] .dk-item:hover .dk-tip,.dk[data-side=b] .dk-item:focus-visible .dk-tip{opacity:1;translate:-50% 0}
+}
+
+/* The little edge tab that brings a hidden dock back */
+.dk-peek{position:absolute;padding:0;border:0;cursor:pointer;display:grid;place-items:center;color:var(--accent);pointer-events:none;opacity:0;
+  transform:var(--dk-peek-out);touch-action:none;
+  background:color-mix(in srgb,var(--card2) 78%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--text) 13%,transparent),6px 8px 22px -8px rgba(0,0,0,.6);
+  transition:transform .38s cubic-bezier(.2,.9,.25,1.08),opacity .25s}
+.dk[data-side=l] .dk-peek{left:calc(-1 * var(--dk-left));top:0;width:20px;height:68px;padding-right:2px;border-radius:0 20px 20px 0}
+.dk[data-side=r] .dk-peek{left:auto;right:calc(-1 * var(--dk-right));top:0;width:20px;height:68px;padding-left:2px;border-radius:20px 0 0 20px}
+.dk[data-side=b] .dk-peek{left:0;bottom:calc(-1 * (var(--dk-bedge) + env(safe-area-inset-bottom,0px)));width:68px;height:20px;padding-bottom:2px;border-radius:20px 20px 0 0}
+.dk[data-side=r] .dk-peek svg{rotate:180deg}
+.dk[data-side=b] .dk-peek svg{rotate:-90deg}
+.dk-peek:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.dk-peek::before{content:"";position:absolute;inset:-10px}      /* a bigger target than it looks */
+.dk[data-side=l] .dk-peek::before{inset:-10px -14px -10px 0}
+.dk[data-side=r] .dk-peek::before{inset:-10px 0 -10px -14px}
+.dk[data-side=b] .dk-peek::before{inset:-14px -10px 0}
+
+/* Hidden: the bar slides off its own edge and the tab slides in */
+.dk.is-hidden .dk-pill,.dk.is-away .dk-pill{transform:var(--dk-away);opacity:0;pointer-events:none}
+.dk.is-hidden .dk-peek{opacity:1;pointer-events:auto;transform:var(--dk-peek-in)}
+.dk.is-peeking .dk-pill{transform:var(--dk-base);opacity:1}
+.dk.is-peeking .dk-peek{opacity:0}
+.dk.is-dragging .dk-pill,.dk.is-peeking .dk-pill{transition:none}
+.dk.no-anim .dk-pill,.dk.no-anim .dk-ink,.dk.no-anim .dk-peek{transition:none!important}
+
+/* While the page scrolls the bar is the most see-through; when scrolling stops it is fully visible, and 1.5 seconds later it settles to a softer see-through level.
+   Any touch or hover brings it back to fully visible. */
+.dk.is-scrolling:not(.is-hidden):not(.is-away) .dk-pill{opacity:var(--dk-scroll);transition:transform .42s cubic-bezier(.2,.9,.25,1.08),opacity .2s ease,box-shadow .2s}
+.dk.is-idle:not(.is-hidden):not(.is-away) .dk-pill{opacity:var(--dk-idle)}
+@media (hover:hover){.dk-pill:hover{opacity:1!important}}
+.dk-pill:has(:focus-visible){opacity:1!important}
+.dk.is-lifted .dk-pill{opacity:1!important}
+
+/* Press and hold: the bar lifts, glows, and can be carried to the left, right or bottom edge */
+.dk.is-lifted .dk-pill{--dk-sc:1.06;box-shadow:0 0 0 2px var(--accent),0 34px 80px -12px #000e,0 0 46px color-mix(in srgb,var(--accent) 38%,transparent)}
+.dk.is-holding .dk-pill{--dk-sc:.98}
+body.dk-moving{overscroll-behavior:none;-webkit-user-select:none;user-select:none}
+#dk-zones{position:fixed;inset:0;z-index:87;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .2s,visibility 0s .2s}
+#dk-zones.on{opacity:1;visibility:visible;transition:opacity .2s}
+.dk-glow{position:absolute;display:flex;align-items:center;justify-content:center}
+.dk-glow::before{content:"";position:absolute;inset:-2px;border-radius:99px;background:var(--accent);opacity:.42;filter:blur(10px);transition:opacity .2s,filter .2s}
+.dk-glow.l,.dk-glow.r{top:26%;height:34%;width:14px}
+.dk-glow.l{left:2px}.dk-glow.r{right:2px}
+.dk-glow.b{left:24%;right:24%;height:14px;bottom:calc(2px + env(safe-area-inset-bottom,0px))}
+.dk-glow span{position:absolute;font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);opacity:0;transition:opacity .2s;white-space:nowrap}
+.dk-glow.l span{left:18px}.dk-glow.r span{right:18px}.dk-glow.b span{bottom:18px}
+.dk-glow.hot::before{opacity:.8;filter:blur(9px)}
+.dk-glow.hot span{opacity:1}
+.dk-holdhint{position:absolute;top:calc(max(14px,env(safe-area-inset-top,0px)) + 56px);left:50%;transform:translateX(-50%);max-width:92vw;padding:8px 14px;border-radius:99px;background:var(--card);
+  box-shadow:inset 0 0 0 1px var(--accent),0 10px 30px -8px #000c;font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+html.reduce-motion .dk-pill,html.reduce-motion .dk-ink,html.reduce-motion .dk-peek,html.reduce-motion .dk-tip,html.reduce-motion #dk-zones,html.reduce-motion .dk-glow::before{transition:none!important}
+@media (prefers-reduced-motion:reduce){.dk-pill,.dk-ink,.dk-peek,.dk-tip,#dk-zones,.dk-glow::before{transition:none!important}}
+
+/* ---------- 3. Page tabs (anime page) ----------
+   The single-bar tabs from style.css + atlas.css (dark bar, one pill that slides to the open tab) are used at every screen size, mobile included.
+   On narrow screens the bar scrolls sideways when the tabs do not all fit. */
+@media (max-width:600px){
+.dp-tabs{max-width:100%;scrollbar-width:none}
+.dp-tabs::-webkit-scrollbar{display:none}
+.dp-tab{padding:8px 14px}
+}
+/* Switching tabs never moves the tab bar: the panels only fade (nothing slides down), and the page is kept tall enough that the browser cannot pull the bar around */
+.dp-panels{overflow-anchor:none}
+@keyframes dpIn{from{opacity:0}}
+@keyframes dpItem{from{opacity:0;transform:translateY(6px)}}
+.dp-panel.dp-anim{animation:dpIn .22s ease-out}
+
+/* ---------- 4. Home: Top 10 and schedule buttons share one sliding pill ---------- */
+.sl-ink{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none}
+.sl-ink.ready{transition:transform .36s cubic-bezier(.2,.9,.25,1.05),width .36s cubic-bezier(.2,.9,.25,1.05),height .36s cubic-bezier(.2,.9,.25,1.05)}
+
+/* Top 10: the bar already has its own background, so the pill simply slides underneath the labels */
+#top-tabs{position:relative}
+#top-tabs .tab{position:relative;z-index:1;transition:color .25s}
+#top-tabs .tab.on{background:transparent}
+#top-tabs .sl-ink{border-radius:12px;background:var(--text);box-shadow:0 6px 16px -8px rgba(0,0,0,.6)}
+
+/* Schedule: every day is its own card, so the cards are painted behind the pill (z-index -1) and the pill slides over them, under the text */
+.sched-days{position:relative;isolation:isolate}
+.sched-day{position:relative;border-color:transparent;background:transparent;transition:color .25s}
+.sched-day::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:var(--card2);transition:background .2s}
+.sched-day:hover:not(.on)::before{background:color-mix(in srgb,var(--accent) 16%,var(--card2))}
+.sched-day.on{background:transparent;border-color:transparent}
+.sched-day.on::before{background:transparent}
+.sched-days .sl-ink{border-radius:14px;background:var(--accent);box-shadow:0 10px 24px -10px color-mix(in srgb,var(--accent) 75%,transparent)}
+html.reduce-motion .sl-ink.ready{transition:none}
+@media (prefers-reduced-motion:reduce){.sl-ink.ready{transition:none}}
+
+/* ---------- Bottom vignette (phones and tablets) ----------
+   A soft shade rising from the bottom edge, drawn from the theme background so it suits every theme. It sits behind the navigation (z-index 88)
+   and the toasts, and never takes a tap. Tune --vg-h (height) and --vg-a (strength) to taste. */
+@media (max-width:900px){
+  :root{--vg-h:150px;--vg-a:.78}
+  html::after{content:"";position:fixed;left:0;right:0;bottom:0;height:calc(var(--vg-h) + env(safe-area-inset-bottom,0px));z-index:80;pointer-events:none;
+    background:
+      radial-gradient(120% 100% at 50% 118%,color-mix(in srgb,var(--bg) calc(var(--vg-a) * 100%),transparent) 0%,transparent 72%),
+      linear-gradient(to top,color-mix(in srgb,var(--bg) calc(var(--vg-a) * 85%),transparent) 0%,color-mix(in srgb,var(--bg) calc(var(--vg-a) * 40%),transparent) 45%,transparent 100%)}
+}
+
+/* ---------- Navigation style: Orbs (Settings > Navigation style) ----------
+   No bar behind the icons: every page is its own round glass button, and the open page wears a glowing ring that slides between them.
+   Works on all three edges and all three sizes; the layout maths above is reused by setting the padding and gap. */
+html[data-dock-style=orbs][data-dock]{--dk-gt:7px;--dk-p:7px;--dk-gap:10px}
+html[data-dock-style=orbs] .dk-pill{background:none;backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;border-radius:0}
+html[data-dock-style=orbs] .dk-grip{display:none}
+html[data-dock-style=orbs] .dk-item{border-radius:50%;
+  background:color-mix(in srgb,var(--card2) 72%,transparent);backdrop-filter:blur(16px) saturate(1.5);-webkit-backdrop-filter:blur(16px) saturate(1.5);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--text) 14%,transparent),inset 0 1px 0 color-mix(in srgb,#fff 14%,transparent),0 10px 22px -10px rgba(0,0,0,.75)}
+html[data-dock-style=orbs] .dk-ink{z-index:2;pointer-events:none;border-radius:50%;
+  background:color-mix(in srgb,var(--accent) 26%,transparent);
+  box-shadow:inset 0 0 0 2px var(--accent),0 0 20px -2px color-mix(in srgb,var(--accent) 65%,transparent)}
+html[data-dock-style=orbs] .dk.is-lifted .dk-item{box-shadow:inset 0 0 0 1.5px var(--accent),0 14px 28px -10px #000}
+html[data-dock-style=orbs] .dk-tip{border-radius:99px}
+/* Why the orbs are faded one by one: a backdrop blur stops working inside a parent that is partly transparent, so fading the whole bar made the orbs
+   look different over a picture or text than over empty space. Fading each orb keeps the blur, and the glass is denser so what is behind shows through less. */
+html[data-dock-style=orbs] .dk-item{background:color-mix(in srgb,var(--card2) 86%,transparent);backdrop-filter:blur(22px) saturate(1.5);-webkit-backdrop-filter:blur(22px) saturate(1.5);
+  transition:color .3s,transform .15s,opacity .5s ease}
+html[data-dock-style=orbs] .dk.is-scrolling:not(.is-hidden):not(.is-away) .dk-pill,
+html[data-dock-style=orbs] .dk.is-idle:not(.is-hidden):not(.is-away) .dk-pill{opacity:1}
+html[data-dock-style=orbs] .dk.is-scrolling:not(.is-hidden):not(.is-away) :is(.dk-item,.dk-ink:not(.is-away)){opacity:var(--dk-scroll);transition-duration:.3s,.15s,.2s}
+html[data-dock-style=orbs] .dk.is-idle:not(.is-hidden):not(.is-away) :is(.dk-item,.dk-ink:not(.is-away)){opacity:var(--dk-idle)}
+@media (hover:hover){html[data-dock-style=orbs] .dk-pill:hover :is(.dk-item,.dk-ink){opacity:1!important}}
+html[data-dock-style=orbs] .dk-pill:has(:focus-visible) :is(.dk-item,.dk-ink),
+html[data-dock-style=orbs] .dk.is-lifted :is(.dk-item,.dk-ink){opacity:1!important}

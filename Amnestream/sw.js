@@ -1,4 +1,4 @@
-const VERSION = 'amnestream-v84', IMG = 'amnestream-img-v1';
+const VERSION = 'amnestream-v92', IMG = 'amnestream-img-v1';
 const SHELL = [
   "index.html",
   "browse.html",
@@ -19,6 +19,10 @@ const SHELL = [
   "css/extras.css",
   "css/me.css",
   "css/style.css",
+  "css/dock.css",
+  "css/vplayer.css",
+  "css/deck.css",
+  "css/watch.css",
   "js/anime.js",
   "js/api.js",
   "js/avatar.js",
@@ -26,6 +30,9 @@ const SHELL = [
   "js/browse.js",
   "js/comments.js",
   "js/config.js",
+  "js/dock.js",
+  "js/sources.js",
+  "js/vplayer.js",
   "js/mal.js",
   "js/common.js",
   "js/home.js",

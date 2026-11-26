@@ -196,11 +196,13 @@
     ];
     const BUDS = [[578, 176], [556, 94], [520, 104], [270, 262], [328, 238], [308, 294], [398, 326], [566, 254], [381, 442], [268, 424], [440, 598], [620, 374], [694, 350], [596, 536],
       [60, 526], [222, 574], [242, 578], [150, 600], [350, 520], [566, 560]];
-    let layer, petals = [], ax = 0, ay = 0, U = 1, ox = 0, oy = 0, tx = 0, ty = 0, textOn = false;
+    let layer, petals = [], sprites = [], ax = 0, ay = 0, U = 1, ox = 0, oy = 0, tx = 0, ty = 0, textOn = false, bdpr = 1;
     const COLS = ['250,176,200', '246,150,184', '253,208,224', '240,126,168', '255,226,236'];
-    const make = fresh => ({
-      x: W * .3 + rnd() * (W * .8), y: fresh ? rnd() * H : -20 - rnd() * 120, z: .4 + rnd() * .9, rot: rnd() * TAU, vr: (rnd() - .5) * 1.6,
-      sw: rnd() * TAU, sa: 18 + rnd() * 44, col: COLS[(rnd() * COLS.length) | 0], fl: rnd() * TAU,
+    /* Petals have no state of their own: where one is at any moment is a plain function of the clock (and its own seeded numbers).
+       So a new page, a reload or a tab switch picks the shower up exactly where the last page left it, and nothing is integrated frame by frame. */
+    const make = () => ({
+      fx: rnd(), fy: rnd(), z: .4 + rnd() * .9, rot: rnd() * TAU, vr: (rnd() - .5) * 1.6,
+      sw: rnd() * TAU, sa: 18 + rnd() * 44, ci: (rnd() * COLS.length) | 0, fl: rnd() * TAU,
     });
 
     /* Catmull-Rom through the control points, drawn as short tapering strokes */
@@ -277,7 +279,7 @@
 
     function paintLayer() {
       const c = layer.getContext('2d');
-      c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, W, H);
+      c.setTransform(bdpr, 0, 0, bdpr, 0, 0); c.clearRect(0, 0, W, H);
       reseed(21);
       const samples = [];
       BRANCHES.forEach((b, i) => { const s = limb(c, b, WIDTH[i][0], WIDTH[i][1]); for (const p of s) samples.push(p); });
@@ -303,44 +305,82 @@
       textOn = true;
     }
 
+    /* The branch is its own canvas, painted once per size and then left completely still (swaying a full-screen layer cost far more than the
+       0.3 degrees it moved were worth). The painted branch is also kept in IndexedDB,
+       so the next page shows it straight away instead of painting 35 flowers again. */
+    const KEY = 'v1-sakura' + (inv ? '-n' : '');
+    const db = () => new Promise((res, rej) => { try { const r = indexedDB.open('as_scene', 1); r.onupgradeneeded = () => r.result.createObjectStore('b'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } catch (e) { rej(e); } });
+    const cacheKey = () => KEY + ':' + Math.round(W) + 'x' + Math.round(H) + '@' + bdpr;
+    async function cacheGet() { const d = await db(); return new Promise(res => { const q = d.transaction('b').objectStore('b').get(cacheKey()); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); }); }
+    async function cachePut(blob) { const d = await db(); const tr = d.transaction('b', 'readwrite'), st = tr.objectStore('b'); st.clear(); st.put(blob, cacheKey()); }
+    let token = 0;
+    function showBranch() {
+      const my = ++token, key = cacheKey();
+      const paintNow = () => { paintLayer(); layer.toBlob(b => { if (b && my === token) cachePut(b).catch(() => { }); }); };
+      cacheGet().then(async blob => {
+        if (my !== token) return;
+        if (!blob) { paintNow(); return; }
+        const bmp = await createImageBitmap(blob);
+        if (my !== token || key !== cacheKey()) return;
+        const c = layer.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, layer.width, layer.height); c.drawImage(bmp, 0, 0, layer.width, layer.height);
+      }).catch(() => { if (my === token) paintNow(); });
+    }
+
+    function petalPath(c, s) {
+      c.beginPath(); c.moveTo(0, -s);
+      c.bezierCurveTo(s * .95, -s * .55, s * .7, s * .75, 0, s);
+      c.bezierCurveTo(-s * .7, s * .75, -s * .95, -s * .55, 0, -s);
+      c.moveTo(-s * .12, -s); c.lineTo(0, -s * .72); c.lineTo(s * .12, -s);
+    }
+    /* One small picture per petal colour, drawn once. Each frame then only places them. */
+    const SP = 12, SPX = 2;
+    function makeSprites() {
+      sprites = COLS.map(col => {
+        const k = document.createElement('canvas'); k.width = k.height = (SP * 2 + 4) * SPX;
+        const c = k.getContext('2d'); c.setTransform(SPX, 0, 0, SPX, k.width / 2, k.height / 2);
+        c.fillStyle = `rgba(${col},1)`; petalPath(c, SP); c.fill();
+        return k;
+      });
+    }
+
     function resize() {
       U = Math.min(H / SIZE, Math.max(W / 700, .55)) * 1.02;
       ox = W - SIZE * U + 8 * U; oy = (H - SIZE * U) / 2; ax = W; ay = H * .26;
-      if (!layer) layer = document.createElement('canvas');
-      layer.width = Math.round(W * dpr); layer.height = Math.round(H * dpr);
-      paintLayer();
+      bdpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      if (!layer) {
+        layer = document.createElement('canvas'); layer.id = 'as-scene-branch'; layer.setAttribute('aria-hidden', 'true');
+        layer.style.cssText = 'position:fixed;left:0;top:0;width:100%;height:100%;z-index:-2;pointer-events:none';
+        cv.before(layer);
+      }
+      layer.style.height = cv.style.height || '100%';
+      layer.style.transformOrigin = ax + 'px ' + ay + 'px';
+      layer.width = Math.round(W * bdpr); layer.height = Math.round(H * bdpr);
+      showBranch();
+      reseed(5 + 1000);
       const n = Math.round(clamp(W / 26, 24, 64));
-      petals = []; for (let i = 0; i < n; i++) petals.push(make(true));
+      petals = []; for (let i = 0; i < n; i++) petals.push(make());
+      if (!sprites.length) makeSprites();
       if (!textOn) placeText();
     }
-    function petalPath(s) {
-      ctx.beginPath(); ctx.moveTo(0, -s);
-      ctx.bezierCurveTo(s * .95, -s * .55, s * .7, s * .75, 0, s);
-      ctx.bezierCurveTo(-s * .7, s * .75, -s * .95, -s * .55, 0, -s);
-      ctx.moveTo(-s * .12, -s); ctx.lineTo(0, -s * .72); ctx.lineTo(s * .12, -s);
-    }
-    function frame(t, dt) {
-      const bg = ctx.createLinearGradient(0, 0, 0, H);
-      if (inv) { bg.addColorStop(0, '#1d0d17'); bg.addColorStop(.7, '#150a11'); bg.addColorStop(1, '#2a0f1f'); }
-      else { bg.addColorStop(0, '#ffffff'); bg.addColorStop(.7, '#fffafb'); bg.addColorStop(1, '#fff1f5'); }
-      ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-      ctx.save();
-      ctx.translate(ax, ay); ctx.rotate(Math.sin(t * .45) * .0035 + Math.sin(t * .17) * .002); ctx.translate(-ax, -ay);
-      ctx.drawImage(layer, 0, 0, W, H);
-      ctx.restore();
-      const wind = 24 + Math.sin(t * .22) * 18;
+
+    const mod = (a, m) => ((a % m) + m) % m;
+    function frame(t) {
+      const c = ctx, w = cv.width, h = cv.height, k = dpr;
+      c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, w, h);
+      const PW = W + 120, PH = H + 60;
       for (let i = 0; i < petals.length; i++) {
         const p = petals[i];
-        p.y += (30 + p.z * 40) * dt; p.x += (-wind * p.z * .6 + Math.sin(t * .8 + p.sw) * p.sa * .35) * dt; p.rot += p.vr * dt;
-        if (p.y > H + 30 || p.x < -60) petals[i] = make(false);
-        const s = 5 + p.z * 7, flip = Math.cos(t * 1.4 + p.fl);
-        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.scale(.35 + Math.abs(flip) * .65, 1);
-        ctx.globalAlpha = .6 + p.z * .35; ctx.fillStyle = `rgba(${p.col},1)`; petalPath(s); ctx.fill();
-        ctx.restore();
+        const y = mod(p.fy * PH + (30 + p.z * 40) * t, PH) - 30;
+        const x = mod(p.fx * PW - p.z * .6 * (24 * t - 81.818 * Math.cos(.22 * t)) - p.sa * .4375 * Math.cos(.8 * t + p.sw), PW) - 60;
+        const rot = p.rot + p.vr * t, s = (5 + p.z * 7) / SP, fl = (.35 + Math.abs(Math.cos(t * 1.4 + p.fl)) * .65) * s;
+        const cr = Math.cos(rot), sr = Math.sin(rot);
+        c.setTransform(cr * fl * k, sr * fl * k, -sr * s * k, cr * s * k, x * k, y * k);
+        c.globalAlpha = .6 + p.z * .35;
+        c.drawImage(sprites[p.ci], -SP - 2, -SP - 2, SP * 2 + 4, SP * 2 + 4);
       }
-      ctx.globalAlpha = 1;
+      c.globalAlpha = 1;
     }
-    return { resize, frame, dispose() { const el = document.getElementById('as-scene-text'); if (el) el.remove(); } };
+    return { resize, frame, fps: 30, dispose() { token++; const el = document.getElementById('as-scene-text'); if (el) el.remove(); if (layer) layer.remove(); layer = null; } };
   }
 
   function aurora() {
@@ -420,7 +460,7 @@
     cv.style.height = isPhone() ? nh + 'px' : '100%';      // Phones: exactly as tall as the drawing, so nothing is stretched
     if (cv._w === nw && cv._h === nh) return;     // Only the address bar moved: keep the canvas (resizing it would blank it for a frame)
     cv._w = nw; cv._h = nh;
-    dpr = Math.min(window.devicePixelRatio || 1, name === 'galaxy' || name === 'aurora' ? 1.25 : 1.5);
+    dpr = name.indexOf('sakura') === 0 ? 1 : Math.min(window.devicePixelRatio || 1, name === 'galaxy' || name === 'aurora' ? 1.25 : 1.5);   // sakura: the canvas only carries small petals
     W = nw; H = nh;
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -433,9 +473,11 @@
     if (scene) scene.frame(t, dt);
   }
 
+  let lastDrawn = 0;
   function loop() {
     if (!on || still) return;
-    draw();
+    const t = now();
+    if (!scene.fps || t - lastDrawn >= 1 / scene.fps - .004) { lastDrawn = t; draw(); }     // slow drifting scenes only need 30 frames a second
     raf = requestAnimationFrame(loop);
   }
 

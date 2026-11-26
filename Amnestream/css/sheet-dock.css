@@ -55,3 +55,21 @@
 @media (max-width:900px){
   html body.stg-open .stg{padding-bottom:0}
 }
+
+/* Settings sheet and navigation both at the bottom: the navigation floats on top, the sheet runs behind it to the screen edge.
+   The sheet gets extra room at its foot so its last row can still be scrolled clear of the bar. */
+@media (max-width:900px){
+  html.dk-at-bottom body .stg-insp:not(.dock-l):not(.dock-r){bottom:calc(env(safe-area-inset-bottom,0px) + 6px);padding-bottom:calc(var(--dk-bot,0px) + 14px);
+    transform-origin:50% 100%}
+  html.dk-at-bottom body .stg-insp:not(.dock-l):not(.dock-r):not(.open){transform:translateY(calc(100% + 24px))}
+  html.dk-at-bottom .dk{z-index:89}
+  html.dk-at-bottom body.stg-moving .dk{z-index:88}
+  html.dk-at-bottom body.stg-open .stg{padding-bottom:calc(var(--sheet-h) + 16px)}
+}
+
+/* Settings panel docked left or right: same solid look as the bottom sheet (no see-through, no blur), and a roomier default width */
+@media (max-width:900px){
+  html body .stg-insp.dock-l,html body .stg-insp.dock-r{background:var(--card);-webkit-backdrop-filter:none;backdrop-filter:none;
+    box-shadow:inset 0 0 0 1px var(--line),0 -20px 50px -10px #000c}
+  html body .stg-insp.dock-l header,html body .stg-insp.dock-r header{background:var(--card);-webkit-backdrop-filter:none;backdrop-filter:none}
+}

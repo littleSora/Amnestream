@@ -97,6 +97,7 @@ function render() {
           <button class="dp-btn ${inList ? 'on' : ''}" id="list-btn">${icon(inList ? 'check' : 'plus', 14)} <span>${inList ? 'In My List' : 'Add to My List'}</span></button>
           <div class="dp-act-ico">
             <button class="dp-btn ico ${isFav ? 'on' : ''}" id="fav-btn" title="${isFav ? 'Remove from favourites' : 'Add to favourites'}" aria-label="Favourite">${icon('heart', 16)}</button>
+            ${m.idMal ? `<button class="dp-btn mal-btn" id="mal-btn" title="Track on MyAnimeList" aria-label="Track on MyAnimeList" hidden>${icon('list', 15)}<b>MAL</b><i class="mal-dot" aria-hidden="true"></i></button>` : ''}
             <button class="dp-btn ico" id="share-btn" title="Share" aria-label="Share">${icon('share', 15)}</button>
             <span class="dp-act-ext">
               <a class="dp-ext al" target="_blank" rel="noopener" href="https://anilist.co/anime/${m.id}" title="Open on AniList">A</a>
@@ -109,8 +110,6 @@ function render() {
           ${mean ? rateHTML(mean, compact(m.favourites), 'heart', 'Mean', `Mean score, ${(m.favourites || 0).toLocaleString()} favourites`) : ''}
         </div>` : ''}
       </div>
-
-      ${m.idMal ? '<div class="dp-mal" id="mal-box" hidden></div>' : ''}
 
       <div class="dp-syn">
         <span class="dp-lbl">Synopsis</span>
@@ -141,6 +140,7 @@ function render() {
         ${chars.length ? '<button class="dp-tab" data-p="ch">Characters</button>' : ''}
       </div>
 
+      <div class="dp-panels" id="dp-panels">
       <div class="dp-panel on" id="p-ep">
         <div class="dp-eptools">
           <input class="dp-search" id="ep-q" placeholder="Search episode..." aria-label="Search episodes">
@@ -166,6 +166,7 @@ function render() {
 
       ${chars.length ? `<div class="dp-panel" id="p-ch"><div class="dp-chars">${chars.map(c => `
         <div class="dp-char"><img loading="lazy" src="${esc(c.image?.medium || '')}" alt=""><p>${esc(c.name.full)}</p></div>`).join('')}</div></div>` : ''}
+      </div>
     </div>
   </div>`;
 
@@ -182,10 +183,7 @@ function render() {
     b.title = on ? 'Remove from favourites' : 'Add to favourites';
     toast(on ? 'Added to favourites' : 'Removed from favourites');
   };
-  $('#share-btn').onclick = async () => {
-    try { if (navigator.share) { await navigator.share({ title, url: location.href }); return; } } catch { return; }
-    navigator.clipboard?.writeText(location.href).then(() => toast('Link copied'));
-  };
+  $('#share-btn').onclick = () => Share.open({ title, url: location.href.split('#')[0], image: coverOf(m) });
 
   const syn = $('#syn-text'), more = $('#syn-more');
   const fit = () => { if (syn.classList.contains('clamp')) more.hidden = syn.scrollHeight <= syn.clientHeight + 1; };
@@ -211,11 +209,31 @@ function render() {
     panel.classList.add('dp-anim');
     clearTimeout(animT); animT = setTimeout(() => panel.classList.remove('dp-anim'), 1400);
   };
+  /* Switching tabs keeps the tab bar exactly where it is on screen. Panels have different heights, so a shorter one used to shrink the page,
+     the browser pulled the scroll position up and the whole bar jumped. The panel area is held at least as tall as the room left under the bar,
+     and whatever small shift remains is scrolled away in the same frame. */
+  const tabBar = $('.dp-tabs'), panelsBox = $('#dp-panels');
+  const holdStill = swap => {
+    const root = document.documentElement, zoom = parseFloat(getComputedStyle(root).zoom) || 1;
+    const y0 = tabBar.getBoundingClientRect().top;
+    const room = Math.max(0, innerHeight - panelsBox.getBoundingClientRect().top);
+    panelsBox.style.minHeight = Math.ceil(room / zoom) + 'px';
+    swap();
+    const dy = tabBar.getBoundingClientRect().top - y0;
+    if (Math.abs(dy) > 0.5) {
+      const prev = root.style.scrollBehavior;
+      root.style.scrollBehavior = 'auto';
+      window.scrollBy(0, dy);
+      root.style.scrollBehavior = prev;
+    }
+  };
   $$('.dp-tab').forEach(t => t.onclick = () => {
     if (t.classList.contains('on') || t.disabled) return;
-    $$('.dp-tab').forEach(x => x.classList.toggle('on', x === t));
-    $$('.dp-panel').forEach(p => p.classList.toggle('on', p.id === 'p-' + t.dataset.p));
-    placeInk(); animatePanel($('#p-' + t.dataset.p));
+    holdStill(() => {
+      $$('.dp-tab').forEach(x => x.classList.toggle('on', x === t));
+      $$('.dp-panel').forEach(p => p.classList.toggle('on', p.id === 'p-' + t.dataset.p));
+      placeInk(); animatePanel($('#p-' + t.dataset.p));
+    });
   });
   placeInk(); document.fonts?.ready.then(placeInk); addEventListener('resize', placeInk);
 
@@ -224,7 +242,22 @@ function render() {
   if (typeof Comments !== 'undefined') Comments.mountGated($('#p-cm'), m.id, refreshCommentCount, null, hidden => { if (hidden) $('#cm-total').textContent = ''; else refreshCommentCount(); });
   else $('#p-cm').innerHTML = '<p class="empty">Comments failed to load. Refresh the page.</p>';
 
-  if (m.idMal && typeof Mal !== 'undefined') Mal.panel($('#mal-box'), m);
+  /* MyAnimeList: a button next to Share opens the tracker dialog; it lights up when this anime is already on your list */
+  const malBtn = $('#mal-btn');
+  if (malBtn && typeof Mal !== 'undefined') {
+    const paintMal = list => {
+      const st = list && list.status ? (Mal.STATUS.find(x => x[0] === list.status) || [])[1] : '';
+      malBtn.classList.toggle('on', !!st);
+      malBtn.title = st ? 'On your MyAnimeList: ' + st : 'Track on MyAnimeList';
+    };
+    Mal._onChange = paintMal;
+    Mal.ready.then(() => {
+      if (!Mal.configured()) return;
+      malBtn.hidden = false;
+      if (Mal.connected()) Mal.entry(m.idMal).then(e => paintMal(e.list)).catch(() => {});
+    });
+    malBtn.onclick = () => Mal.open(m);
+  }
 
   Api.seasonChain(m.id).then(list => {
     const box = $('#seasons'); if (!box || list.length < 2) return;
@@ -411,20 +444,34 @@ const EpModal = {
       toast('No dub for this episode, playing Sub.');
       this.paint(); this.start();
     });
+    /* The "Loading player..." cover used to wait for a "ready" message that this provider does not always send, then turned into a black "Server error" box on top of a video that was already playing (the sound kept going behind it). The cover now goes away as soon as the player page has loaded or says anything; a real problem only shows as a small hint under the player. */
+    const frame = $('iframe', st);
+    if (frame) frame.addEventListener('load', () => { if (this.n === n && this.playing) this.ready(); });
     clearTimeout(this._slow);
     this._slow = setTimeout(() => {
-      const cover = $('.epm-loading', st); if (!cover) return;
-      cover.style.pointerEvents = 'auto';
-      cover.innerHTML = 'Server error. Please swap to another server (open the full player).';
+      if (!this.ui || this.n !== n) return;
+      this.ready();
+      this.hint('Still nothing? Open the full player to pick another server.');
     }, 9000);
     Store.saveProgress(M, this.n);
     this.dirty = true;
+  },
+  ready() {
+    clearTimeout(this._slow);
+    if (this.ui) $('.epm-loading', this.ui.el)?.remove();
+  },
+  hint(text) {
+    const h = this.ui && $('#epm-hint', this.ui.el);
+    if (!h) return;
+    h.textContent = text; h.hidden = !text;
   },
   onMsg: e => {
     if (!EpModal.ui || !String(e.origin).includes('megaplay')) return;
     let d = e.data; if (typeof d === 'string') { try { d = JSON.parse(d); } catch { return; } }
     if (!d) return;
     const fr = $('.epm-stage iframe', EpModal.ui.el);
+    const bad = d.event === 'error';
+    if (fr && e.source === fr.contentWindow && !bad) { EpModal.ready(); EpModal.hint(''); }
     if (!fr || !e.source || e.source === fr.contentWindow) {          // Position of the episode in the preview: move its underline in the list behind
       const ended = d.event === 'complete' || d.event === 'ended';
       const p = ended ? 100 : EpProg.fromMessage(d);
@@ -437,15 +484,10 @@ const EpModal = {
     }
     if ((d.event === 'complete' || d.event === 'ended') && Settings.get().autonext) EpModal.go(EpModal.n + 1);
     if (/^(ready|playing|play|loaded|canplay)$/.test(String(d.event || '').toLowerCase())) {
-      clearTimeout(EpModal._slow);
-      $('.epm-loading', EpModal.ui.el)?.remove();
+      EpModal.ready(); EpModal.hint('');
       if (EpModal.lang === 'dub') Dub.clear(M.id, EpModal.n);
     }
-    if (d.event === 'error') {
-      clearTimeout(EpModal._slow);
-      const cover = $('.epm-loading', EpModal.ui.el);
-      if (cover) { cover.style.pointerEvents = 'auto'; cover.innerHTML = 'Server error. Please swap to another server (open the full player).'; }
-    }
+    if (bad) { EpModal.ready(); EpModal.hint('Trouble playing? Open the full player to pick another server.'); }
   },
 };
 

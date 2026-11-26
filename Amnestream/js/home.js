@@ -153,11 +153,30 @@ function placeTop10() {
   if (topMQ.addEventListener) topMQ.addEventListener('change', apply);
 }
 
+/* A pill that slides to whichever button is switched on (same motion as the tabs on the anime page) */
+function slideInk(bar, sel) {
+  if (!bar) return () => {};
+  const ink = document.createElement('span');
+  ink.className = 'sl-ink'; ink.setAttribute('aria-hidden', 'true');
+  bar.prepend(ink);
+  const place = () => {
+    const on = bar.querySelector(sel + '.on'); if (!on || !on.offsetWidth) return;
+    ink.style.width = on.offsetWidth + 'px'; ink.style.height = on.offsetHeight + 'px';
+    ink.style.transform = `translate(${on.offsetLeft}px,${on.offsetTop}px)`;
+  };
+  place();
+  requestAnimationFrame(() => requestAnimationFrame(() => ink.classList.add('ready')));   // No slide-in from the corner on first paint
+  if (window.ResizeObserver) new ResizeObserver(place).observe(bar); else addEventListener('resize', place);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(place);
+  return place;
+}
+
 function wireTabs() {
   wireDiscoverPicker();
+  const placeTop = slideInk($('#top-tabs'), '.tab');
   $$('#top-tabs .tab').forEach(t => t.onclick = () => {
     $$('#top-tabs .tab').forEach(x => x.classList.remove('on'));
-    t.classList.add('on'); setTop(t.dataset.tab);
+    t.classList.add('on'); placeTop(); setTop(t.dataset.tab);
   });
 }
 const DISCOVER = [
@@ -262,9 +281,11 @@ function initSchedule() {
       <strong>${fmtDom.format(d + 3600000)}</strong>
       ${fmtMon.format(d + 3600000)}
     </button>`).join('');
+  const placeDay = slideInk($('#sched-days'), '.sched-day');
   $$('.sched-day').forEach(b => {
     b.onclick = () => {
       $$('.sched-day').forEach(x => x.classList.toggle('on', x === b));
+      placeDay();
       loadSchedule(days[+b.dataset.i]);
     };
     b.onmouseenter = () => fetchDay(days[+b.dataset.i]).catch(() => {});   // Warm the cache before the click

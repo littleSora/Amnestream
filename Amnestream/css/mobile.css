@@ -112,7 +112,7 @@
 
   .home-main .grid,.grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
   .rail-track{gap:10px;padding:2px 14px 10px}
-  .rail-track .card{width:112px;flex-basis:112px}
+  .rail-track .card{width:124px;flex-basis:124px}
   .card-media{border-radius:14px}
   .card-title{left:8px;right:8px;bottom:8px;font-size:11px;line-height:1.25;-webkit-line-clamp:2}
   .card-tags{left:8px;right:8px;bottom:42px;gap:3px}
@@ -145,7 +145,7 @@
 }
 @media (max-width:380px){
   .genre-cloud{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .rail-track .card{width:104px;flex-basis:104px}
+  .rail-track .card{width:114px;flex-basis:114px}
 }
 @media (max-width:900px){.hero-ctrl{display:none}}
 
@@ -192,13 +192,13 @@
 @media (max-width:900px){
   html[data-cards=small] .home-main .grid,html[data-cards=small] .grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
   html[data-cards=large] .home-main .grid,html[data-cards=large] .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-  html[data-cards=small] .rail-track .card{width:90px;flex-basis:90px}
+  html[data-cards=small] .rail-track .card{width:100px;flex-basis:100px}
   html[data-cards=large] .rail-track .card{width:150px;flex-basis:150px}
   html[data-cards=small] .card-title{font-size:10px}
   html[data-cards=large] .card-title{font-size:13px}
 }
 @media (max-width:380px){
-  html[data-cards=small] .rail-track .card{width:84px;flex-basis:84px}
+  html[data-cards=small] .rail-track .card{width:92px;flex-basis:92px}
   html[data-cards=large] .rail-track .card{width:138px;flex-basis:138px}
 }
 

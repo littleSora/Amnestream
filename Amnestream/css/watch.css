@@ -1,0 +1,184 @@
+/* Watch page: stage, floating window, control deck and the Episodes / Relations / Recommendations column. */
+
+.wp{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;padding-bottom:12px}
+.wp>*{min-width:0}
+@media (min-width:1000px){
+  /* Wide page: the picture grows to fill the space between the rail and the episode column.
+     The episode column sits beside the picture and the title (rows 1-2), so the list is about as tall as the picture; recommendations start under it, beside the controls. */
+  .wp-page{max-width:2200px;padding-left:clamp(18px,1.9vw,40px);padding-right:clamp(18px,1.9vw,40px)}
+  .wp{--wp-side-w:clamp(392px,28vw,540px);grid-template-columns:minmax(0,1fr) var(--wp-side-w);grid-template-areas:"stage side" "head side" "deck rec" "cm rec";grid-template-rows:auto auto auto 1fr;column-gap:26px;row-gap:16px}
+  .wp-slot{grid-area:stage}.wp-head{grid-area:head}.wp-deck{grid-area:deck}.wp-side{grid-area:side}.wp-comments{grid-area:cm}.wp-recs{grid-area:rec}
+}
+
+/* ---------- Stage ---------- */
+.wp-slot{position:relative;aspect-ratio:16/9;border-radius:22px;background:#000;
+  box-shadow:0 34px 80px -34px rgba(0,0,0,.85),0 0 0 1px color-mix(in srgb,var(--text) 10%,transparent)}
+.wp-stage{position:absolute;inset:0;border-radius:inherit;overflow:hidden;background:#000;isolation:isolate}
+.wp-host{position:absolute;inset:0}
+.wp-host iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000}
+.wp-host .player-loading,.wp-host .player-error,.wp-host .player-fallback{z-index:8}
+
+.wp-ghost{position:absolute;inset:0;display:none;place-items:center;text-align:center;border-radius:inherit;color:var(--muted);font-size:14px;font-weight:600;
+  background:radial-gradient(120% 120% at 50% 0%,color-mix(in srgb,var(--accent) 16%,#000),#000)}
+.wp-slot.mini-on .wp-ghost{display:grid}
+.wp-ghost p{margin:0 0 12px}
+.wp-pill{display:inline-flex;align-items:center;justify-content:center;height:40px;padding:0 20px;border:0;border-radius:14px;cursor:pointer;font:800 13px var(--sans);color:var(--accent-ink);background:var(--accent)}
+.wp-resume{position:absolute;inset:0;z-index:9;display:grid;place-items:center;text-align:center;background:#000;color:var(--muted);font-weight:600}
+.wp-resume[hidden]{display:none}
+.wp-resume p{margin:0 0 12px}
+
+/* ---------- Floating window ---------- */
+.wp-mini{display:none;position:absolute;left:0;right:0;top:0;z-index:12;height:36px;align-items:center;gap:2px;padding:0 4px;cursor:grab;touch-action:none;
+  background:linear-gradient(180deg,rgba(0,0,0,.78),transparent);color:#fff}
+.wp-mini button{display:grid;place-items:center;flex:none;width:30px;height:30px;padding:0;border:0;border-radius:10px;background:none;color:#fff;cursor:pointer}
+.wp-mini button:hover{background:rgba(255,255,255,.16)}
+.wp-mini-grip{flex:1;height:18px;position:relative}
+.wp-mini-grip::before{content:"";position:absolute;left:50%;top:50%;width:26px;height:4px;margin:-2px 0 0 -13px;border-radius:4px;background:rgba(255,255,255,.5)}
+.wp-stage:not(.has-vp) .wp-mini-play{display:none}
+.wp-stage.dragging .wp-mini{cursor:grabbing}
+
+.wp-stage.is-mini{position:fixed;inset:auto;z-index:90;width:min(300px,62vw);height:auto;aspect-ratio:16/9;border-radius:16px;
+  box-shadow:0 26px 60px -12px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.16);animation:wpMini .34s cubic-bezier(.2,.9,.25,1.15)}
+@media (min-width:700px){.wp-stage.is-mini{width:340px}}
+.wp-stage.is-mini .wp-mini{display:flex}
+.wp-stage.is-mini[data-corner=br]{right:max(12px,env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+.wp-stage.is-mini[data-corner=bl]{left:calc(var(--dock-gutter) + max(12px,env(safe-area-inset-left,0px)));bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+.wp-stage.is-mini[data-corner=tr]{right:max(12px,env(safe-area-inset-right,0px));top:calc(var(--hdr-h) + 8px)}
+.wp-stage.is-mini[data-corner=tl]{left:calc(var(--dock-gutter) + max(12px,env(safe-area-inset-left,0px)));top:calc(var(--hdr-h) + 8px)}
+@keyframes wpMini{from{opacity:0;transform:translateY(16px) scale(.92)}}
+@media (max-width:900px){.wp-stage.is-mini[data-corner=bl],.wp-stage.is-mini[data-corner=tl]{left:max(12px,env(safe-area-inset-left,0px))}}
+
+/* ---------- Title ---------- */
+.wp-head h1{margin:0 0 6px;font-family:var(--display,inherit);font-size:clamp(20px,3.3vw,30px);line-height:1.15;letter-spacing:-.02em}
+.wp-sub{margin:0;color:var(--muted);font-size:14px}
+.wp-sub strong{color:var(--text)}
+.wp-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.wp-chip{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;
+  color:var(--accent);background:color-mix(in srgb,var(--accent) 13%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 30%,transparent)}
+.wp-chip.soft{color:var(--muted);background:color-mix(in srgb,var(--text) 6%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--text) 10%,transparent)}
+.wp-chip i{width:7px;height:7px;border-radius:50%;background:currentColor}
+
+/* ---------- Control deck ---------- */
+.wp-deck{container-type:inline-size;display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:26px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--card) 94%,transparent),color-mix(in srgb,var(--card2) 72%,transparent));
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--text) 9%,transparent)}
+.wp-grid{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px}
+.wp-audio{position:relative;display:grid;grid-template-columns:1fr 1fr;padding:4px;border-radius:17px;grid-column:1;
+  background:color-mix(in srgb,var(--bg) 58%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--text) 8%,transparent)}
+.wp-audio button{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:7px;height:40px;border:0;border-radius:13px;background:none;
+  color:var(--muted);font:800 13px var(--sans);cursor:pointer;transition:color .2s}
+.wp-audio button.on{color:var(--accent-ink)}
+.wp-audio button.no-dub{opacity:.45;text-decoration:line-through}
+.wp-audio-ink{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:13px;background:var(--accent);
+  box-shadow:0 8px 20px -8px color-mix(in srgb,var(--accent) 70%,transparent);transition:transform .32s cubic-bezier(.2,.9,.25,1.1)}
+.wp-audio[data-v=dub] .wp-audio-ink{transform:translateX(100%)}
+.wp-server{grid-column:1/-1;display:flex;align-items:center;gap:12px;min-width:0;height:52px;padding:0 16px;border:0;border-radius:17px;cursor:pointer;text-align:left;
+  color:var(--text);background:color-mix(in srgb,var(--bg) 58%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--text) 8%,transparent);transition:background .2s}
+.wp-server:hover{background:color-mix(in srgb,var(--accent) 10%,var(--bg))}
+.wp-server span{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.wp-server em,.wp-step em{font-style:normal;font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.wp-server b{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wp-server .chev{flex:none;color:var(--muted);transition:transform .25s}
+.wp-server[aria-expanded=true] .chev{transform:rotate(180deg)}
+.dot{flex:none;width:9px;height:9px;border-radius:50%;background:var(--muted);box-shadow:0 0 0 3px color-mix(in srgb,var(--muted) 20%,transparent)}
+.dot.ok{background:#3ddc97;box-shadow:0 0 0 3px rgba(61,220,151,.2)}
+.dot.bad{background:#ff6b6b;box-shadow:0 0 0 3px rgba(255,107,107,.2)}
+.dot.load{background:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent);animation:wpPulse 1.1s ease-in-out infinite}
+@keyframes wpPulse{50%{opacity:.35}}
+.wp-icon{grid-column:2;grid-row:1;display:grid;place-items:center;width:48px;height:48px;padding:0;border:0;border-radius:17px;cursor:pointer;color:var(--text);
+  background:color-mix(in srgb,var(--bg) 58%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--text) 8%,transparent);transition:background .2s,transform .3s}
+.wp-icon:hover{background:color-mix(in srgb,var(--accent) 14%,var(--bg))}
+.wp-icon:active{transform:rotate(-90deg)}
+@container (min-width:560px){
+  .wp-grid{grid-template-columns:176px minmax(0,1fr) auto}
+  .wp-server{grid-column:2}
+  .wp-icon{grid-column:3}
+}
+.wp-servers{display:flex;flex-direction:column;gap:10px;padding:6px;border-radius:20px;background:color-mix(in srgb,var(--bg) 45%,transparent);animation:wpDrop .22s ease-out}
+.wp-servers[hidden]{display:none}
+@keyframes wpDrop{from{opacity:0;transform:translateY(-6px)}}
+.wp-sg h4{margin:6px 10px 4px;font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.wp-srv{display:flex;align-items:center;gap:12px;width:100%;min-height:48px;padding:0 12px;border:0;border-radius:14px;background:none;color:var(--text);cursor:pointer;text-align:left;transition:background .15s}
+.wp-srv:hover{background:color-mix(in srgb,var(--text) 7%,transparent)}
+.wp-srv.on{background:color-mix(in srgb,var(--accent) 16%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 40%,transparent)}
+.wp-srv b{flex:1;min-width:0;font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wp-srv u{text-decoration:none;font-size:11px;font-weight:700;color:#ff8f8f}
+.wp-srv svg{flex:none;color:var(--accent)}
+
+.wp-steps{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.wp-step{display:flex;align-items:center;gap:10px;min-width:0;height:56px;padding:0 16px;border:0;border-radius:18px;cursor:pointer;color:var(--text);
+  background:color-mix(in srgb,var(--bg) 58%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--text) 8%,transparent);transition:background .2s,transform .12s}
+.wp-step:hover:not(:disabled){background:color-mix(in srgb,var(--accent) 12%,var(--bg))}
+.wp-step:active:not(:disabled){transform:scale(.97)}
+.wp-step span{display:flex;flex-direction:column;gap:1px;min-width:0;line-height:1.15}
+.wp-step b{font-size:14px;font-weight:800}
+.wp-step.next{justify-content:flex-end;text-align:right;background:color-mix(in srgb,var(--accent) 17%,var(--bg));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 38%,transparent)}
+.wp-step.next svg{color:var(--accent)}
+.wp-step:disabled{opacity:.4;cursor:default}
+.wp-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 4px 0}
+.wp-switch{display:inline-flex;align-items:center;gap:11px;cursor:pointer;font-size:13px;font-weight:700;user-select:none}
+.wp-switch input{position:absolute;opacity:0;width:0;height:0}
+.wp-switch i{position:relative;flex:none;width:44px;height:26px;border-radius:26px;background:color-mix(in srgb,var(--text) 16%,transparent);transition:background .25s}
+.wp-switch i::after{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.4);transition:transform .28s cubic-bezier(.2,.9,.25,1.2)}
+.wp-switch input:checked+i{background:var(--accent)}
+.wp-switch input:checked+i::after{transform:translateX(18px)}
+.wp-switch input:focus-visible+i{outline:2px solid var(--accent);outline-offset:3px}
+.wp-link{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:800;color:var(--accent)}
+.wp-link:hover{text-decoration:underline}
+
+/* ---------- Side column ---------- */
+/* Episodes / Seasons switch: the same single bar and sliding pill as the anime page tabs */
+.wp-side .dp-tabs.wp-eps-switch{display:grid;grid-template-columns:1fr 1fr;gap:0;width:100%;margin:2px 0 14px;overflow:hidden}
+.wp-eps-switch .dp-tab{padding:10px 12px;font-size:13.5px;text-align:center}
+.wp-side .dp-panel{display:none}
+.wp-side .dp-panel.on{display:block}
+@media (min-width:1000px){
+  /* The column fills the rows beside the player but does not size them (contain:size), so switching Episodes / Seasons can never push the title and controls around */
+  .wp-side{align-self:stretch;contain:size;min-height:0}
+  .wp-side-in{position:sticky;top:calc(var(--hdr-h) + 12px);max-height:min(100%,calc(100dvh - var(--hdr-h) - 28px));display:flex;flex-direction:column;min-height:0}
+  .wp-side .dp-tabs{flex:none}
+  /* The Episodes / Seasons bar keeps its original size; only the list under it is wider */
+  .wp-side .dp-tabs.wp-eps-switch{width:392px;max-width:100%}
+  .wp-side .dp-panels{flex:1;min-height:0;overflow:auto;padding-right:6px;scrollbar-width:thin;overscroll-behavior:contain;scroll-behavior:smooth}
+  /* Fade: the list melts away at the bottom while there is more to scroll to, and at the top once it has been scrolled */
+  .wp-side .dp-panels.fade-b{-webkit-mask-image:linear-gradient(180deg,#000 calc(100% - 120px),transparent);mask-image:linear-gradient(180deg,#000 calc(100% - 120px),transparent)}
+  .wp-side .dp-panels.fade-t{-webkit-mask-image:linear-gradient(180deg,transparent,#000 44px);mask-image:linear-gradient(180deg,transparent,#000 44px)}
+  .wp-side .dp-panels.fade-t.fade-b{-webkit-mask-image:linear-gradient(180deg,transparent,#000 44px,#000 calc(100% - 120px),transparent);mask-image:linear-gradient(180deg,transparent,#000 44px,#000 calc(100% - 120px),transparent)}
+  .wp-side-in{position:sticky}
+  /* The home page's scroll line (no word), plus an arrow, sitting on the faded part */
+  .wp-cue{position:absolute;left:50%;bottom:4px;z-index:3;display:flex;flex-direction:column;align-items:center;gap:0;width:44px;padding:0;border:0;background:none;cursor:pointer;
+    color:var(--muted);translate:-50% 0;opacity:0;pointer-events:none;transition:opacity .35s ease,color .2s}
+  .wp-cue.on{opacity:1;pointer-events:auto}
+  .wp-cue:hover{color:var(--text)}
+  .wp-cue:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:10px}
+  .wp-cue i{display:block;width:1px;height:36px;background:linear-gradient(var(--accent),transparent);transform-origin:top;animation:wpCue 2s cubic-bezier(.22,1,.36,1) infinite}
+  .wp-cue svg{margin-top:-2px;animation:wpCueArrow 2s ease-in-out infinite}
+}
+@keyframes wpCue{0%{transform:scaleY(0)}45%{transform:scaleY(1)}100%{transform:scaleY(1);opacity:0}}
+@keyframes wpCueArrow{0%,100%{transform:translateY(-2px);opacity:.55}50%{transform:translateY(2px);opacity:1}}
+.wp-cue{display:none}
+@media (min-width:1000px){.wp-cue{display:flex}}
+@media (prefers-reduced-motion:reduce){.wp-cue i,.wp-cue svg{animation:none}}
+html.reduce-motion .wp-cue i,html.reduce-motion .wp-cue svg{animation:none}
+.wp-eptools{display:flex;align-items:center;justify-content:space-between;margin:0 2px 10px;font-size:12.5px;font-weight:700;color:var(--muted)}
+.wp-eptools>div{display:flex;gap:6px}
+.wp-tool{display:grid;place-items:center;width:34px;height:34px;padding:0;border:0;border-radius:12px;cursor:pointer;color:var(--muted);
+  background:color-mix(in srgb,var(--text) 7%,transparent);transition:background .15s,color .15s}
+.wp-tool:hover{color:var(--text);background:color-mix(in srgb,var(--accent) 18%,transparent)}
+.wp-seasons{margin-bottom:18px}
+.wp-seasons h3,.wp-rel-h{margin:0 2px 10px;font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.wp-side .grid{grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:14px 12px}
+.wp-empty{padding:28px 8px;text-align:center;color:var(--muted);font-size:13.5px}
+
+.wp-comments{margin-top:6px}
+
+/* ---------- Recommendations ---------- */
+.wp-recs{align-self:start}
+.wp-recs[hidden]{display:none}
+.wp-recs h2{margin:0 0 14px;font-size:20px;font-weight:700}
+.wp-recs .grid{grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:14px 12px}
+@media (max-width:999px){.wp-recs{margin-top:6px;padding-top:26px;border-top:1px solid var(--line)}}
+@media (min-width:1000px){.wp-recs{margin-top:6px}}
+
+@media (prefers-reduced-motion:reduce){.wp-stage.is-mini,.wp-servers{animation:none}}
+html.reduce-motion .wp-stage.is-mini,html.reduce-motion .wp-servers{animation:none}

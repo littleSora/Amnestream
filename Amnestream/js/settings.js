@@ -11,6 +11,9 @@ const PRESETS = [['pre-rich','Rich Black','#0b132b','#5bc0be','#fff'],['pre-oxfo
   ['pre-jet','Jet','#2b2d42','#ef476f','#fff'],['pre-alabaster','Alabaster','#edede9','#3d5a80','#1b1b1f']];;
 const ACCENTS = ['#9db4ff', '#f472b6', '#fb923c', '#fbbf24', '#34d399', '#22d3ee', '#a78bfa', '#f43f5e'];
 
+/* The floating navigation (Orbs / Pill) only exists on phones and tablets, so its settings only show there */
+const phoneUI = () => matchMedia('(max-width:900px)').matches;
+
 const ALL_SECTIONS = [
   { id: 'playback', name: 'Playback', sub: 'What happens when you press play', ic: 'play', g: 'rose', items: [
     { t: 'toggle', k: 'autonext', ic: 'skip', n: 'Autonext', d: 'Play the next episode when this one ends' },
@@ -22,6 +25,9 @@ const ALL_SECTIONS = [
     { t: 'accent', ic: 'sliders', n: 'Accent colour', d: 'Buttons, highlights and progress. Overrides the theme\'s accent', kw: 'color colour custom highlight', full: 1 },
     { t: 'seg', k: 'titleLang', ic: 'lang', n: 'Title language', d: 'How anime names show across the site', full: 1, opts: [['english', 'English'], ['romaji', 'Romaji']] },
     { t: 'seg', k: 'cardSize', ic: 'grid', n: 'Poster size', d: 'Size of posters in grids and rows. On phones: Small shows four across, Normal three, Large two', full: 1, opts: [['small', 'Small'], ['normal', 'Normal'], ['large', 'Large']] },
+    { t: 'seg', needs: phoneUI, k: 'dockStyle', ic: 'sliders', n: 'Navigation style', d: 'Orbs: separate round buttons (default). Pill: one bar', full: 1, kw: 'dock menu bar design look orbs pill round', opts: [['pill', 'Pill'], ['orbs', 'Orbs']] },
+    { t: 'seg', needs: phoneUI, k: 'dockSize', ic: 'sliders', n: 'Navigation size', d: 'Size of the floating navigation bar on phones and tablets. Medium is the default', full: 1, kw: 'dock menu bar bigger smaller larger', opts: [['small', 'Small'], ['medium', 'Medium'], ['large', 'Large']] },
+    { t: 'note', needs: phoneUI, ic: 'sliders', n: 'Move or hide the navigation', d: 'Swipe it toward its edge to hide it; tap the tab to bring it back. Press, hold and drag to move it. It fades while you scroll, shows fully 1 second after you stop, then softly fades again.', kw: 'dock hide move position left right bottom drag hold swipe navigation' },
     { t: 'seg', k: 'epOrder', ic: 'sort', n: 'Episode order', d: 'Which end of the episode list comes first', full: 1, opts: [['asc', 'First to latest'], ['desc', 'Latest first']] },
     { t: 'seg', k: 'epStyle', ic: 'grid', n: 'Episode list style', d: 'On details pages', full: 1, opts: [['list', 'Cards'], ['compact', 'Compact'], ['grid', 'Numbers']] },
     { t: 'toggle', k: 'continueRow', ic: 'clock', n: 'Continue watching row', d: 'Show your recent episodes at the top of the homepage' },
@@ -32,7 +38,7 @@ const ALL_SECTIONS = [
     { t: 'toggle', k: 'includeAdult', ic: 'shield', n: 'Show 18+ titles', d: 'Include adult-rated anime in Browse, search, the home page and the schedule', kw: 'adult 18 nsfw hentai explicit mature all titles' },
     { t: 'toggle', k: 'incognito', ic: 'eye', n: 'Incognito mode', d: 'Pause watch history and activity tracking' },
     { t: 'toggle', k: 'hideSpoilers', ic: 'eye', n: 'Hide spoilers', d: 'Blur thumbnails and titles of episodes you haven\'t watched yet' },
-    { t: 'toggle', k: 'showComments', ic: 'eye', n: 'Show comments', d: 'Off: every anime shows a spoiler alert instead of its comments, and you can open them one anime at a time. On: comments show on every anime', kw: 'comments spoiler discussion replies' },
+    { t: 'toggle', k: 'showComments', ic: 'eye', n: 'Show comments', d: 'Off: turns off the comments. On: turns on the comments', kw: 'comments spoiler discussion replies' },
   ] },
   { id: 'sync', name: 'Sync and devices', sub: 'Keep Continue watching the same everywhere', ic: 'cloud', g: 'blue', items: [
     { t: 'syncstatus', n: 'Cloud sync', d: 'Your list, progress and history follow your account', kw: 'cloud sync devices account continue watching', full: 1 },
@@ -173,7 +179,7 @@ function bodyHTML(it, s) {
   }
   return '';
 }
-const BODY_TYPES = ['themes', 'accent', 'syncstatus', 'storage', 'keys', 'info', 'account', 'mal'];
+const BODY_TYPES = ['themes', 'accent', 'syncstatus', 'storage', 'keys', 'info', 'account', 'mal', 'note'];
 
 function uiSwitchHTML() {
   const m = isModern();
@@ -248,16 +254,23 @@ function filterPanels() {
 }
 
 
-const REGIONS = [
+const REGIONS_ALL = [
   { id: 'look', name: 'Colours and motion', ic: 'palette', desc: 'The theme and accent colour used across the whole site, and whether things animate.', pick: it => ['themes', 'accent'].includes(it.t) || it.k === 'reduceMotion' },
   { id: 'titles', name: 'Titles', ic: 'lang', desc: 'How anime names are written on every page.', pick: it => it.k === 'titleLang' },
   { id: 'posters', name: 'Posters and rows', ic: 'grid', desc: 'Poster size, the Continue watching row and hover previews.', pick: it => ['cardSize', 'continueRow', 'hoverTrailer'].includes(it.k) },
+  { id: 'nav', phone: true, name: 'Navigation', ic: 'sliders', desc: 'The floating navigation bar on phones and tablets: its size, and how to move or hide it.', pick: it => it.k === 'dockSize' || it.k === 'dockStyle' || it.t === 'note' },
   { id: 'episodes', name: 'Episode lists', ic: 'sort', desc: 'Order, style and spoilers on details pages.', pick: it => ['epOrder', 'epStyle', 'hideSpoilers'].includes(it.k) },
   { id: 'player', name: 'Playback', ic: 'play', desc: 'What happens when you press play and when an episode ends.', pick: it => ['autonext', 'resume', 'audio'].includes(it.k) },
   { id: 'privacy', name: 'Privacy', ic: 'shield', desc: 'What you see and what gets saved.', pick: it => ['includeAdult', 'incognito', 'showComments'].includes(it.k) },
   { id: 'you', name: 'Account and sync', ic: 'user', desc: 'Your account, password and keeping devices in step.', pick: it => ['syncstatus', 'account', 'mal'].includes(it.t) || it.k === 'malAuto' || ['changepw', 'synccopy', 'syncpaste'].includes(it.act) },
   { id: 'data', name: 'Data and about', ic: 'database', desc: 'Backups, storage, shortcuts and the fine print.', pick: it => ['storage', 'keys', 'info', 'link'].includes(it.t) || ['clearcache', 'export', 'import', 'clearhist', 'reset', 'wipe'].includes(it.act) },
 ];
+/* The tabs and preview chips follow the screen width: no Navigation area on a computer */
+const REGIONS = [];
+const syncRegions = () => { REGIONS.length = 0; REGIONS.push(...REGIONS_ALL.filter(r => !r.phone || phoneUI())); };
+syncRegions();
+matchMedia('(max-width:900px)').addEventListener('change', () => { syncRegions(); if (!REGIONS.some(r => r.id === REG)) REG = ''; if (document.getElementById('page')) render(); });
+
 const GROUPS = {
   you: it => it.t === 'account' || it.act === 'changepw' ? ['Profile and password'] : it.t === 'mal' || it.k === 'malAuto' ? ['MyAnimeList'] : ['Sync'],
   data: it => it.t === 'storage' || it.act === 'clearcache' ? ['This device']
@@ -348,6 +361,7 @@ function stageHTML() {
       <span class="pill ${s.autonext ? 'hot' : 'off'}">${s.autonext ? 'Next episode in 5s' : 'Autonext off'}</span>
     </div>
     <div class="stg-foot">
+      ${phoneUI() ? `<span ${hot('nav', 'stg-chip')}>${tag('nav')}${icon('sliders', 13)} Navigation</span>` : ''}
       <span ${hot('privacy', 'stg-chip')}>${tag('privacy')}${icon('shield', 13)} Privacy${s.incognito ? ': history paused' : ''}</span>
       <span ${hot('data', 'stg-chip')}>${tag('data')}${icon('database', 13)} Data and about</span>
     </div>
@@ -487,21 +501,29 @@ const DOCK_KEY = 'as_sheet_dock', DOCK_W = 'as_dock_w', DOCK_H = 'as_dock_h', DO
 const baseSheet = () => Math.min(272, Math.max(172, innerHeight * .31));
 const clampN = (v, lo, hi) => Math.round(Math.min(hi, Math.max(lo, v)));
 const dockSide = el => el.classList.contains('dock-l') ? 'l' : el.classList.contains('dock-r') ? 'r' : '';
-const navTop = () => { const h = $('#site-header'); return h ? h.getBoundingClientRect().top : innerHeight - 64; };
+/* Room for a docked panel: below the top bar, above the bottom edge (and above the floating navigation when that sits at the bottom).
+   The old code measured the top of #site-header, which on phones is now the top bar (0px), so every drop was squeezed into the upper corner. */
+let safeProbe = null;
+const safeBottom = () => {
+  if (!safeProbe) { safeProbe = document.createElement('div'); safeProbe.style.cssText = 'position:fixed;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none'; document.body.appendChild(safeProbe); }
+  return safeProbe.offsetHeight || 0;
+};
+const dockMinTop = () => { const h = $('#site-header'); const b = h ? h.getBoundingClientRect().bottom : 0; return Math.max(8, Math.round(b) + 6); };
+const dockMaxBottom = () => innerHeight - safeBottom() - (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dk-bot')) || 0) - 8;
 const rootPx = n => parseFloat(document.documentElement.style.getPropertyValue(n));
 function setDock(el, w, h, top, save) {
-  const limit = navTop() - 4;
+  const limit = dockMaxBottom(), lo = dockMinTop();
   w = clampN(w, 200, Math.max(220, Math.min(innerWidth - 24, 440)));
-  h = clampN(h, 160, Math.max(200, limit - 12));
-  top = clampN(top, 8, Math.max(8, limit - h));
+  h = clampN(h, 160, Math.max(200, limit - lo));
+  top = clampN(top, lo, Math.max(lo, limit - h));
   const st = document.documentElement.style; st.setProperty('--dock-w', w + 'px'); st.setProperty('--dock-h', h + 'px'); st.setProperty('--dock-top', top + 'px');
   if (save) { lsSet(DOCK_W, w); lsSet(DOCK_H, h); lsSet(DOCK_Y, top); }
   return { w, h, top };
 }
 function loadDock(el, top) {   // Saved size (or the 40% bigger default); top is where it was dropped, else where it last hovered, else sitting on the nav
-  const w = parseFloat(lsGet(DOCK_W)) || Math.min(Math.round(190 * DOCK_SCALE), Math.round(innerWidth * .78));
+  const w = parseFloat(lsGet(DOCK_W)) || Math.min(Math.round(190 * 1.65), Math.round(innerWidth * .82));
   const h = parseFloat(lsGet(DOCK_H)) || Math.round(baseSheet() * DOCK_SCALE);
-  const y = top != null ? top : (parseFloat(lsGet(DOCK_Y)) || (navTop() - 4 - h));
+  const y = top != null ? top : (parseFloat(lsGet(DOCK_Y)) || (dockMaxBottom() - h));
   return setDock(el, w, h, y, top != null);
 }
 function applyDock(el, side, save = true, top) {
@@ -687,7 +709,7 @@ function paintPrev() {
   const title = h ? titleOf(h) : s.titleLang === 'romaji' ? 'Sousou no Frieren' : 'Frieren: Beyond Journey\'s End';
   const eps = [[1, 'The Journey\'s End', true], [2, 'It Didn\'t Have to Be Magic', true], [3, 'Killing Magic', false], [4, 'The Land Where Souls Rest', false]];
   if (s.epOrder === 'desc') eps.reverse();
-  const w = s.cardSize === 'small' ? 112 : s.cardSize === 'large' ? 168 : 140;
+  const w = s.cardSize === 'small' ? 124 : s.cardSize === 'large' ? 168 : 154;
   box.innerHTML = `
     <h3>Preview</h3>
     <div class="pv-card" style="width:${w}px">
@@ -837,9 +859,9 @@ const ACT2 = {
 };
 
 function wireRows() {
-  $$('.toggle').forEach(b => b.onclick = () => {
+  $$('.toggle').forEach(b => b.onclick = async () => {
     let on = !b.classList.contains('on');
-    if (b.dataset.k === 'includeAdult') { on = setAdult(on); }
+    if (b.dataset.k === 'includeAdult') { on = await setAdult(on); }
     else Settings.set(b.dataset.k, on);
     b.classList.toggle('on', on); b.setAttribute('aria-checked', on);
     const lab = $('span', b); if (lab) lab.textContent = on ? 'On' : 'Off';

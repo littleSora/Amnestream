@@ -134,7 +134,7 @@ html[data-theme] .pass-av .avatar{border-radius:30px!important}
 html[data-theme=cyberpunk] .avatar,html[data-theme=cyberpunk] .avatar-btn{clip-path:none!important}
 
 html[data-theme] .card-hit:focus-visible,html[data-theme] .card-play:focus-visible{outline:none}
-html[data-theme] .card-media:has(.card-hit:focus-visible){box-shadow:0 0 0 3px var(--accent),0 16px 30px -18px var(--sh,#000)}
+html[data-theme] .card-media:has(.card-hit:focus-visible){box-shadow:0 0 0 3px var(--accent),0 8px 22px -6px var(--sh,rgba(0,0,0,.5))}
 html[data-theme] .card-hit{border-radius:inherit!important}
 html[data-theme=cyberpunk] .card-media{border-radius:0!important}
 
@@ -235,3 +235,27 @@ html[data-theme=blossom-night] #as-scene-text .st-en{color:#ff7aa8}
 html[data-theme=blossom-night] body:not(.home) #as-scene-text{display:none}
 html[data-theme=blossom-night] :is(.stg-insp,.stg-nav,.stg-tabs){backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
 html[data-theme=blossom-night] .stg-insp{background:#241019e6}
+
+
+/* ---- Light themes: readable hover preview and synopsis, no dark halos or glow ---------------------------------------
+   These only touch the five light themes (Parchment, Brutal, Alabaster, Retro 96, Sakura); every dark theme keeps its look. */
+html:is([data-theme=parchment],[data-theme=brutal],[data-theme=pre-alabaster],[data-theme=retro96],[data-theme=blossom]) .hp-in{box-shadow:0 26px 60px -18px var(--sh),0 0 0 1px var(--line)}
+html:is([data-theme=parchment],[data-theme=brutal],[data-theme=pre-alabaster],[data-theme=retro96],[data-theme=blossom]) .hp-title{text-shadow:none}
+html:is([data-theme=parchment],[data-theme=brutal],[data-theme=pre-alabaster],[data-theme=retro96],[data-theme=blossom]) .hp-desc{color:color-mix(in srgb,var(--text) 82%,transparent)}
+html:is([data-theme=parchment],[data-theme=brutal],[data-theme=pre-alabaster],[data-theme=retro96],[data-theme=blossom]) .hp-meta b{color:var(--accent)}
+html:is([data-theme=parchment],[data-theme=brutal],[data-theme=pre-alabaster],[data-theme=retro96],[data-theme=blossom]) .hp-genres span{background:color-mix(in srgb,var(--text) 9%,transparent)}
+html:is([data-theme=parchment],[data-theme=brutal],[data-theme=pre-alabaster],[data-theme=retro96],[data-theme=blossom]) .hp-btn{background:color-mix(in srgb,var(--text) 8%,transparent);box-shadow:inset 0 0 0 1px var(--line)}
+html:is([data-theme=parchment],[data-theme=brutal],[data-theme=pre-alabaster],[data-theme=retro96],[data-theme=blossom]) .hp-btn:hover{background:color-mix(in srgb,var(--text) 15%,transparent)}
+html:is([data-theme=parchment],[data-theme=brutal],[data-theme=pre-alabaster],[data-theme=retro96],[data-theme=blossom]) .dp-main h1{text-shadow:0 0 18px color-mix(in srgb,var(--bg) 80%,transparent)}
+html:is([data-theme=parchment],[data-theme=brutal],[data-theme=pre-alabaster],[data-theme=retro96],[data-theme=blossom]) .dp-syn{padding:16px 18px;border-radius:18px;background:color-mix(in srgb,var(--card) 88%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:inset 0 0 0 1px var(--line)}
+html:is([data-theme=parchment],[data-theme=brutal],[data-theme=pre-alabaster],[data-theme=retro96],[data-theme=blossom]) .dp-syn p{text-shadow:none}
+html:is([data-theme=parchment],[data-theme=brutal],[data-theme=pre-alabaster],[data-theme=retro96],[data-theme=blossom]) :is(.hero-content,.hero-content .btn,.hero-actions .btn){text-shadow:none}
+
+
+/* ---- Animated scenes (Sakura, Sakura Inverted, Galaxy, Vaporwave, Aurora): keep the page light on the GPU ----
+   A frosted-glass panel has to re-blur whatever is behind it every time that picture changes, and behind these panels the picture is the
+   moving scene, so each frame re-blurred every card on screen. The panels are already translucent, so they simply stay un-blurred here. */
+html:is([data-theme=galaxy],[data-theme=vapor],[data-theme=blossom],[data-theme=blossom-night],[data-theme=aurora]) :is(
+  .side-card,.pf-card,.sched-list,.set-row,.set-side,.player-bar,.side-panel,.lb-row,.char,.tl-scroll,.cm-login,.dp-meta,.spot-tag,.info-meta span,.tag,
+  .badge-score,.badge-note,.ep-dur,.epm-dur,.ep-cards.compact .ep-card,.stg-insp,.stg-nav,.stg-tabs,.mset-bar,.stg-hero-bg~.stg-hero-in .stg-chips span
+){backdrop-filter:none;-webkit-backdrop-filter:none}

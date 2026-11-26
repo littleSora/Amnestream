@@ -3,7 +3,6 @@
 # amnestream.
 
 **A fast, anime streaming site with sub / dub, server failover and optional cloud sync.**
-No backend, no build step: plain HTML, CSS and JavaScript.
 
 ![Static site](https://img.shields.io/badge/static%20site-no%20build-9db4ff?style=flat-square)
 ![Vanilla JS](https://img.shields.io/badge/vanilla-JavaScript-f7df1e?style=flat-square&logo=javascript&logoColor=black)
@@ -59,10 +58,6 @@ Then open <http://localhost:8080>. There is nothing to install or build.
 | Windows                  | Linux / macOS                 |
 | :----------------------- | :---------------------------- |
 | `py -m http.server 8080` | `python3 -m http.server 8080` |
-
-**Accounts and sync (optional).** Create a Supabase project, put its Project URL and public anon key in `js/config.js`, then run the SQL files in `supabase/` once each in the Supabase SQL editor. Both values are public by design; data is protected by row-level security rules.
-
-**After changing files.** Bump `VERSION` in `sw.js` (for example `amnestream-v65` to `v66`) so every device drops its cached copy.
 
 ## Project layout
 

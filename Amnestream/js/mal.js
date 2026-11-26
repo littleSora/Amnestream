@@ -18,6 +18,8 @@ const Mal = (() => {
   const rand = n => b64u(crypto.getRandomValues(new Uint8Array(n)));
   const STATUS = [['watching', 'Watching'], ['completed', 'Completed'], ['on_hold', 'On hold'], ['dropped', 'Dropped'], ['plan_to_watch', 'Plan to watch']];
   const done = new Set();
+  /* MyAnimeList sends the watched count as num_episodes_watched (it only takes num_watched_episodes when saving) */
+  const watchedOf = l => Number(l && (l.num_episodes_watched ?? l.num_watched_episodes)) || 0;
 
   async function post(path, body, headers = {}) {
     const r = await fetch(api() + path, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) });
@@ -95,48 +97,102 @@ const Mal = (() => {
       try {
         const { list, total: t } = await Mal.entry(media.idMal);
         const total = t || media.episodes || 0;
-        if (list && list.num_watched_episodes >= ep) return;
+        if (list && watchedOf(list) >= ep) return;
         const status = total && ep >= total ? 'completed' : 'watching';
         await Mal.save(media.idMal, { status, num_watched_episodes: ep });
         toast(status === 'completed' ? 'MyAnimeList: marked as completed' : 'MyAnimeList: episode ' + ep + ' saved');
       } catch (e) { done.delete(k); if (!/log in/i.test(e.message)) console.warn('MAL update failed:', e.message); else toast(e.message); }
     },
 
-    /* Details page: a small panel to set status, episodes and score by hand */
-    async panel(box, media) {
-      if (!box) return;
+    /* Details page: the button next to Share opens this dialog to set status, score, episodes, rewatches and notes by hand */
+    async open(media) {
       await ready;
-      if (!Mal.configured()) return;
-      box.hidden = false;
-      box.classList.add('simple');
-      if (!Mal.connected()) { box.innerHTML = `<span class="mal-tag">MAL</span><span class="mal-txt">Track this on MyAnimeList</span><a class="dp-btn sm" href="settings.html?s=you">Connect</a>`; return; }
-      box.innerHTML = `<span class="mal-tag">MAL</span><span class="mal-txt">Loading your list...</span>`;
-      let e; try { e = await Mal.entry(media.idMal); } catch (x) { box.innerHTML = `<span class="mal-tag">MAL</span><span class="mal-txt">${esc(x.message)}</span>`; return; }
-      const total = e.total || media.episodes || 0, l = e.list || {};
+      if (!Mal.configured()) { toast('MyAnimeList is not set up on this site yet'); return; }
+      const ttl = titleOf(media), cover = (media.coverImage && (media.coverImage.large || media.coverImage.extraLarge)) || '', art = media.bannerImage || cover;
+      const chips = [media.format ? String(media.format).replace(/_/g, ' ') : '', media.episodes ? media.episodes + ' episodes' : ''].filter(Boolean);
+      const hero = `<div class="mal-hero">
+          <span class="mal-hero-bg" style="background-image:url('${esc(art)}')"></span>
+          <button type="button" class="um-x" data-um-close aria-label="Close">${icon('close', 16)}</button>
+          <div class="mal-hero-in">
+            ${cover ? `<img class="mal-cover" src="${esc(cover)}" alt="">` : ''}
+            <div class="mal-hero-t"><span class="mal-tag">MAL</span><h2>${esc(ttl)}</h2>
+              <div class="mal-chips">${chips.map(c => `<span>${esc(c)}</span>`).join('')}</div></div>
+          </div></div>`;
+      const m = UiModal.open({ cls: 'um-mal', html: hero + '<div class="mal-body"><p class="mal-note"><span class="spinner"></span>Loading your list...</p></div>' });
+      const body = $('.mal-body', m.el);
+      const note = msg => { body.innerHTML = msg; };
+
+      if (!Mal.connected()) {
+        note(`<div class="mal-empty"><p>Connect your MyAnimeList account to track this anime from here.</p>
+          <a class="dp-btn primary" href="settings.html?s=you">Connect MyAnimeList</a></div>`);
+        return;
+      }
+      let e;
+      try { e = await Mal.entry(media.idMal); }
+      catch (x) { note(`<div class="mal-empty"><p>${esc(x.message)}</p><button type="button" class="dp-btn" data-um-close>Close</button></div>`); $$('[data-um-close]', body).forEach(b => b.onclick = () => m.close()); return; }
+      if (!m.el.isConnected) return;
+
+      const total = e.total || media.episodes || 0;
       const paint = list => {
-        const cur = list || {};
-        box.classList.remove('simple');
-        box.innerHTML = `<div class="mal-head"><span class="mal-tag">MAL</span><span class="mal-txt">Your MyAnimeList entry</span></div>
-          <label class="mal-f mal-status">Status<select id="mal-st"><option value="">Not on my list</option>${STATUS.map(([v, n]) => `<option value="${v}" ${cur.status === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
-          <label class="mal-f mal-ep">Episodes<span class="mal-eps"><input id="mal-ep" type="number" min="0" ${total ? `max="${total}"` : ''} value="${cur.num_watched_episodes || 0}" inputmode="numeric"><small>/ ${total || '?'}</small></span></label>
-          <label class="mal-f mal-sc">Score<select id="mal-sc"><option value="0">-</option>${[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(n => `<option value="${n}" ${cur.score === n ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
-          <div class="mal-act"><button class="dp-btn primary" id="mal-save">Save</button>${list ? '<button class="dp-btn" id="mal-del" title="Remove from my MAL list">Remove</button>' : ''}</div>`;
-        const st = $('#mal-st', box), ep = $('#mal-ep', box);
-        st.onchange = () => { if (st.value === 'completed' && total) ep.value = total; };
-        ep.oninput = () => { if (total && Number(ep.value) >= total && st.value !== 'completed' && st.value !== '') st.value = 'completed'; };
-        $('#mal-save', box).onclick = async ev => {
-          const b = ev.currentTarget; if (!st.value) { toast('Pick a status first'); return; }
-          b.disabled = true;
-          try {
-            const n = Math.max(0, Math.min(total || 9999, Number(ep.value) || 0));
-            const r = await Mal.save(media.idMal, { status: st.value, num_watched_episodes: n, score: Number($('#mal-sc', box).value) || 0 });
-            toast('Saved to MyAnimeList'); paint(r);
-          } catch (x) { toast(x.message); b.disabled = false; }
+        const cur = list || {}, who = Mal.me();
+        body.innerHTML = `
+          <div class="mal-grid">
+            <label class="mal-f"><span>Status</span>
+              <select id="mal-st"><option value="">Not on my list</option>${STATUS.map(([v, n]) => `<option value="${v}" ${cur.status === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+            <label class="mal-f"><span>Score</span>
+              <select id="mal-sc"><option value="0">No score</option>${[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(n => `<option value="${n}" ${cur.score === n ? 'selected' : ''}>${n}${['', ' - Appalling', ' - Horrible', ' - Very bad', ' - Bad', ' - Average', ' - Fine', ' - Good', ' - Very good', ' - Great', ' - Masterpiece'][n]}</option>`).join('')}</select></label>
+            <div class="mal-f"><span>Episode progress</span>
+              <div class="mal-step">
+                <button type="button" id="mal-m" aria-label="One episode less">${icon('minus', 14)}</button>
+                <input id="mal-ep" type="number" min="0" ${total ? `max="${total}"` : ''} value="${watchedOf(cur)}" inputmode="numeric" aria-label="Episodes watched">
+                <button type="button" id="mal-p" aria-label="One episode more">${icon('plus', 14)}</button>
+                <small>/ ${total || '?'}</small>
+              </div></div>
+            <label class="mal-f"><span>Total rewatches</span>
+              <input id="mal-rw" type="number" min="0" max="999" value="${cur.num_times_rewatched || 0}" inputmode="numeric"></label>
+            <label class="mal-f wide"><span>Notes</span>
+              <textarea id="mal-cm" rows="3" maxlength="500" placeholder="Share your thoughts">${esc(cur.comments || '')}</textarea></label>
+          </div>
+          <p class="mal-acct">${icon('link', 13)}<span>Saved to ${esc(who ? who.name : 'your MyAnimeList')}</span><a href="settings.html?s=you">Manage</a></p>
+          <div class="mal-foot">
+            ${list ? '<button type="button" class="dp-btn danger-o" id="mal-del">Remove</button>' : '<span></span>'}
+            <span class="mal-foot-r"><button type="button" class="dp-btn" data-um-close>Cancel</button><button type="button" class="dp-btn primary" id="mal-save">Save</button></span>
+          </div>`;
+        const st = $('#mal-st', body), ep = $('#mal-ep', body), sc = $('#mal-sc', body), rw = $('#mal-rw', body), cm = $('#mal-cm', body);
+        const clampEp = () => Math.max(0, Math.min(total || 9999, Math.floor(Number(ep.value)) || 0));
+        const sync = () => {
+          ep.value = clampEp();
+          if (total && Number(ep.value) >= total && st.value && st.value !== 'completed') st.value = 'completed';
         };
-        const del = $('#mal-del', box);
-        if (del) del.onclick = async () => { if (!confirm('Remove this anime from your MyAnimeList list?')) return; try { await Mal.remove(media.idMal); toast('Removed from MyAnimeList'); paint(null); } catch (x) { toast(x.message); } };
+        st.onchange = () => { if (st.value === 'completed' && total) ep.value = total; };
+        ep.onchange = sync;
+        $('#mal-m', body).onclick = () => { ep.value = Math.max(0, clampEp() - 1); };
+        $('#mal-p', body).onclick = () => { ep.value = clampEp() + 1; sync(); };
+        $$('[data-um-close]', body).forEach(b => b.onclick = () => m.close());
+
+        $('#mal-save', body).onclick = async ev => {
+          const b = ev.currentTarget;
+          if (!st.value) { toast('Pick a status first'); st.focus(); return; }
+          b.disabled = true; b.textContent = 'Saving...';
+          try {
+            const r = await Mal.save(media.idMal, {
+              status: st.value, num_watched_episodes: clampEp(), score: Number(sc.value) || 0,
+              num_times_rewatched: Math.max(0, Math.min(999, Math.floor(Number(rw.value)) || 0)), comments: cm.value.slice(0, 500),
+            });
+            toast('Saved to MyAnimeList');
+            Mal._onChange && Mal._onChange(r);
+            m.close();
+          } catch (x) { toast(x.message); b.disabled = false; b.textContent = 'Save'; }
+        };
+        const del = $('#mal-del', body);
+        if (del) del.onclick = async () => {
+          if (!del.classList.contains('arm')) { del.classList.add('arm'); del.textContent = 'Tap again to remove'; setTimeout(() => { if (del.isConnected) { del.classList.remove('arm'); del.textContent = 'Remove'; } }, 3500); return; }
+          del.disabled = true;
+          try { await Mal.remove(media.idMal); toast('Removed from MyAnimeList'); Mal._onChange && Mal._onChange(null); m.close(); }
+          catch (x) { toast(x.message); del.disabled = false; }
+        };
       };
-      paint(e.list ? l : null);
+      paint(e.list || null);
     },
   };
   return Mal;
